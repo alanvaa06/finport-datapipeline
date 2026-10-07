@@ -22,7 +22,7 @@ Requires Python 3.12, 3.13 or 3.14.
 ## Install
 
 ```bash
-pip install git+https://github.com/alanvaa06/finport-datapipelinenew.git
+pip install git+https://github.com/alanvaa06/finport-datapipeline.git
 ```
 
 ## Keys
