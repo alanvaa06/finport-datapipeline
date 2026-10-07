@@ -1,0 +1,96 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "finport-datapipeline"
+description = "A local, versioned store of public economic and company data: every revision kept, readable as of any date."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Alan Vazquez" }]
+requires-python = ">=3.12,<3.15"
+dynamic = ["version"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+dependencies = [
+    "click>=8.1.7",
+    "httpx>=0.27",
+    "pandas>=2.2.3,<3",  # pandas 3 drops DataFrame.attrs on the parquet round trip the store relies on
+    "pyarrow>=18.0",
+    "python-dotenv>=1.0.1",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+data-pipeline = "data_pipeline.cli:cli"
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.100",
+    "mypy>=1.13",
+    "pandas-stubs>=2.2.3",
+    "pytest>=8.3.3",
+    "ruff>=0.10",
+    "types-PyYAML>=6.0",
+]
+
+[tool.hatch.version]
+path = "src/data_pipeline/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/data_pipeline"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "scripts", "README.md", "CHANGELOG.md", "LICENSE"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-config --strict-markers -m 'not live'"
+markers = ["live: calls a source's real API; needs its key and the network (pytest -m live tests/live)"]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.mypy]
+files = ["src"]
+mypy_path = "src"
+strict = true
+
+[[tool.mypy.overrides]]
+module = ["pyarrow.*"]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F",  # pycodestyle, pyflakes
+    "B",            # likely bugs
+    "UP",           # modern syntax
+    "SIM",          # simpler code
+    "RUF",          # ruff's own checks
+    "S",            # security
+    "PTH",          # pathlib over os.path
+    "DTZ",          # timezone-aware datetimes
+    "ANN",          # annotations
+    "T20",          # no stray print
+    "N",            # naming
+    "BLE",          # no blind except
+    "EM",           # exception messages in variables
+    "A",            # no shadowed builtins
+]
+
+ignore = ["ANN401"]  # Any is the honest type of parsed JSON
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "ANN", "S310", "S603", "N802", "DTZ"]
+"scripts/**" = ["T20", "ANN", "S", "DTZ", "EM", "E501"]

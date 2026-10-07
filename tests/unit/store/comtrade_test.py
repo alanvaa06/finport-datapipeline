@@ -1,0 +1,317 @@
+import datetime
+import math
+import re
+
+import httpx
+import pytest
+
+from data_pipeline import credentials as keys
+from data_pipeline.credentials import Credentials
+from data_pipeline.store.errors import CatalogError, QuotaExhaustedError
+from data_pipeline.store.model import Frequency, Kind, Outcome, Request
+from data_pipeline.store.sources.comtrade import (
+    KEY_COLUMNS,
+    VALUE_COLUMNS,
+    Comtrade,
+    Query,
+    closed_months,
+    is_total,
+    queries,
+    reporter_codes,
+    settings,
+)
+
+from .helpers import client, entry, fixture
+
+TODAY = datetime.date(2026, 10, 5)
+KEY_VALUE = "0123456789abcdef0123456789abcdef"
+CREDENTIALS = Credentials({keys.COMTRADE: KEY_VALUE})
+ALL_YEARS = frozenset(("A", str(year)) for year in range(2000, 2026))
+ALL_MONTHS = frozenset(("M", month) for month in closed_months(TODAY, 75))
+
+
+def reporter(identifier="MEX", **params):
+    return entry(identifier, "comtrade", params=params)
+
+
+def data_row(period="2024", flow="X", product="27", value=1.0, weight=2.0, **more):
+    return {"period": period, "flowCode": flow, "cmdCode": product, "primaryValue": value, "netWgt": weight, **more}
+
+
+def answer(rows):
+    return httpx.Response(200, json={"count": len(rows), "data": rows, "error": ""})
+
+
+def fetch(handler, requests, credentials=CREDENTIALS):
+    source = Comtrade(client(handler, secrets=(KEY_VALUE,)), credentials, today=lambda: TODAY)
+    return list(source.fetch(requests))
+
+
+def test_it_is_a_table_source_within_the_free_quota():
+    assert Comtrade.kind is Kind.TABLE
+    assert Comtrade.daily_budget == 450
+    assert Comtrade.requests_per_minute == 30
+
+
+def test_the_reporter_map_uses_comtrades_own_codes():
+    codes = reporter_codes()
+    assert (codes["MEX"], codes["USA"], codes["FRA"], codes["IND"], codes["CHN"]) == ("484", "842", "251", "699", "156")
+    assert len(codes) > 200
+
+
+def test_settings_have_the_defaults_of_the_spec():
+    chosen = settings(reporter())
+    assert (chosen.level, chosen.partners, chosen.flows) == ("AG2", ("WLD",), ("X", "M"))
+    assert (chosen.annual_from, chosen.months) == (2000, 75)
+
+
+def test_settings_read_every_field():
+    chosen = settings(reporter(level="ag4", partners=["usa", "WLD"], flows=["m"], annual_from=2015, months=0))
+    assert (chosen.level, chosen.partners, chosen.flows) == ("AG4", ("USA", "WLD"), ("M",))
+    assert (chosen.annual_from, chosen.months) == (2015, 0)
+
+
+@pytest.mark.parametrize(
+    ("identifier", "params", "message"),
+    [
+        ("XXX", {}, "unknown reporter 'XXX'"),
+        ("MEX", {"level": "AG3"}, "'level' must be one of AG2, AG4, AG6"),
+        ("MEX", {"partners": ["ZZZ"]}, "unknown value\\(s\\) in 'partners': ZZZ"),
+        ("MEX", {"partners": "USA"}, "'partners' must be a non-empty list"),
+        ("MEX", {"flows": ["RX"]}, "unknown value\\(s\\) in 'flows': RX"),
+        ("MEX", {"flows": []}, "'flows' must be a non-empty list"),
+        ("MEX", {"annual_from": "2000"}, "'annual_from' must be a whole number"),
+        ("MEX", {"months": -1}, "'months' must be a whole number"),
+        ("MEX", {"months": True}, "'months' must be a whole number"),
+        ("MEX", {"hs": "27"}, "unknown field\\(s\\) for source 'comtrade': hs"),
+    ],
+)
+def test_validate_rejects_what_the_source_does_not_accept(identifier, params, message):
+    source = Comtrade(client(), CREDENTIALS)
+    with pytest.raises(CatalogError, match=message):
+        source.validate(reporter(identifier, **params))
+
+
+def test_closed_months_end_with_last_month_and_cross_years():
+    assert closed_months(datetime.date(2026, 1, 15), 3) == ["2025-10", "2025-11", "2025-12"]
+    assert closed_months(TODAY, 2) == ["2026-08", "2026-09"]
+    assert closed_months(TODAY, 0) == []
+
+
+def test_an_empty_store_asks_for_everything_in_blocks_of_twelve():
+    asked = queries(frozenset(), settings(reporter()), TODAY)
+    shape = [(query.frequency.value, query.periods[0], query.periods[-1], len(query.periods)) for query in asked]
+    assert shape == [
+        ("A", "2000", "2011", 12),
+        ("A", "2012", "2023", 12),
+        ("A", "2024", "2025", 2),
+        ("M", "2020-07", "2021-06", 12),
+        ("M", "2021-07", "2022-06", 12),
+        ("M", "2022-07", "2023-06", 12),
+        ("M", "2023-07", "2024-06", 12),
+        ("M", "2024-07", "2025-06", 12),
+        ("M", "2025-07", "2026-06", 12),
+        ("M", "2026-07", "2026-09", 3),
+    ]
+    assert {query.partner for query in asked} == {"WLD"}
+
+
+def test_a_full_store_asks_only_for_the_revision_windows():
+    asked = queries(ALL_YEARS | ALL_MONTHS, settings(reporter()), TODAY)
+    assert asked == [
+        Query(Frequency.ANNUAL, "WLD", ("2024", "2025")),
+        Query(Frequency.MONTHLY, "WLD", tuple(closed_months(TODAY, 12))),
+    ]
+
+
+def test_a_period_missing_from_the_store_is_asked_for_again():
+    held = (ALL_YEARS | ALL_MONTHS) - {("A", "2003"), ("M", "2021-02")}
+    annual, *monthly = queries(held, settings(reporter()), TODAY)
+    assert annual.periods == ("2003", "2024", "2025")
+    assert monthly[0].periods[0] == "2021-02"
+    assert [len(query.periods) for query in monthly] == [12, 1]
+
+
+def test_months_zero_turns_the_monthly_data_off_and_partners_multiply_calls():
+    asked = queries(frozenset(), settings(reporter(months=0, annual_from=2020, partners=["WLD", "USA"])), TODAY)
+    assert [(query.frequency.value, query.partner, len(query.periods)) for query in asked] == [
+        ("A", "WLD", 6),
+        ("A", "USA", 6),
+    ]
+
+
+def test_six_digits_go_four_periods_to_a_call():
+    asked = queries(frozenset(), settings(reporter(level="AG6", months=0, annual_from=2020)), TODAY)
+    assert [len(query.periods) for query in asked] == [4, 2]
+
+
+def test_a_breakdown_row_is_not_the_total():
+    assert is_total({})
+    assert is_total({"motCode": 0, "customsCode": "C00", "partner2Code": 0})
+    assert not is_total({"motCode": 2100})
+    assert not is_total({"customsCode": "C01"})
+    assert not is_total({"partner2Code": 842})
+
+
+def test_a_call_is_spelled_the_way_comtrade_expects():
+    seen = []
+
+    def handler(request):
+        seen.append(request)
+        return answer([])
+
+    held = ALL_YEARS | ALL_MONTHS
+    fetch(handler, [Request(reporter("USA", partners=["MEX"], flows=["M"]), held=held)])
+    annual, monthly = seen
+    assert annual.url.path == "/data/v1/get/C/A/HS"
+    assert monthly.url.path == "/data/v1/get/C/M/HS"
+    assert dict(annual.url.params) == {
+        "reporterCode": "842",
+        "period": "2024,2025",
+        "partnerCode": "484",
+        "cmdCode": "AG2",
+        "flowCode": "M",
+        "motCode": "0",
+        "customsCode": "C00",
+        "partner2Code": "0",
+    }
+    assert monthly.url.params["period"].split(",")[:2] == ["202510", "202511"]
+    assert annual.headers["Ocp-Apim-Subscription-Key"] == KEY_VALUE
+    assert KEY_VALUE not in str(annual.url)
+
+
+def test_the_world_is_partner_zero():
+    seen = []
+
+    def handler(request):
+        seen.append(request.url.params["partnerCode"])
+        return answer([])
+
+    fetch(handler, [Request(reporter(), held=ALL_YEARS | ALL_MONTHS)])
+    assert seen == ["0", "0"]
+
+
+def test_each_call_is_one_batch_with_the_rows_of_the_recorded_answer():
+    def handler(request):
+        if request.url.path.endswith("/A/HS"):
+            return httpx.Response(200, text=fixture("comtrade_hs2.json"))
+        return answer([data_row("202606", "M", "87", 5.0, None)])
+
+    annual, monthly = fetch(handler, [Request(reporter(), held=ALL_YEARS | ALL_MONTHS)])
+    table = annual.tables[0]
+    assert (table.key, table.key_columns, table.value_columns) == ("comtrade:MEX", KEY_COLUMNS, VALUE_COLUMNS)
+    assert table.stale_after_days == 190
+    assert table.name == "Goods trade of MEX by HS product (AG2)"
+    assert [(row["flow"], row["product"], row["value_usd"]) for row in table.rows] == [
+        ("M", "06", 198635735.0),
+        ("X", "27", 1000000.0),
+        ("X", "87", 2500000.0),
+    ]
+    first = table.rows[0]
+    assert (first["reporter"], first["partner"], first["frequency"], first["period"]) == ("MEX", "WLD", "A", "2024")
+    assert first["date"] == datetime.date(2024, 12, 31)
+    assert math.isnan(table.rows[2]["weight_kg"])  # null weight is missing, never zero
+    month = monthly.tables[0].rows[0]
+    assert (month["frequency"], month["period"], month["date"]) == ("M", "2026-06", datetime.date(2026, 6, 30))
+    assert math.isnan(month["weight_kg"])
+
+
+def test_breakdown_rows_and_flows_not_asked_for_are_dropped():
+    rows = [
+        data_row(value=10.0),
+        data_row(value=4.0, motCode=2100),
+        data_row(value=3.0, customsCode="C01"),
+        data_row(value=2.0, partner2Code=842),
+        data_row(flow="RX", value=1.0),
+    ]
+    batches = fetch(lambda _request: answer(rows), [Request(reporter(months=0), held=ALL_YEARS)])
+    assert [row["value_usd"] for row in batches[0].tables[0].rows] == [10.0]
+
+
+def test_an_answer_without_rows_is_still_a_table_so_the_reporter_is_not_a_failure():
+    batches = fetch(lambda _request: answer([]), [Request(reporter(months=0), held=ALL_YEARS)])
+    assert [len(batch.tables[0].rows) for batch in batches] == [0]
+    assert batches[0].failures == ()
+    assert batches[0].tables[0].stale_after_days is None  # annual only: the annual threshold applies
+
+
+def test_without_a_key_nothing_is_requested():
+    calls = []
+    batches = fetch(calls.append, [Request(reporter()), Request(reporter("USA"))], Credentials())
+    assert calls == []
+    assert [(failure.entry.source_id, failure.outcome) for failure in batches[0].failures] == [
+        ("MEX", Outcome.KEY_ERROR),
+        ("USA", Outcome.KEY_ERROR),
+    ]
+    assert "COMTRADE_API_KEY is missing" in batches[0].failures[0].reason
+
+
+def test_a_rejected_key_fails_every_reporter_left_and_stops():
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(401, text=fixture("comtrade_bad_key.json"))
+
+    batches = fetch(handler, [Request(reporter()), Request(reporter("USA"))])
+    assert len(calls) == 1
+    assert [failure.outcome for failure in batches[0].failures] == [Outcome.KEY_ERROR, Outcome.KEY_ERROR]
+    assert "Comtrade rejected the key" in batches[0].failures[0].reason
+
+
+def test_http_403_means_the_quota_is_used_up():
+    with pytest.raises(QuotaExhaustedError, match="HTTP 403: Out of call volume quota"):
+        fetch(lambda _request: httpx.Response(403, text="Out of call volume quota"), [Request(reporter())])
+
+
+def test_a_persistent_429_means_the_quota_is_used_up():
+    with pytest.raises(QuotaExhaustedError, match="HTTP 429"):
+        fetch(lambda _request: httpx.Response(429), [Request(reporter())])
+
+
+def test_a_failed_call_fails_its_reporter_and_the_next_one_goes_on():
+    def handler(request):
+        if request.url.params["reporterCode"] == "484":
+            return httpx.Response(500)
+        return answer([])
+
+    held = ALL_YEARS | ALL_MONTHS
+    batches = fetch(handler, [Request(reporter(), held=held), Request(reporter("USA"), held=held)])
+    assert [(failure.entry.source_id, failure.outcome) for failure in batches[0].failures] == [
+        ("MEX", Outcome.NETWORK_ERROR)
+    ]
+    assert [batch.tables[0].key for batch in batches[1:]] == ["comtrade:USA", "comtrade:USA"]
+
+
+@pytest.mark.parametrize(
+    ("response", "reason"),
+    [
+        (httpx.Response(400, text="bad period"), "HTTP 400: bad period"),
+        (httpx.Response(200, json={"data": [], "error": "Invalid cmdCode"}), "Invalid cmdCode"),
+        (httpx.Response(200, json={"data": [{"period": "2024"}]}), "unexpected answer \\(KeyError"),
+        (httpx.Response(200, json={"data": [data_row(period="20x4")]}), "unexpected answer \\(PeriodError"),
+    ],
+)
+def test_an_unexpected_answer_is_a_source_error(response, reason):
+    batches = fetch(lambda _request: response, [Request(reporter(months=0), held=ALL_YEARS)])
+    failure = batches[0].failures[0]
+    assert failure.outcome is Outcome.SOURCE_ERROR
+    assert re.search(reason, failure.reason)
+
+
+def test_an_answer_at_the_row_cap_is_refused_rather_than_stored_cut_short(monkeypatch):
+    monkeypatch.setattr("data_pipeline.store.sources.comtrade.MAX_ROWS", 2)
+    batches = fetch(
+        lambda _request: answer([data_row(), data_row(product="87")]),
+        [Request(reporter(months=0), held=ALL_YEARS)],
+    )
+    assert batches[0].failures[0].outcome is Outcome.SOURCE_ERROR
+    assert "may be cut short" in batches[0].failures[0].reason
+
+
+def test_the_key_never_shows_in_a_reason():
+    batches = fetch(
+        lambda _request: httpx.Response(400, text=f"key {KEY_VALUE} refused"),
+        [Request(reporter(months=0), held=ALL_YEARS)],
+    )
+    assert KEY_VALUE not in batches[0].failures[0].reason

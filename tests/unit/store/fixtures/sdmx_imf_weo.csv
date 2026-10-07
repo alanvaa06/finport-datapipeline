@@ -1,0 +1,4 @@
+DATAFLOW,COUNTRY,INDICATOR,FREQUENCY,TIME_PERIOD,OBS_VALUE,UNIT,SERIES_NAME,LATEST_ACTUAL_ANNUAL_DATA
+IMF.RES:WEO(9.0.0),MEX,NGDP_RPCH,A,2024,1.350576,PT,"Gross domestic product (GDP), Constant prices, Percent change",2024
+IMF.RES:WEO(9.0.0),MEX,NGDP_RPCH,A,2025,0.561683,PT,"Gross domestic product (GDP), Constant prices, Percent change",2024
+IMF.RES:WEO(9.0.0),MEX,NGDP_RPCH,A,2026,1.638836,PT,"Gross domestic product (GDP), Constant prices, Percent change",2024
