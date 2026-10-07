@@ -1,0 +1,557 @@
+{
+ "as_of": "2026-06-24",
+ "groups": [
+  {
+   "label": "US Sectors",
+   "subgroups": [
+    {
+     "label": "SPDR Select Sector",
+     "etfs": [
+      { "ticker": "XLK", "name": "Technology (SPDR Select Sector)" },
+      { "ticker": "XLF", "name": "Financials (SPDR Select Sector)" },
+      { "ticker": "XLV", "name": "Health Care (SPDR Select Sector)" },
+      { "ticker": "XLE", "name": "Energy (SPDR Select Sector)" },
+      { "ticker": "XLI", "name": "Industrials (SPDR Select Sector)" },
+      { "ticker": "XLY", "name": "Consumer Discretionary (SPDR)" },
+      { "ticker": "XLP", "name": "Consumer Staples (SPDR)" },
+      { "ticker": "XLU", "name": "Utilities (SPDR Select Sector)" },
+      { "ticker": "XLB", "name": "Materials (SPDR Select Sector)" },
+      { "ticker": "XLRE", "name": "Real Estate (SPDR Select Sector)" },
+      { "ticker": "XLC", "name": "Communication Services (SPDR)" }
+     ]
+    },
+    {
+     "label": "Equal Weight Sector",
+     "etfs": [
+      { "ticker": "RSP", "name": "S&P 500 Equal Weight (Invesco)" },
+      { "ticker": "RSPT", "name": "Equal Weight Technology (Invesco)" },
+      { "ticker": "RSPF", "name": "Equal Weight Financials (Invesco)" },
+      { "ticker": "RSPG", "name": "Equal Weight Energy (Invesco)" },
+      { "ticker": "RSPH", "name": "Equal Weight Health Care (Invesco)" },
+      { "ticker": "RSPN", "name": "Equal Weight Industrials (Invesco)" },
+      { "ticker": "RSPD", "name": "Equal Weight Cons Discretionary (Invesco)" },
+      { "ticker": "RSPS", "name": "Equal Weight Cons Staples (Invesco)" },
+      { "ticker": "RSPU", "name": "Equal Weight Utilities (Invesco)" },
+      { "ticker": "RSPM", "name": "Equal Weight Materials (Invesco)" },
+      { "ticker": "RSPR", "name": "Equal Weight Real Estate (Invesco)" },
+      { "ticker": "RSPC", "name": "Equal Weight Comm Services (Invesco)" }
+     ]
+    },
+    {
+     "label": "Industry / Sub-sector",
+     "etfs": [
+      { "ticker": "KRE", "name": "Regional Banks (SPDR)" },
+      { "ticker": "KBE", "name": "Banks (SPDR)" },
+      { "ticker": "KIE", "name": "Insurance (SPDR)" },
+      { "ticker": "KCE", "name": "Capital Markets (SPDR)" },
+      { "ticker": "XOP", "name": "Oil & Gas E&P (SPDR)" },
+      { "ticker": "OIH", "name": "Oil Services (VanEck)" },
+      { "ticker": "FCG", "name": "Natural Gas (First Trust)" },
+      { "ticker": "XHB", "name": "Homebuilders (SPDR)" },
+      { "ticker": "ITB", "name": "Home Construction (iShares)" },
+      { "ticker": "XHE", "name": "Health Care Equipment (SPDR)" },
+      { "ticker": "XPH", "name": "Pharmaceuticals (SPDR)" },
+      { "ticker": "JETS", "name": "Airlines (US Global Jets)" },
+      { "ticker": "XME", "name": "Metals & Mining (SPDR)" },
+      { "ticker": "COPX", "name": "Copper Miners (Global X)" },
+      { "ticker": "URA", "name": "Uranium (Global X)" },
+      { "ticker": "WOOD", "name": "Timber & Forestry (iShares)" },
+      { "ticker": "MOO", "name": "Agribusiness (VanEck)" }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Thematic",
+   "subgroups": [
+    {
+     "label": "AI & Robotics",
+     "etfs": [
+      { "ticker": "BOTZ", "name": "Robotics & AI (Global X)" },
+      { "ticker": "ROBO", "name": "Robotics & Automation (ROBO Global)" },
+      { "ticker": "ARKQ", "name": "Autonomous Tech & Robotics (ARK)" },
+      { "ticker": "AIQ", "name": "AI & Technology (Global X)" },
+      { "ticker": "ROBT", "name": "AI & Robotics (First Trust)" },
+      { "ticker": "CHAT", "name": "Generative AI & Tech (Roundhill)" },
+      { "ticker": "THNQ", "name": "Artificial Intelligence (ROBO Global)" },
+      { "ticker": "ARTY", "name": "Future AI & Tech (iShares)" }
+     ]
+    },
+    {
+     "label": "Semiconductors",
+     "etfs": [
+      { "ticker": "SMH", "name": "Semiconductor (VanEck)" },
+      { "ticker": "SOXX", "name": "Semiconductor (iShares)" },
+      { "ticker": "SOXQ", "name": "PHLX Semiconductor (Invesco)" },
+      { "ticker": "XSD", "name": "S&P Semiconductor (SPDR)" },
+      { "ticker": "PSI", "name": "Semiconductors (Invesco)" },
+      { "ticker": "FTXL", "name": "Nasdaq Semiconductor (First Trust)" },
+      { "ticker": "SMHX", "name": "Fabless Semiconductor (VanEck)" }
+     ]
+    },
+    {
+     "label": "Cybersecurity",
+     "etfs": [
+      { "ticker": "CIBR", "name": "Nasdaq Cybersecurity (First Trust)" },
+      { "ticker": "HACK", "name": "Cybersecurity (Amplify)" },
+      { "ticker": "BUG", "name": "Cybersecurity (Global X)" },
+      { "ticker": "IHAK", "name": "Cybersecurity & Tech (iShares)" },
+      { "ticker": "WCBR", "name": "Cybersecurity (WisdomTree)" }
+     ]
+    },
+    {
+     "label": "Cloud & Software",
+     "etfs": [
+      { "ticker": "SKYY", "name": "Cloud Computing (First Trust)" },
+      { "ticker": "WCLD", "name": "Cloud Computing (WisdomTree)" },
+      { "ticker": "CLOU", "name": "Cloud Computing (Global X)" },
+      { "ticker": "IGV", "name": "Expanded Tech-Software (iShares)" },
+      { "ticker": "XSW", "name": "S&P Software & Services (SPDR)" },
+      { "ticker": "FDN", "name": "Dow Jones Internet (First Trust)" }
+     ]
+    },
+    {
+     "label": "Fintech & Blockchain",
+     "etfs": [
+      { "ticker": "FINX", "name": "FinTech (Global X)" },
+      { "ticker": "ARKF", "name": "Blockchain & Fintech Innovation (ARK)" },
+      { "ticker": "BLOK", "name": "Blockchain (Amplify)" },
+      { "ticker": "BKCH", "name": "Blockchain (Global X)" },
+      { "ticker": "IBLC", "name": "Blockchain & Tech (iShares)" },
+      { "ticker": "IBIT", "name": "Bitcoin Trust (iShares)" },
+      { "ticker": "FBTC", "name": "Wise Origin Bitcoin Fund (Fidelity)" },
+      { "ticker": "GBTC", "name": "Bitcoin Trust (Grayscale)" },
+      { "ticker": "ARKB", "name": "Bitcoin ETF (ARK 21Shares)" },
+      { "ticker": "BITB", "name": "Bitcoin ETF (Bitwise)" },
+      { "ticker": "ETHA", "name": "Ethereum Trust (iShares)" },
+      { "ticker": "ETHE", "name": "Ethereum Trust (Grayscale)" },
+      { "ticker": "ETHW", "name": "Ethereum ETF (Bitwise)" }
+     ]
+    },
+    {
+     "label": "Clean Energy & Solar",
+     "etfs": [
+      { "ticker": "ICLN", "name": "Global Clean Energy (iShares)" },
+      { "ticker": "TAN", "name": "Solar (Invesco)" },
+      { "ticker": "QCLN", "name": "Clean Edge Green Energy (First Trust)" },
+      { "ticker": "PBW", "name": "WilderHill Clean Energy (Invesco)" },
+      { "ticker": "ACES", "name": "Clean Energy (ALPS)" },
+      { "ticker": "FAN", "name": "Global Wind Energy (First Trust)" },
+      { "ticker": "PBD", "name": "Global Clean Energy (Invesco)" },
+      { "ticker": "SMOG", "name": "Low Carbon Energy (VanEck)" },
+      { "ticker": "GRID", "name": "Smart Grid Infrastructure (First Trust)" }
+     ]
+    },
+    {
+     "label": "Genomics & Biotech Innovation",
+     "etfs": [
+      { "ticker": "XBI", "name": "S&P Biotech (SPDR)" },
+      { "ticker": "IBB", "name": "Biotechnology (iShares)" },
+      { "ticker": "ARKG", "name": "Genomic Revolution (ARK)" },
+      { "ticker": "GNOM", "name": "Genomics & Biotechnology (Global X)" },
+      { "ticker": "IDNA", "name": "Genomics Immunology & Healthcare (iShares)" },
+      { "ticker": "HELX", "name": "Genomic Advancements (Franklin)" }
+     ]
+    },
+    {
+     "label": "Disruptive / Innovation",
+     "etfs": [
+      { "ticker": "ARKK", "name": "ARK Innovation" },
+      { "ticker": "ARKW", "name": "Next Gen Internet (ARK)" },
+      { "ticker": "GINN", "name": "Innovate Equity (Goldman Sachs)" },
+      { "ticker": "DTEC", "name": "Disruptive Technologies (ALPS)" },
+      { "ticker": "IPO", "name": "Renaissance IPO" }
+     ]
+    },
+    {
+     "label": "EV & Battery",
+     "etfs": [
+      { "ticker": "LIT", "name": "Lithium & Battery Tech (Global X)" },
+      { "ticker": "DRIV", "name": "Autonomous & Electric Vehicles (Global X)" },
+      { "ticker": "IDRV", "name": "Self-Driving EV & Tech (iShares)" },
+      { "ticker": "KARS", "name": "Electric Vehicles & Future Mobility (KraneShares)" },
+      { "ticker": "BATT", "name": "Lithium & Battery Technology (Amplify)" },
+      { "ticker": "REMX", "name": "Rare Earth & Strategic Metals (VanEck)" },
+      { "ticker": "HAIL", "name": "Kensho Smart Mobility (SPDR)" }
+     ]
+    },
+    {
+     "label": "Infrastructure & Industrials",
+     "etfs": [
+      { "ticker": "PAVE", "name": "US Infrastructure Development (Global X)" },
+      { "ticker": "IFRA", "name": "US Infrastructure (iShares)" },
+      { "ticker": "IGF", "name": "Global Infrastructure (iShares)" },
+      { "ticker": "GII", "name": "S&P Global Infrastructure (SPDR)" },
+      { "ticker": "NFRA", "name": "Global Broad Infrastructure (FlexShares)" }
+     ]
+    },
+    {
+     "label": "Defense & Aerospace",
+     "etfs": [
+      { "ticker": "ITA", "name": "US Aerospace & Defense (iShares)" },
+      { "ticker": "PPA", "name": "Aerospace & Defense (Invesco)" },
+      { "ticker": "XAR", "name": "S&P Aerospace & Defense (SPDR)" },
+      { "ticker": "SHLD", "name": "Defense Tech (Global X)" },
+      { "ticker": "MISL", "name": "Aerospace & Defense (First Trust)" }
+     ]
+    },
+    {
+     "label": "Clean Water",
+     "etfs": [
+      { "ticker": "PHO", "name": "Water Resources (Invesco)" },
+      { "ticker": "FIW", "name": "Water (First Trust)" },
+      { "ticker": "CGW", "name": "S&P Global Water (Invesco)" },
+      { "ticker": "PIO", "name": "Global Water (Invesco)" }
+     ]
+    },
+    {
+     "label": "Space",
+     "etfs": [
+      { "ticker": "UFO", "name": "Procure Space" },
+      { "ticker": "ARKX", "name": "ARK Space & Defense" },
+      { "ticker": "ROKT", "name": "Kensho Final Frontiers (SPDR)" }
+     ]
+    },
+    {
+     "label": "Cannabis",
+     "etfs": [
+      { "ticker": "MSOS", "name": "Pure US Cannabis (AdvisorShares)" },
+      { "ticker": "MJ", "name": "Alternative Harvest (Amplify)" },
+      { "ticker": "YOLO", "name": "Pure Cannabis (AdvisorShares)" },
+      { "ticker": "CNBS", "name": "Seymour Cannabis (Amplify)" }
+     ]
+    },
+    {
+     "label": "Gold/Silver Miners",
+     "etfs": [
+      { "ticker": "GDX", "name": "Gold Miners (VanEck)" },
+      { "ticker": "GDXJ", "name": "Junior Gold Miners (VanEck)" },
+      { "ticker": "RING", "name": "Global Gold Miners (iShares)" },
+      { "ticker": "SIL", "name": "Silver Miners (Global X)" },
+      { "ticker": "SILJ", "name": "Junior Silver Miners (Amplify)" },
+      { "ticker": "SLVP", "name": "Global Silver & Metals Miners (iShares)" }
+     ]
+    },
+    {
+     "label": "Real Estate / REITs",
+     "etfs": [
+      { "ticker": "VNQ", "name": "Real Estate (Vanguard)" },
+      { "ticker": "IYR", "name": "US Real Estate (iShares)" },
+      { "ticker": "SCHH", "name": "US REIT (Schwab)" },
+      { "ticker": "USRT", "name": "Core US REIT (iShares)" },
+      { "ticker": "ICF", "name": "Cohen & Steers REIT (iShares)" },
+      { "ticker": "RWR", "name": "Dow Jones REIT (SPDR)" },
+      { "ticker": "REZ", "name": "Residential Real Estate (iShares)" },
+      { "ticker": "REET", "name": "Global REIT (iShares)" },
+      { "ticker": "VNQI", "name": "Global ex-US Real Estate (Vanguard)" }
+     ]
+    },
+    {
+     "label": "Consumer & Retail / Online",
+     "etfs": [
+      { "ticker": "IBUY", "name": "Online Retail (Amplify)" },
+      { "ticker": "ONLN", "name": "Online Retail (ProShares)" },
+      { "ticker": "XRT", "name": "S&P Retail (SPDR)" },
+      { "ticker": "RTH", "name": "Retail (VanEck)" }
+     ]
+    },
+    {
+     "label": "ESG",
+     "etfs": [
+      { "ticker": "ESGU", "name": "ESG Aware MSCI USA (iShares)" },
+      { "ticker": "ESGV", "name": "ESG US Stock (Vanguard)" },
+      { "ticker": "ESGD", "name": "ESG Aware MSCI EAFE (iShares)" },
+      { "ticker": "ESGE", "name": "ESG Aware MSCI EM (iShares)" },
+      { "ticker": "DSI", "name": "ESG MSCI KLD 400 Social (iShares)" },
+      { "ticker": "SUSA", "name": "ESG Optimized MSCI USA (iShares)" },
+      { "ticker": "SUSL", "name": "ESG MSCI USA Leaders (iShares)" },
+      { "ticker": "EFIV", "name": "S&P 500 ESG (SPDR)" },
+      { "ticker": "SPYX", "name": "S&P 500 Fossil Fuel Free (SPDR)" },
+      { "ticker": "USSG", "name": "MSCI USA Selection (Xtrackers)" }
+     ]
+    },
+    {
+     "label": "Healthcare Innovation",
+     "etfs": [
+      { "ticker": "IHI", "name": "US Medical Devices (iShares)" },
+      { "ticker": "PPH", "name": "Pharmaceutical (VanEck)" },
+      { "ticker": "BBH", "name": "Biotech (VanEck)" },
+      { "ticker": "FBT", "name": "NYSE Arca Biotechnology (First Trust)" },
+      { "ticker": "SBIO", "name": "Medical Breakthroughs (ALPS)" }
+     ]
+    },
+    {
+     "label": "Volatility / Hedging",
+     "etfs": [
+      { "ticker": "VXX", "name": "VIX Short-Term Futures ETN (iPath)" },
+      { "ticker": "VIXY", "name": "VIX Short-Term Futures (ProShares)" },
+      { "ticker": "UVXY", "name": "Ultra VIX Short-Term 1.5x (ProShares)" },
+      { "ticker": "UVIX", "name": "2x Long VIX Futures (Volatility Shares)" },
+      { "ticker": "VIXM", "name": "VIX Mid-Term Futures (ProShares)" },
+      { "ticker": "SVXY", "name": "Short VIX -0.5x (ProShares)" },
+      { "ticker": "SVIX", "name": "-1x Short VIX Futures (Volatility Shares)" },
+      { "ticker": "SVOL", "name": "Volatility Premium (Simplify)" },
+      { "ticker": "TAIL", "name": "Tail Risk Hedge (Cambria)" }
+     ]
+    },
+    {
+     "label": "Leveraged / Inverse Flagship",
+     "etfs": [
+      { "ticker": "TQQQ", "name": "UltraPro QQQ 3x (ProShares)" },
+      { "ticker": "SQQQ", "name": "UltraPro Short QQQ -3x (ProShares)" },
+      { "ticker": "QID", "name": "UltraShort QQQ -2x (ProShares)" },
+      { "ticker": "UPRO", "name": "UltraPro S&P 500 3x (ProShares)" },
+      { "ticker": "SPXL", "name": "S&P 500 Bull 3X (Direxion)" },
+      { "ticker": "SPXU", "name": "UltraPro Short S&P 500 -3x (ProShares)" },
+      { "ticker": "SSO", "name": "Ultra S&P 500 2x (ProShares)" },
+      { "ticker": "SDS", "name": "UltraShort S&P 500 -2x (ProShares)" },
+      { "ticker": "UDOW", "name": "UltraPro Dow30 3x (ProShares)" },
+      { "ticker": "SDOW", "name": "UltraPro Short Dow30 -3x (ProShares)" },
+      { "ticker": "TNA", "name": "Small Cap Bull 3X (Direxion)" },
+      { "ticker": "TZA", "name": "Small Cap Bear 3X (Direxion)" },
+      { "ticker": "SOXL", "name": "Semiconductor Bull 3X (Direxion)" },
+      { "ticker": "SOXS", "name": "Semiconductor Bear 3X (Direxion)" },
+      { "ticker": "TECL", "name": "Technology Bull 3X (Direxion)" },
+      { "ticker": "FAS", "name": "Financial Bull 3X (Direxion)" },
+      { "ticker": "FAZ", "name": "Financial Bear 3X (Direxion)" },
+      { "ticker": "LABU", "name": "Biotech Bull 3X (Direxion)" },
+      { "ticker": "TMF", "name": "20+ Yr Treasury Bull 3X (Direxion)" },
+      { "ticker": "TMV", "name": "20+ Yr Treasury Bear 3X (Direxion)" }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Factor / Style / Size",
+   "subgroups": [
+    {
+     "label": "Size",
+     "etfs": [
+      { "ticker": "VV", "name": "Large Cap (Vanguard)" },
+      { "ticker": "MGC", "name": "Mega Cap (Vanguard)" },
+      { "ticker": "VO", "name": "Mid Cap (Vanguard)" },
+      { "ticker": "IJH", "name": "S&P MidCap 400 (iShares)" },
+      { "ticker": "VB", "name": "Small Cap (Vanguard)" },
+      { "ticker": "IJR", "name": "S&P SmallCap 600 (iShares)" },
+      { "ticker": "IWM", "name": "Russell 2000 (iShares)" },
+      { "ticker": "IWR", "name": "Russell Mid Cap (iShares)" },
+      { "ticker": "VTWO", "name": "Russell 2000 (Vanguard)" },
+      { "ticker": "VXF", "name": "Extended Market (Vanguard)" },
+      { "ticker": "VTHR", "name": "Russell 3000 (Vanguard)" },
+      { "ticker": "IWV", "name": "Russell 3000 (iShares)" },
+      { "ticker": "VBR", "name": "Small Cap Value (Vanguard)" },
+      { "ticker": "VBK", "name": "Small Cap Growth (Vanguard)" },
+      { "ticker": "SCHA", "name": "Small Cap (Schwab)" },
+      { "ticker": "SCHM", "name": "Mid Cap (Schwab)" },
+      { "ticker": "SCHX", "name": "Large Cap (Schwab)" },
+      { "ticker": "IJK", "name": "S&P MidCap 400 Growth (iShares)" },
+      { "ticker": "IJJ", "name": "S&P MidCap 400 Value (iShares)" },
+      { "ticker": "IWO", "name": "Russell 2000 Growth (iShares)" },
+      { "ticker": "IWN", "name": "Russell 2000 Value (iShares)" }
+     ]
+    },
+    {
+     "label": "Style",
+     "etfs": [
+      { "ticker": "VUG", "name": "Vanguard Growth (Large Growth)" },
+      { "ticker": "VTV", "name": "Vanguard Value (Large Value)" },
+      { "ticker": "IWF", "name": "Russell 1000 Growth (iShares)" },
+      { "ticker": "IWD", "name": "Russell 1000 Value (iShares)" },
+      { "ticker": "IVW", "name": "S&P 500 Growth (iShares)" },
+      { "ticker": "IVE", "name": "S&P 500 Value (iShares)" },
+      { "ticker": "SCHG", "name": "US Large-Cap Growth (Schwab)" },
+      { "ticker": "SCHV", "name": "US Large-Cap Value (Schwab)" },
+      { "ticker": "MGK", "name": "Mega Cap Growth (Vanguard)" },
+      { "ticker": "IUSG", "name": "S&P US Growth (iShares Core)" },
+      { "ticker": "IUSV", "name": "S&P US Value (iShares Core)" },
+      { "ticker": "SPYG", "name": "S&P 500 Growth (SPDR Portfolio)" },
+      { "ticker": "SPYV", "name": "S&P 500 Value (SPDR Portfolio)" },
+      { "ticker": "VOOG", "name": "S&P 500 Growth (Vanguard)" },
+      { "ticker": "VOOV", "name": "S&P 500 Value (Vanguard)" },
+      { "ticker": "IWP", "name": "Russell Mid-Cap Growth (iShares)" },
+      { "ticker": "IWS", "name": "Russell Mid-Cap Value (iShares)" },
+      { "ticker": "RPG", "name": "S&P 500 Pure Growth (Invesco)" },
+      { "ticker": "RPV", "name": "S&P 500 Pure Value (Invesco)" }
+     ]
+    },
+    {
+     "label": "Factor",
+     "etfs": [
+      { "ticker": "MTUM", "name": "Momentum Factor (iShares)" },
+      { "ticker": "QUAL", "name": "Quality Factor (iShares)" },
+      { "ticker": "USMV", "name": "Min Vol USA (iShares)" },
+      { "ticker": "VLUE", "name": "Value Factor (iShares)" },
+      { "ticker": "SIZE", "name": "Size Factor (iShares)" },
+      { "ticker": "SPLV", "name": "S&P 500 Low Volatility (Invesco)" },
+      { "ticker": "DFAC", "name": "US Core Equity 2 (Dimensional)" },
+      { "ticker": "LRGF", "name": "US Equity Factor (iShares)" },
+      { "ticker": "GSLC", "name": "ActiveBeta US Large Cap (Goldman Sachs)" },
+      { "ticker": "MOAT", "name": "Morningstar Wide Moat (VanEck)" },
+      { "ticker": "COWZ", "name": "US Cash Cows 100 (Pacer)" },
+      { "ticker": "AVUV", "name": "US Small Cap Value (Avantis)" },
+      { "ticker": "SCHD", "name": "US Dividend Equity (Schwab)" },
+      { "ticker": "VIG", "name": "Dividend Appreciation (Vanguard)" },
+      { "ticker": "VYM", "name": "High Dividend Yield (Vanguard)" },
+      { "ticker": "DGRO", "name": "Core Dividend Growth (iShares)" },
+      { "ticker": "NOBL", "name": "S&P 500 Dividend Aristocrats (ProShares)" },
+      { "ticker": "SDY", "name": "S&P Dividend (SPDR)" },
+      { "ticker": "DGRW", "name": "US Quality Dividend Growth (WisdomTree)" },
+      { "ticker": "HDV", "name": "Core High Dividend (iShares)" },
+      { "ticker": "DVY", "name": "Select Dividend (iShares)" },
+      { "ticker": "RDVY", "name": "Rising Dividend Achievers (First Trust)" },
+      { "ticker": "FNDX", "name": "Fundamental US Large Co (Schwab)" },
+      { "ticker": "SPHD", "name": "S&P 500 High Div Low Vol (Invesco)" },
+      { "ticker": "DON", "name": "US MidCap Dividend (WisdomTree)" },
+      { "ticker": "DES", "name": "US SmallCap Dividend (WisdomTree)" },
+      { "ticker": "JEPI", "name": "Equity Premium Income (JPMorgan)" },
+      { "ticker": "JEPQ", "name": "Nasdaq Equity Premium Income (JPMorgan)" },
+      { "ticker": "QYLD", "name": "Nasdaq 100 Covered Call (Global X)" }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Broad / Bonds / Commodities / Intl",
+   "subgroups": [
+    {
+     "label": "Broad US Equity",
+     "etfs": [
+      { "ticker": "SPY", "name": "S&P 500 (SPDR)" },
+      { "ticker": "VOO", "name": "S&P 500 (Vanguard)" },
+      { "ticker": "IVV", "name": "S&P 500 (iShares Core)" },
+      { "ticker": "VTI", "name": "Total US Market (Vanguard)" },
+      { "ticker": "ITOT", "name": "Total US Market (iShares Core)" },
+      { "ticker": "SCHB", "name": "US Broad Market (Schwab)" },
+      { "ticker": "QQQ", "name": "Nasdaq 100 (Invesco)" },
+      { "ticker": "QQQM", "name": "Nasdaq 100 (Invesco QQQM)" },
+      { "ticker": "DIA", "name": "Dow 30 (SPDR)" },
+      { "ticker": "IWB", "name": "Russell 1000 (iShares)" },
+      { "ticker": "VONE", "name": "Russell 1000 (Vanguard)" },
+      { "ticker": "MDY", "name": "S&P MidCap 400 (SPDR)" }
+     ]
+    },
+    {
+     "label": "US Bonds",
+     "etfs": [
+      { "ticker": "AGG", "name": "Core US Aggregate Bond (iShares)" },
+      { "ticker": "BND", "name": "Total Bond Market (Vanguard)" },
+      { "ticker": "TLT", "name": "20+ Yr Treasury (iShares)" },
+      { "ticker": "IEF", "name": "7-10 Yr Treasury (iShares)" },
+      { "ticker": "SHY", "name": "1-3 Yr Treasury (iShares)" },
+      { "ticker": "IEI", "name": "3-7 Yr Treasury (iShares)" },
+      { "ticker": "GOVT", "name": "US Treasury Bond (iShares)" },
+      { "ticker": "LQD", "name": "Investment Grade Corp (iShares)" },
+      { "ticker": "VCIT", "name": "Interm Corp (Vanguard)" },
+      { "ticker": "VCSH", "name": "Short Corp (Vanguard)" },
+      { "ticker": "VCLT", "name": "Long Corp (Vanguard)" },
+      { "ticker": "SPSB", "name": "Short Corp (SPDR)" },
+      { "ticker": "HYG", "name": "High Yield Corp (iShares)" },
+      { "ticker": "JNK", "name": "High Yield Bond (SPDR)" },
+      { "ticker": "USHY", "name": "Broad USD High Yield (iShares)" },
+      { "ticker": "TIP", "name": "TIPS (iShares)" },
+      { "ticker": "SCHP", "name": "US TIPS (Schwab)" },
+      { "ticker": "VTIP", "name": "Short-Term TIPS (Vanguard)" },
+      { "ticker": "MUB", "name": "National Muni Bond (iShares)" },
+      { "ticker": "VTEB", "name": "Tax-Exempt Muni (Vanguard)" },
+      { "ticker": "BIL", "name": "1-3 Mo T-Bill (SPDR)" },
+      { "ticker": "SGOV", "name": "0-3 Mo Treasury (iShares)" },
+      { "ticker": "SHV", "name": "Short Treasury (iShares)" },
+      { "ticker": "VGSH", "name": "Short-Term Treasury (Vanguard)" },
+      { "ticker": "VGIT", "name": "Interm Treasury (Vanguard)" },
+      { "ticker": "VGLT", "name": "Long Treasury (Vanguard)" },
+      { "ticker": "SPTL", "name": "Long Term Treasury (SPDR)" },
+      { "ticker": "SPTI", "name": "Interm Term Treasury (SPDR)" },
+      { "ticker": "SPAB", "name": "Aggregate Bond (SPDR)" },
+      { "ticker": "BSV", "name": "Short-Term Bond (Vanguard)" },
+      { "ticker": "BIV", "name": "Interm-Term Bond (Vanguard)" },
+      { "ticker": "BLV", "name": "Long-Term Bond (Vanguard)" },
+      { "ticker": "BNDX", "name": "Total International Bond (Vanguard)" },
+      { "ticker": "EMB", "name": "USD EM Bond (iShares)" },
+      { "ticker": "VMBS", "name": "Mortgage-Backed Securities (Vanguard)" },
+      { "ticker": "MBB", "name": "MBS (iShares)" },
+      { "ticker": "FBND", "name": "Total Bond Active (Fidelity)" },
+      { "ticker": "JPST", "name": "Ultra-Short Income (JPMorgan)" },
+      { "ticker": "USFR", "name": "Floating Rate Treasury (WisdomTree)" },
+      { "ticker": "TFLO", "name": "Treasury Floating Rate (iShares)" }
+     ]
+    },
+    {
+     "label": "Commodities",
+     "etfs": [
+      { "ticker": "GLD", "name": "Gold (SPDR)" },
+      { "ticker": "IAU", "name": "Gold (iShares)" },
+      { "ticker": "GLDM", "name": "Gold MiniShares (SPDR)" },
+      { "ticker": "SLV", "name": "Silver (iShares)" },
+      { "ticker": "SIVR", "name": "Silver (abrdn)" },
+      { "ticker": "DBC", "name": "Commodity Index (Invesco DB)" },
+      { "ticker": "PDBC", "name": "Commodity Optimum Yield (Invesco)" },
+      { "ticker": "BCI", "name": "Broad Commodity (abrdn)" },
+      { "ticker": "COMT", "name": "Commodity Strategy (iShares GSCI)" },
+      { "ticker": "FTGC", "name": "Commodity Strategy (First Trust)" },
+      { "ticker": "DJP", "name": "Commodity Total Return (iPath ETN)" },
+      { "ticker": "USO", "name": "Crude Oil WTI (US Oil Fund)" },
+      { "ticker": "BNO", "name": "Crude Oil Brent (US Brent Oil)" },
+      { "ticker": "DBO", "name": "Oil (Invesco DB)" },
+      { "ticker": "UNG", "name": "Natural Gas (US Natural Gas)" },
+      { "ticker": "GUNR", "name": "Natural Resources (FlexShares)" },
+      { "ticker": "DBA", "name": "Agriculture (Invesco DB)" },
+      { "ticker": "DBB", "name": "Base Metals (Invesco DB)" },
+      { "ticker": "DBP", "name": "Precious Metals (Invesco DB)" },
+      { "ticker": "GLTR", "name": "Precious Metals Basket (abrdn)" },
+      { "ticker": "PPLT", "name": "Platinum (abrdn)" },
+      { "ticker": "PALL", "name": "Palladium (abrdn)" },
+      { "ticker": "CPER", "name": "Copper (US Copper Index)" },
+      { "ticker": "URNM", "name": "Uranium Miners (Sprott)" }
+     ]
+    },
+    {
+     "label": "International",
+     "etfs": [
+      { "ticker": "VT", "name": "Total World (Vanguard)" },
+      { "ticker": "ACWI", "name": "All World (iShares MSCI)" },
+      { "ticker": "VXUS", "name": "Total Intl (Vanguard)" },
+      { "ticker": "IXUS", "name": "Total Intl (iShares Core)" },
+      { "ticker": "VEU", "name": "All World ex-US (Vanguard)" },
+      { "ticker": "VEA", "name": "Developed Markets (Vanguard)" },
+      { "ticker": "IEFA", "name": "Developed Core (iShares)" },
+      { "ticker": "EFA", "name": "EAFE (iShares MSCI)" },
+      { "ticker": "SCHF", "name": "Developed Markets (Schwab)" },
+      { "ticker": "SPDW", "name": "Developed World ex-US (SPDR)" },
+      { "ticker": "VWO", "name": "Emerging Markets (Vanguard)" },
+      { "ticker": "IEMG", "name": "EM Core (iShares)" },
+      { "ticker": "EEM", "name": "Emerging Markets (iShares MSCI)" },
+      { "ticker": "SCHE", "name": "Emerging Markets (Schwab)" },
+      { "ticker": "SPEM", "name": "Emerging Markets (SPDR)" },
+      { "ticker": "VGK", "name": "Europe (Vanguard)" },
+      { "ticker": "EZU", "name": "Eurozone (iShares MSCI)" },
+      { "ticker": "VPL", "name": "Pacific (Vanguard)" },
+      { "ticker": "AAXJ", "name": "Asia ex-Japan (iShares MSCI)" },
+      { "ticker": "ILF", "name": "Latin America 40 (iShares)" },
+      { "ticker": "EWJ", "name": "Japan (iShares MSCI)" },
+      { "ticker": "FLJP", "name": "Japan (Franklin FTSE)" },
+      { "ticker": "MCHI", "name": "China (iShares MSCI)" },
+      { "ticker": "FXI", "name": "China Large Cap (iShares)" },
+      { "ticker": "GXC", "name": "China (SPDR S&P)" },
+      { "ticker": "ASHR", "name": "China A-Shares (Xtrackers CSI 300)" },
+      { "ticker": "KWEB", "name": "China Internet (KraneShares)" },
+      { "ticker": "INDA", "name": "India (iShares MSCI)" },
+      { "ticker": "EWT", "name": "Taiwan (iShares MSCI)" },
+      { "ticker": "EWY", "name": "South Korea (iShares MSCI)" },
+      { "ticker": "EWH", "name": "Hong Kong (iShares MSCI)" },
+      { "ticker": "EWS", "name": "Singapore (iShares MSCI)" },
+      { "ticker": "EWZ", "name": "Brazil (iShares MSCI)" },
+      { "ticker": "EWW", "name": "Mexico (iShares MSCI)" },
+      { "ticker": "EWC", "name": "Canada (iShares MSCI)" },
+      { "ticker": "EWA", "name": "Australia (iShares MSCI)" },
+      { "ticker": "EWG", "name": "Germany (iShares MSCI)" },
+      { "ticker": "EWU", "name": "UK (iShares MSCI)" },
+      { "ticker": "EWQ", "name": "France (iShares MSCI)" },
+      { "ticker": "EWL", "name": "Switzerland (iShares MSCI)" },
+      { "ticker": "EWP", "name": "Spain (iShares MSCI)" },
+      { "ticker": "EWI", "name": "Italy (iShares MSCI)" }
+     ]
+    }
+   ]
+  }
+ ]
+}

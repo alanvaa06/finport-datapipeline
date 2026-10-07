@@ -1,0 +1,5449 @@
+{
+ "as_of": "2026-06-25",
+ "source": "Yahoo Finance lookup (type=mutualfund, .MX) - verified",
+ "groups": [
+  {
+   "label": "BBVA",
+   "subgroups": [
+    {
+     "label": "Deuda gubernamental",
+     "funds": [
+      {
+       "ticker": "BBVAGOBA.MX",
+       "name": "Deuda gubernamental · 6 series"
+      },
+      {
+       "ticker": "BBVAGOBIF.MX",
+       "name": "Deuda gubernamental · 6 series"
+      },
+      {
+       "ticker": "BBVAGOBGPF.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "BBVAGOBTNC.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "BBVAGUBA.MX",
+       "name": "Deuda gubernamental · 3 series"
+      },
+      {
+       "ticker": "BBVAGUBGB.MX",
+       "name": "Deuda gubernamental · 5 series"
+      },
+      {
+       "ticker": "BBVAGUBTNC.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "BBVAGUBUHN.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "BBVAUMSA.MX",
+       "name": "Deuda gubernamental · 4 series"
+      },
+      {
+       "ticker": "BBVAUMSGB.MX",
+       "name": "Deuda gubernamental · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda corto plazo",
+     "funds": [
+      {
+       "ticker": "BBVACP.MX",
+       "name": "Deuda corto plazo"
+      },
+      {
+       "ticker": "BBVACPV.MX",
+       "name": "Deuda corto plazo"
+      },
+      {
+       "ticker": "BBVAPCP.MX",
+       "name": "Deuda corto plazo"
+      },
+      {
+       "ticker": "BBVAPCPV.MX",
+       "name": "Deuda corto plazo"
+      },
+      {
+       "ticker": "BBVASICP.MX",
+       "name": "Deuda corto plazo"
+      },
+      {
+       "ticker": "BBVASICPV.MX",
+       "name": "Deuda corto plazo"
+      }
+     ]
+    },
+    {
+     "label": "Deuda mediano plazo",
+     "funds": [
+      {
+       "ticker": "BBVAMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "BBVAMPV.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "BBVAPYMPF1.MX",
+       "name": "Deuda mediano plazo · 4 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda largo plazo",
+     "funds": [
+      {
+       "ticker": "BBVADLPA.MX",
+       "name": "Deuda largo plazo · 4 series"
+      },
+      {
+       "ticker": "BBVADLPGB.MX",
+       "name": "Deuda largo plazo · 3 series"
+      },
+      {
+       "ticker": "BBVADLPTNC.MX",
+       "name": "Deuda largo plazo"
+      },
+      {
+       "ticker": "BBVADLPUHN.MX",
+       "name": "Deuda largo plazo"
+      },
+      {
+       "ticker": "BBVAGLPA.MX",
+       "name": "Deuda largo plazo · 5 series"
+      },
+      {
+       "ticker": "BBVAGLPGB.MX",
+       "name": "Deuda largo plazo · 3 series"
+      },
+      {
+       "ticker": "BBVAGLPTNC.MX",
+       "name": "Deuda largo plazo"
+      },
+      {
+       "ticker": "BBVAGLPUHN.MX",
+       "name": "Deuda largo plazo"
+      },
+      {
+       "ticker": "BBVARFLP.MX",
+       "name": "Deuda largo plazo"
+      },
+      {
+       "ticker": "BBVARFLPV.MX",
+       "name": "Deuda largo plazo"
+      }
+     ]
+    },
+    {
+     "label": "Deuda corporativa / privada",
+     "funds": [
+      {
+       "ticker": "BBVACORP.MX",
+       "name": "Deuda corporativa / privada"
+      },
+      {
+       "ticker": "BBVACORPV.MX",
+       "name": "Deuda corporativa / privada"
+      }
+     ]
+    },
+    {
+     "label": "Deuda (generica / plazo n/d)",
+     "funds": [
+      {
+       "ticker": "BBVACRF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "BBVACORF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "BBVAGFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "BBVAGFGB.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "BBVAMRFA.MX",
+       "name": "Deuda · 5 series"
+      },
+      {
+       "ticker": "BBVAMRFGB.MX",
+       "name": "Deuda · 2 series"
+      },
+      {
+       "ticker": "BBVARFA.MX",
+       "name": "Deuda · 5 series"
+      },
+      {
+       "ticker": "BBVARFGA.MX",
+       "name": "Deuda · 14 series"
+      },
+      {
+       "ticker": "BBVARFGGB.MX",
+       "name": "Deuda · 4 series"
+      },
+      {
+       "ticker": "BBVARFGUHN.MX",
+       "name": "Deuda · 2 series"
+      },
+      {
+       "ticker": "BBVARFLGB.MX",
+       "name": "Deuda · 2 series"
+      },
+      {
+       "ticker": "BBVARFLUHN.MX",
+       "name": "Deuda · 2 series"
+      },
+      {
+       "ticker": "BBVARFTNC.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "BBVARFUHN2.MX",
+       "name": "Deuda"
+      }
+     ]
+    },
+    {
+     "label": "Mercado de dinero / liquidez",
+     "funds": [
+      {
+       "ticker": "BBVALIQA.MX",
+       "name": "Mercado de dinero / liquidez · 6 series"
+      },
+      {
+       "ticker": "BBVALIQGB.MX",
+       "name": "Mercado de dinero / liquidez · 4 series"
+      },
+      {
+       "ticker": "BBVALIQGPF.MX",
+       "name": "Mercado de dinero / liquidez"
+      },
+      {
+       "ticker": "BBVALIQTNC.MX",
+       "name": "Mercado de dinero / liquidez"
+      },
+      {
+       "ticker": "BBVALIQUHN.MX",
+       "name": "Mercado de dinero / liquidez"
+      }
+     ]
+    },
+    {
+     "label": "Cobertura cambiaria / dolares (USD)",
+     "funds": [
+      {
+       "ticker": "BBVADOLA.MX",
+       "name": "Cobertura cambiaria / dolares · 4 series"
+      },
+      {
+       "ticker": "BBVADOLGB.MX",
+       "name": "Cobertura cambiaria / dolares · 4 series"
+      },
+      {
+       "ticker": "BBVADOLUHN.MX",
+       "name": "Cobertura cambiaria / dolares"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable nacional (IPC)",
+     "funds": [
+      {
+       "ticker": "BBVANSHA.MX",
+       "name": "Renta variable nacional · 4 series"
+      },
+      {
+       "ticker": "BBVANSHGB.MX",
+       "name": "Renta variable nacional · 2 series"
+      },
+      {
+       "ticker": "BBVARVA.MX",
+       "name": "Renta variable nacional"
+      },
+      {
+       "ticker": "BBVARVNC.MX",
+       "name": "Renta variable nacional"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable internacional / global",
+     "funds": [
+      {
+       "ticker": "B+RVUS2PV.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "B+RVUS2UHN.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "BBVAEURA.MX",
+       "name": "Renta variable internacional / global · 5 series"
+      },
+      {
+       "ticker": "BBVAEURGB.MX",
+       "name": "Renta variable internacional / global · 2 series"
+      },
+      {
+       "ticker": "BBVANDQA.MX",
+       "name": "Renta variable internacional / global · 4 series"
+      },
+      {
+       "ticker": "BBVANDQGB.MX",
+       "name": "Renta variable internacional / global · 3 series"
+      },
+      {
+       "ticker": "BBVANDQGPF.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "BBVANDQTNC.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "BBVANDQUHN.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "BBVARVGB.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "BBVAUSA.MX",
+       "name": "Renta variable internacional / global"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable (region n/d)",
+     "funds": [
+      {
+       "ticker": "BBVACAPA.MX",
+       "name": "Renta variable · 2 series"
+      },
+      {
+       "ticker": "BBVACAPPV.MX",
+       "name": "Renta variable"
+      },
+      {
+       "ticker": "BBVARVC.MX",
+       "name": "Renta variable · 4 series"
+      },
+      {
+       "ticker": "BBVARVEA.MX",
+       "name": "Renta variable · 7 series"
+      },
+      {
+       "ticker": "BBVARVEGB.MX",
+       "name": "Renta variable · 4 series"
+      },
+      {
+       "ticker": "BBVARVEUHN.MX",
+       "name": "Renta variable"
+      },
+      {
+       "ticker": "BBVARVTNC.MX",
+       "name": "Renta variable"
+      },
+      {
+       "ticker": "BBVARVUHN.MX",
+       "name": "Renta variable"
+      }
+     ]
+    },
+    {
+     "label": "Mixtos / balanceados / perfilados",
+     "funds": [
+      {
+       "ticker": "BBVACRE.MX",
+       "name": "Mixtos / balanceados / perfilados"
+      },
+      {
+       "ticker": "BBVACREA.MX",
+       "name": "Mixtos / balanceados / perfilados · 5 series"
+      },
+      {
+       "ticker": "BBVACREGB.MX",
+       "name": "Mixtos / balanceados / perfilados · 4 series"
+      },
+      {
+       "ticker": "BBVACREUHN.MX",
+       "name": "Mixtos / balanceados / perfilados · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "ESG / sustentables",
+     "funds": [
+      {
+       "ticker": "BBVAESGA.MX",
+       "name": "ESG / sustentables · 3 series"
+      },
+      {
+       "ticker": "BBVAESGGB.MX",
+       "name": "ESG / sustentables · 2 series"
+      },
+      {
+       "ticker": "BBVAESGTNC.MX",
+       "name": "ESG / sustentables"
+      },
+      {
+       "ticker": "BBVAESGUHN.MX",
+       "name": "ESG / sustentables"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "BBVAAA.MX",
+       "name": "Clave opaca · 14 series"
+      },
+      {
+       "ticker": "BBVA34TNC.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVA44TNC.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVA50TNC.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVA56TNC.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVA66TNC.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVAADA.MX",
+       "name": "Clave opaca · 6 series"
+      },
+      {
+       "ticker": "BBVAADGB.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BBVAADUHN.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVAAUHN.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVACDA.MX",
+       "name": "Clave opaca · 9 series"
+      },
+      {
+       "ticker": "BBVAC+A.MX",
+       "name": "Clave opaca · 9 series"
+      },
+      {
+       "ticker": "BBVAC+UHN.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "BBVACDGB.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BBVACD+A.MX",
+       "name": "Clave opaca · 9 series"
+      },
+      {
+       "ticker": "BBVACD+GPF.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVACD+UHN.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "BBVACDUHN.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "BBVACORA.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BBVACORGB.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "BBVACORTNC.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVACRDA.MX",
+       "name": "Clave opaca · 7 series"
+      },
+      {
+       "ticker": "BBVACRDGB.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BBVACRDUHN.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVACRUHN.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVACUHN.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "BBVADDA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVADCBA.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "BBVADCBGB.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "BBVADDNC.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVADGAA.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "BBVADGAGB.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BBVADGAUHN.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVADIGA.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "BBVADIGGB.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "BBVADIGUHN.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "BBVAEMGA.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "BBVAEMGGB.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "BBVAEMGUHN.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVAGFA.MX",
+       "name": "Clave opaca · 11 series"
+      },
+      {
+       "ticker": "BBVAGBPA.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BBVAGB2B1.MX",
+       "name": "Clave opaca · 6 series"
+      },
+      {
+       "ticker": "BBVAGB2EFA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVAGB3GB.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BBVAGB3TNC.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVAGBPNC.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "BBVAGBPEFA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVAGFDA.MX",
+       "name": "Clave opaca · 6 series"
+      },
+      {
+       "ticker": "BBVAGFDGB.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BBVAGFDUHN.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVAGL3A.MX",
+       "name": "Clave opaca · 13 series"
+      },
+      {
+       "ticker": "BBVAGL3GB.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BBVAGL4GB.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "BBVAGL4UHN.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "BBVAGL5GB.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BBVAMDA.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "BBVAMA2A.MX",
+       "name": "Clave opaca · 8 series"
+      },
+      {
+       "ticker": "BBVAMA2GB.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "BBVAMA2UHN.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "BBVAMA3GB.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BBVAMA3UHN.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVAMDGB.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BBVAMLTA.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "BBVAMLTGB.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "BBVAMUHN.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVAPCA.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BBVAPCDA.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "BBVAPCDGB.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "BBVAPYMA.MX",
+       "name": "Clave opaca · 8 series"
+      },
+      {
+       "ticker": "BBVAPYMNC.MX",
+       "name": "Clave opaca · 7 series"
+      },
+      {
+       "ticker": "BBVAPZOA.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "BBVAPZOGB.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BBVAPZOTNC.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVAPZOUHN1.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVASICA.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BBVASICGB.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "BBVASICUHN.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVATESA.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "BBVAUSB.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "BBVAUDIA.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "BBVAUDIGB.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BBVAUDITNC.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVAUDIUHN.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVAUSGB.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "BBVAUSGPF.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BBVAUSUHN.MX",
+       "name": "Clave opaca · 2 series"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "SURA",
+   "subgroups": [
+    {
+     "label": "Deuda gubernamental",
+     "funds": [
+      {
+       "ticker": "SURCETEA.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "SURCETEBF.MX",
+       "name": "Deuda gubernamental · 6 series"
+      },
+      {
+       "ticker": "SURCETEBFE.MX",
+       "name": "Deuda gubernamental · 10 series"
+      },
+      {
+       "ticker": "SURCETEEMP.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "SURGOBA.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "SURGOBBF0.MX",
+       "name": "Deuda gubernamental · 5 series"
+      },
+      {
+       "ticker": "SURGOBBFE.MX",
+       "name": "Deuda gubernamental · 10 series"
+      },
+      {
+       "ticker": "SURGOBEMP.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "SURUDIBOE0.MX",
+       "name": "Deuda gubernamental · 6 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda mediano plazo",
+     "funds": [
+      {
+       "ticker": "SURABS1EMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "SURB05EMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "SURB10EMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "SURPLUSEMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "SURREALEMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "SURUDIEMP.MX",
+       "name": "Deuda mediano plazo"
+      }
+     ]
+    },
+    {
+     "label": "Deuda corporativa / privada",
+     "funds": [
+      {
+       "ticker": "SURCORPA.MX",
+       "name": "Deuda corporativa / privada"
+      },
+      {
+       "ticker": "SURCORPBF0.MX",
+       "name": "Deuda corporativa / privada · 5 series"
+      },
+      {
+       "ticker": "SURCORPBFE.MX",
+       "name": "Deuda corporativa / privada · 10 series"
+      },
+      {
+       "ticker": "SURCORPEMP.MX",
+       "name": "Deuda corporativa / privada"
+      }
+     ]
+    },
+    {
+     "label": "Deuda (generica / plazo n/d)",
+     "funds": [
+      {
+       "ticker": "SUR1EBFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "SURABS1BFF.MX",
+       "name": "Deuda · 2 series"
+      },
+      {
+       "ticker": "SURB05BFF.MX",
+       "name": "Deuda · 2 series"
+      },
+      {
+       "ticker": "SURB10BFF.MX",
+       "name": "Deuda · 2 series"
+      },
+      {
+       "ticker": "SURMILABFI.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "SURPLUSBFF.MX",
+       "name": "Deuda · 2 series"
+      },
+      {
+       "ticker": "SURREALBFF.MX",
+       "name": "Deuda · 2 series"
+      },
+      {
+       "ticker": "SURUDIBFF.MX",
+       "name": "Deuda · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Mercado de dinero / liquidez",
+     "funds": [
+      {
+       "ticker": "FONDEOA.MX",
+       "name": "Mercado de dinero / liquidez"
+      },
+      {
+       "ticker": "FONDEOBF0.MX",
+       "name": "Mercado de dinero / liquidez · 7 series"
+      },
+      {
+       "ticker": "FONDEOBFE.MX",
+       "name": "Mercado de dinero / liquidez · 9 series"
+      },
+      {
+       "ticker": "FONDEOEMP.MX",
+       "name": "Mercado de dinero / liquidez"
+      }
+     ]
+    },
+    {
+     "label": "Cobertura cambiaria / dolares (USD)",
+     "funds": [
+      {
+       "ticker": "SURADOLA.MX",
+       "name": "Cobertura cambiaria / dolares"
+      },
+      {
+       "ticker": "SURADOLBF0.MX",
+       "name": "Cobertura cambiaria / dolares · 5 series"
+      },
+      {
+       "ticker": "SURADOLBFE.MX",
+       "name": "Cobertura cambiaria / dolares · 10 series"
+      },
+      {
+       "ticker": "SURADOLEMP.MX",
+       "name": "Cobertura cambiaria / dolares"
+      },
+      {
+       "ticker": "SURUSDA.MX",
+       "name": "Cobertura cambiaria / dolares"
+      },
+      {
+       "ticker": "SURUSDBF0.MX",
+       "name": "Cobertura cambiaria / dolares · 5 series"
+      },
+      {
+       "ticker": "SURUSDBFE.MX",
+       "name": "Cobertura cambiaria / dolares · 10 series"
+      },
+      {
+       "ticker": "SURUSDEMP.MX",
+       "name": "Cobertura cambiaria / dolares"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable nacional (IPC)",
+     "funds": [
+      {
+       "ticker": "SURRVMXA.MX",
+       "name": "Renta variable nacional"
+      },
+      {
+       "ticker": "SURRVMXBF0.MX",
+       "name": "Renta variable nacional · 5 series"
+      },
+      {
+       "ticker": "SURRVMXBFE.MX",
+       "name": "Renta variable nacional · 10 series"
+      },
+      {
+       "ticker": "SURRVMXEMP.MX",
+       "name": "Renta variable nacional"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable internacional / global",
+     "funds": [
+      {
+       "ticker": "SURASIAA.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "SURASIABF0.MX",
+       "name": "Renta variable internacional / global · 5 series"
+      },
+      {
+       "ticker": "SURASIABFE.MX",
+       "name": "Renta variable internacional / global · 10 series"
+      },
+      {
+       "ticker": "SURASIAEMP.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "SURGLOBA.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "SURGLOBBF0.MX",
+       "name": "Renta variable internacional / global · 5 series"
+      },
+      {
+       "ticker": "SURGLOBBFE.MX",
+       "name": "Renta variable internacional / global · 10 series"
+      },
+      {
+       "ticker": "SURGLOBEMP.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "SURPLUSA.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "SURVEURA.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "SURVEURBF1.MX",
+       "name": "Renta variable internacional / global · 5 series"
+      },
+      {
+       "ticker": "SURVEURBEI.MX",
+       "name": "Renta variable internacional / global · 11 series"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable (region n/d)",
+     "funds": [
+      {
+       "ticker": "SUR-RVBF1.MX",
+       "name": "Renta variable"
+      },
+      {
+       "ticker": "SUR-RVBOE4.MX",
+       "name": "Renta variable"
+      }
+     ]
+    },
+    {
+     "label": "Mixtos / balanceados / perfilados",
+     "funds": [
+      {
+       "ticker": "SURPATA.MX",
+       "name": "Mixtos / balanceados / perfilados"
+      },
+      {
+       "ticker": "SURPATBF0.MX",
+       "name": "Mixtos / balanceados / perfilados · 5 series"
+      },
+      {
+       "ticker": "SURPATBFE.MX",
+       "name": "Mixtos / balanceados / perfilados · 10 series"
+      },
+      {
+       "ticker": "SURPATEMP.MX",
+       "name": "Mixtos / balanceados / perfilados"
+      }
+     ]
+    },
+    {
+     "label": "Ciclo de vida / fecha objetivo",
+     "funds": [
+      {
+       "ticker": "RETIROA.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      },
+      {
+       "ticker": "RETIROBF1.MX",
+       "name": "Ciclo de vida / fecha objetivo · 2 series"
+      },
+      {
+       "ticker": "RETIROBFE.MX",
+       "name": "Ciclo de vida / fecha objetivo · 12 series"
+      },
+      {
+       "ticker": "SUR2026A.MX",
+       "name": "Ciclo de vida / fecha objetivo · 6 series"
+      },
+      {
+       "ticker": "SUR2026BF1.MX",
+       "name": "Ciclo de vida / fecha objetivo · 2 series"
+      },
+      {
+       "ticker": "SUR2026BFE.MX",
+       "name": "Ciclo de vida / fecha objetivo · 10 series"
+      },
+      {
+       "ticker": "SUR2034BF1.MX",
+       "name": "Ciclo de vida / fecha objetivo · 2 series"
+      },
+      {
+       "ticker": "SUR2034BFE.MX",
+       "name": "Ciclo de vida / fecha objetivo · 10 series"
+      },
+      {
+       "ticker": "SUR2042BF1.MX",
+       "name": "Ciclo de vida / fecha objetivo · 2 series"
+      },
+      {
+       "ticker": "SUR2042BFE.MX",
+       "name": "Ciclo de vida / fecha objetivo · 10 series"
+      },
+      {
+       "ticker": "SUR2050BF1.MX",
+       "name": "Ciclo de vida / fecha objetivo · 2 series"
+      },
+      {
+       "ticker": "SUR2050BFE.MX",
+       "name": "Ciclo de vida / fecha objetivo · 10 series"
+      },
+      {
+       "ticker": "SUR2058BF1.MX",
+       "name": "Ciclo de vida / fecha objetivo · 2 series"
+      },
+      {
+       "ticker": "SUR2058BFE.MX",
+       "name": "Ciclo de vida / fecha objetivo · 10 series"
+      },
+      {
+       "ticker": "SUR2066BF1.MX",
+       "name": "Ciclo de vida / fecha objetivo · 2 series"
+      },
+      {
+       "ticker": "SUR2066BFE.MX",
+       "name": "Ciclo de vida / fecha objetivo · 10 series"
+      },
+      {
+       "ticker": "SUR30EA.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      },
+      {
+       "ticker": "SUR30EBFE.MX",
+       "name": "Ciclo de vida / fecha objetivo · 9 series"
+      },
+      {
+       "ticker": "SVIVE20B.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      },
+      {
+       "ticker": "SVIVE20C3.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      },
+      {
+       "ticker": "SVIVE35C1.MX",
+       "name": "Ciclo de vida / fecha objetivo · 2 series"
+      },
+      {
+       "ticker": "SVIVE50C2.MX",
+       "name": "Ciclo de vida / fecha objetivo · 2 series"
+      },
+      {
+       "ticker": "SVIVE60C2.MX",
+       "name": "Ciclo de vida / fecha objetivo · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "SUR2018A.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SUR1EA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SUR1EBM0.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SUR1EBFE.MX",
+       "name": "Clave opaca · 11 series"
+      },
+      {
+       "ticker": "SUR2018BF1.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "SUR2018BFE.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "SURAAV11.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "SURAAV1A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "SURAAV2A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "SURAAV3A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "SURABS1A.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SURABS1BF0.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "SURABS1BFE.MX",
+       "name": "Clave opaca · 8 series"
+      },
+      {
+       "ticker": "SURB05A.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "SURB05BF0.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "SURB05BFE.MX",
+       "name": "Clave opaca · 8 series"
+      },
+      {
+       "ticker": "SURB10BF0.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "SURB10BFE.MX",
+       "name": "Clave opaca · 8 series"
+      },
+      {
+       "ticker": "SURMILAA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SURMILABF1.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "SURMILABEI.MX",
+       "name": "Clave opaca · 10 series"
+      },
+      {
+       "ticker": "SURPLUSBF0.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "SURPLUSBFE.MX",
+       "name": "Clave opaca · 8 series"
+      },
+      {
+       "ticker": "SURREALA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SURREALBF0.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "SURREALBFE.MX",
+       "name": "Clave opaca · 8 series"
+      },
+      {
+       "ticker": "SURUDIA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SURUDIBF0.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "SURUDIBFE.MX",
+       "name": "Clave opaca · 2 series"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Banorte",
+   "subgroups": [
+    {
+     "label": "Deuda gubernamental",
+     "funds": [
+      {
+       "ticker": "NTEGUBA.MX",
+       "name": "Deuda gubernamental · 22 series"
+      },
+      {
+       "ticker": "NTEGUBFF.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "NTEGUB+A.MX",
+       "name": "Deuda gubernamental · 23 series"
+      },
+      {
+       "ticker": "NTEGUB+APIE.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "NTEGUB+EMP.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "NTEGUBAPIE.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "NTEGUBE1S.MX",
+       "name": "Deuda gubernamental · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda mediano plazo",
+     "funds": [
+      {
+       "ticker": "NTE+EMPF1.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTE1EMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTE2EMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTE3EMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTEAIEMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTECTEMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTEDEMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTEDPEMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTEINT+EMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTEMPGA.MX",
+       "name": "Deuda mediano plazo · 22 series"
+      },
+      {
+       "ticker": "NTEMP+A.MX",
+       "name": "Deuda mediano plazo · 21 series"
+      },
+      {
+       "ticker": "NTEMP+BPPF.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTEMP+EMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTEMPGFF.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTEMPGBPPF.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTEMPGEMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTEMXNEMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTEPZO1EMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTEPZO2EMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTEPZO3EMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTEPZO4EMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTERTDEMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTERTEMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTESELEMP.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "NTETREMP.MX",
+       "name": "Deuda mediano plazo"
+      }
+     ]
+    },
+    {
+     "label": "Deuda largo plazo",
+     "funds": [
+      {
+       "ticker": "NTELPA.MX",
+       "name": "Deuda largo plazo · 17 series"
+      },
+      {
+       "ticker": "NTELPFF.MX",
+       "name": "Deuda largo plazo"
+      },
+      {
+       "ticker": "NTELPBPPF.MX",
+       "name": "Deuda largo plazo"
+      },
+      {
+       "ticker": "NTELPEMP.MX",
+       "name": "Deuda largo plazo"
+      }
+     ]
+    },
+    {
+     "label": "Deuda (generica / plazo n/d)",
+     "funds": [
+      {
+       "ticker": "NTEAIFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "NTECTFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "NTEDFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "NTEDPFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "NTEINT+FF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "NTEMXNFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "NTERTFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "NTESELFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "NTETRF1.MX",
+       "name": "Deuda · 7 series"
+      },
+      {
+       "ticker": "NTETRFF.MX",
+       "name": "Deuda"
+      }
+     ]
+    },
+    {
+     "label": "Cobertura cambiaria / dolares (USD)",
+     "funds": [
+      {
+       "ticker": "NTEDLSA.MX",
+       "name": "Cobertura cambiaria / dolares · 4 series"
+      },
+      {
+       "ticker": "NTEDLS+A.MX",
+       "name": "Cobertura cambiaria / dolares · 17 series"
+      },
+      {
+       "ticker": "NTEDLS+APIE.MX",
+       "name": "Cobertura cambiaria / dolares · 2 series"
+      },
+      {
+       "ticker": "NTEDLS+BPPF.MX",
+       "name": "Cobertura cambiaria / dolares"
+      },
+      {
+       "ticker": "NTEDLS+E1S.MX",
+       "name": "Cobertura cambiaria / dolares · 2 series"
+      },
+      {
+       "ticker": "NTEDLSAPIE.MX",
+       "name": "Cobertura cambiaria / dolares · 2 series"
+      },
+      {
+       "ticker": "NTEDLSE1S.MX",
+       "name": "Cobertura cambiaria / dolares · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable nacional (IPC)",
+     "funds": [
+      {
+       "ticker": "NTEIPC+A.MX",
+       "name": "Renta variable nacional · 16 series"
+      },
+      {
+       "ticker": "NTEIPC+APIE.MX",
+       "name": "Renta variable nacional · 3 series"
+      },
+      {
+       "ticker": "NTEIPC+E1S.MX",
+       "name": "Renta variable nacional · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable internacional / global",
+     "funds": [
+      {
+       "ticker": "NTEEUROA.MX",
+       "name": "Renta variable internacional / global · 4 series"
+      },
+      {
+       "ticker": "NTEEUROEMP.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "NTEGLOBA.MX",
+       "name": "Renta variable internacional / global · 13 series"
+      },
+      {
+       "ticker": "NTEGLOBAPIE.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "NTEGLOBEMP.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "NTEUSAA.MX",
+       "name": "Renta variable internacional / global · 15 series"
+      },
+      {
+       "ticker": "NTEUSAFF.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "NTEUSA+A.MX",
+       "name": "Renta variable internacional / global · 17 series"
+      },
+      {
+       "ticker": "NTEUSA+APIE.MX",
+       "name": "Renta variable internacional / global · 2 series"
+      },
+      {
+       "ticker": "NTEUSA+BPPF.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "NTEUSA+E1S.MX",
+       "name": "Renta variable internacional / global · 2 series"
+      },
+      {
+       "ticker": "NTEUSAAPIE.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "NTEUSABPPF.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "NTEUSAE1S.MX",
+       "name": "Renta variable internacional / global · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "ESG / sustentables",
+     "funds": [
+      {
+       "ticker": "NTEESGA.MX",
+       "name": "ESG / sustentables · 16 series"
+      },
+      {
+       "ticker": "NTEESGFF.MX",
+       "name": "ESG / sustentables"
+      },
+      {
+       "ticker": "NTEESGAPIE.MX",
+       "name": "ESG / sustentables · 2 series"
+      },
+      {
+       "ticker": "NTEESGBPPF.MX",
+       "name": "ESG / sustentables"
+      },
+      {
+       "ticker": "NTEESGE1S.MX",
+       "name": "ESG / sustentables · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "NTE1A.MX",
+       "name": "Clave opaca · 18 series"
+      },
+      {
+       "ticker": "NTE1E5.MX",
+       "name": "Clave opaca · 10 series"
+      },
+      {
+       "ticker": "NTE1APIE.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "NTE2E5.MX",
+       "name": "Clave opaca · 8 series"
+      },
+      {
+       "ticker": "NTE2APIE.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "NTE3E5.MX",
+       "name": "Clave opaca · 8 series"
+      },
+      {
+       "ticker": "NTEAIA.MX",
+       "name": "Clave opaca · 13 series"
+      },
+      {
+       "ticker": "NTEAIAPIE.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "NTEAIE1S.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "NTECTA.MX",
+       "name": "Clave opaca · 22 series"
+      },
+      {
+       "ticker": "NTECTAPIE.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "NTECTBPPF.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "NTEDPA.MX",
+       "name": "Clave opaca · 21 series"
+      },
+      {
+       "ticker": "NTEDAPIE.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "NTEDIGA.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "NTEDIGFP.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "NTEDPAPIF.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "NTEDPBPPF.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "NTEINT+A.MX",
+       "name": "Clave opaca · 14 series"
+      },
+      {
+       "ticker": "NTEINT+APIE.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "NTEMXNA.MX",
+       "name": "Clave opaca · 12 series"
+      },
+      {
+       "ticker": "NTEMXNAPIF.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "NTEMXNBPPF.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "NTEPZO1A.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "NTEPZO1F1.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "NTEPZO2F1.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "NTEPZO3F1.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "NTEPZO4F1.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "NTERTA.MX",
+       "name": "Clave opaca · 10 series"
+      },
+      {
+       "ticker": "NTERTDA.MX",
+       "name": "Clave opaca · 6 series"
+      },
+      {
+       "ticker": "NTESELA.MX",
+       "name": "Clave opaca · 10 series"
+      },
+      {
+       "ticker": "NTESELAPIE.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "NTESELBPPF.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "NTESELE1S.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "NTETRA.MX",
+       "name": "Clave opaca · 12 series"
+      },
+      {
+       "ticker": "NTETRBPPF.MX",
+       "name": "Clave opaca"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "GBM",
+   "subgroups": [
+    {
+     "label": "Deuda gubernamental",
+     "funds": [
+      {
+       "ticker": "GBMGUBA.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "GBMGUBBE.MX",
+       "name": "Deuda gubernamental · 5 series"
+      },
+      {
+       "ticker": "GBMGUBLBE.MX",
+       "name": "Deuda gubernamental · 3 series"
+      },
+      {
+       "ticker": "GBMGUBLBES.MX",
+       "name": "Deuda gubernamental · 5 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda mediano plazo",
+     "funds": [
+      {
+       "ticker": "GBMPBOLA.MX",
+       "name": "Deuda mediano plazo · 2 series"
+      },
+      {
+       "ticker": "GBMPCONA.MX",
+       "name": "Deuda mediano plazo · 2 series"
+      },
+      {
+       "ticker": "GBMPDEUA.MX",
+       "name": "Deuda mediano plazo · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda (generica / plazo n/d)",
+     "funds": [
+      {
+       "ticker": "GBMALFABFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "GBMDINTBFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "GBMF2BFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "GBMF3BFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "GBMINTBFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "GBMMODBFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "GBMRETOBFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "GBMTRVBFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "GBMV1BFF.MX",
+       "name": "Deuda"
+      }
+     ]
+    },
+    {
+     "label": "Mercado de dinero / liquidez",
+     "funds": [
+      {
+       "ticker": "GBMCASHA.MX",
+       "name": "Mercado de dinero / liquidez"
+      },
+      {
+       "ticker": "GBMCASHBM.MX",
+       "name": "Mercado de dinero / liquidez · 2 series"
+      },
+      {
+       "ticker": "GBMCASHBFF.MX",
+       "name": "Mercado de dinero / liquidez · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Cobertura cambiaria / dolares (USD)",
+     "funds": [
+      {
+       "ticker": "GBMDOL.MX",
+       "name": "Cobertura cambiaria / dolares"
+      },
+      {
+       "ticker": "GBMDOLA.MX",
+       "name": "Cobertura cambiaria / dolares"
+      },
+      {
+       "ticker": "GBMDOLBE.MX",
+       "name": "Cobertura cambiaria / dolares · 6 series"
+      },
+      {
+       "ticker": "GBMDOLBFF.MX",
+       "name": "Cobertura cambiaria / dolares · 4 series"
+      },
+      {
+       "ticker": "GBMUSDA.MX",
+       "name": "Cobertura cambiaria / dolares"
+      },
+      {
+       "ticker": "GBMUSDBE.MX",
+       "name": "Cobertura cambiaria / dolares · 3 series"
+      },
+      {
+       "ticker": "GBMUSDBOS.MX",
+       "name": "Cobertura cambiaria / dolares"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable nacional (IPC)",
+     "funds": [
+      {
+       "ticker": "GBMNEARA.MX",
+       "name": "Renta variable nacional"
+      },
+      {
+       "ticker": "GBMNEARBE.MX",
+       "name": "Renta variable nacional · 4 series"
+      },
+      {
+       "ticker": "GBMNEARBES.MX",
+       "name": "Renta variable nacional · 4 series"
+      },
+      {
+       "ticker": "GBMTRVA.MX",
+       "name": "Renta variable nacional"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable internacional / global",
+     "funds": [
+      {
+       "ticker": "GBMGLBA.MX",
+       "name": "Renta variable internacional / global · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable (region n/d)",
+     "funds": [
+      {
+       "ticker": "GBMTRVBE.MX",
+       "name": "Renta variable · 4 series"
+      },
+      {
+       "ticker": "GBMTRVBES.MX",
+       "name": "Renta variable · 4 series"
+      }
+     ]
+    },
+    {
+     "label": "Mixtos / balanceados / perfilados",
+     "funds": [
+      {
+       "ticker": "GBMCREA.MX",
+       "name": "Mixtos / balanceados / perfilados"
+      },
+      {
+       "ticker": "GBMCREBE.MX",
+       "name": "Mixtos / balanceados / perfilados · 4 series"
+      },
+      {
+       "ticker": "GBMCREBFF.MX",
+       "name": "Mixtos / balanceados / perfilados · 4 series"
+      },
+      {
+       "ticker": "GBMPATA.MX",
+       "name": "Mixtos / balanceados / perfilados"
+      },
+      {
+       "ticker": "GBMPATBE.MX",
+       "name": "Mixtos / balanceados / perfilados · 4 series"
+      },
+      {
+       "ticker": "GBMPATBES.MX",
+       "name": "Mixtos / balanceados / perfilados · 5 series"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "GBM102A.MX",
+       "name": "Clave opaca · 18 series"
+      },
+      {
+       "ticker": "GBM105BE3.MX",
+       "name": "Clave opaca · 6 series"
+      },
+      {
+       "ticker": "GBM106BM.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "GBM110BM.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "GBM112BO.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBM112BPF.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBM113BM.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBM113BES.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBM114BE.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "GBM116BE.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "GBM117BO.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBM118BM.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "GBM118BOS.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBM119BM.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBM120BM.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBM121BM.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBMAAAA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBMAAABE.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "GBMAAABES.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "GBMAGRA.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "GBMALFAA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBMALFABE.MX",
+       "name": "Clave opaca · 6 series"
+      },
+      {
+       "ticker": "GBMALFABES.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "GBMDINTA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBMDINTBE.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "GBMDINTBES.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "GBMDIV2A.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBMDIV2BE.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "GBMF2A.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "GBMF2BE.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "GBMF2BES.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "GBMF3BE.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "GBMF3BES.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "GBMINTA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBMINTBE.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "GBMINTBES.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "GBMM3A.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBMM3BE.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBMM3BEP.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "GBMMODA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBMMODBE.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "GBMMODBME.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "GBMRETOA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBMRETOBE.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "GBMRETOBES.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "GBMV1A.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "GBMV1BO.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBMV1BGBMF.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "GBMV2BO.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GBMV2BGBMM.MX",
+       "name": "Clave opaca"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Valmex",
+   "subgroups": [
+    {
+     "label": "Deuda gubernamental",
+     "funds": [
+      {
+       "ticker": "VXGUBCPA.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "VXGUBCPB0CO.MX",
+       "name": "Deuda gubernamental · 2 series"
+      },
+      {
+       "ticker": "VXGUBCPB1CF.MX",
+       "name": "Deuda gubernamental · 3 series"
+      },
+      {
+       "ticker": "VXGUBCPB2FI.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "VXGUBCPB4CF.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "VXGUBLPA.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "VXGUBLPB0CO.MX",
+       "name": "Deuda gubernamental · 3 series"
+      },
+      {
+       "ticker": "VXGUBLPB1CO.MX",
+       "name": "Deuda gubernamental · 2 series"
+      },
+      {
+       "ticker": "VXGUBLPB2CO.MX",
+       "name": "Deuda gubernamental · 3 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda mediano plazo",
+     "funds": [
+      {
+       "ticker": "VXUDIMPA.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "VXUDIMPB0CF.MX",
+       "name": "Deuda mediano plazo · 4 series"
+      },
+      {
+       "ticker": "VXUDIMPB1CO.MX",
+       "name": "Deuda mediano plazo · 3 series"
+      },
+      {
+       "ticker": "VXUDIMPB2CO.MX",
+       "name": "Deuda mediano plazo · 3 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda largo plazo",
+     "funds": [
+      {
+       "ticker": "VLMXLPEA.MX",
+       "name": "Deuda largo plazo"
+      },
+      {
+       "ticker": "VLMXLPEB0NC.MX",
+       "name": "Deuda largo plazo"
+      }
+     ]
+    },
+    {
+     "label": "Deuda (generica / plazo n/d)",
+     "funds": [
+      {
+       "ticker": "VALMXHCB0FI.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "VALMXHCB1FI.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "VALMXHCB2FI.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "VLMXDMEB0FI.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "VLMXDMEB1FI.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "VLMXDMEB2FI.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "VLMXTECB0FI.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "VLMXTECB1FI.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "VLMXTECB2FI.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "VXDEUDAA.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "VXDEUDAB0CF.MX",
+       "name": "Deuda · 4 series"
+      },
+      {
+       "ticker": "VXDEUDAB1CF.MX",
+       "name": "Deuda · 4 series"
+      },
+      {
+       "ticker": "VXDEUDAB2FI.MX",
+       "name": "Deuda · 2 series"
+      },
+      {
+       "ticker": "VXINFRAB0FI.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "VXINFRAB1FI.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "VXINFRAB2FI.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "VXTBILLB0FI.MX",
+       "name": "Deuda"
+      }
+     ]
+    },
+    {
+     "label": "Mercado de dinero / liquidez",
+     "funds": [
+      {
+       "ticker": "VXREPO1A.MX",
+       "name": "Mercado de dinero / liquidez"
+      },
+      {
+       "ticker": "VXREPO1B0CO.MX",
+       "name": "Mercado de dinero / liquidez · 2 series"
+      },
+      {
+       "ticker": "VXREPO1B1CF.MX",
+       "name": "Mercado de dinero / liquidez · 4 series"
+      },
+      {
+       "ticker": "VXREPO1B2FI.MX",
+       "name": "Mercado de dinero / liquidez"
+      }
+     ]
+    },
+    {
+     "label": "Cobertura cambiaria / dolares (USD)",
+     "funds": [
+      {
+       "ticker": "VXCOBERA.MX",
+       "name": "Cobertura cambiaria / dolares"
+      },
+      {
+       "ticker": "VXCOBERB0FI.MX",
+       "name": "Cobertura cambiaria / dolares · 2 series"
+      },
+      {
+       "ticker": "VXCOBERB1CO.MX",
+       "name": "Cobertura cambiaria / dolares · 3 series"
+      },
+      {
+       "ticker": "VXCOBERB2FI.MX",
+       "name": "Cobertura cambiaria / dolares"
+      }
+     ]
+    },
+    {
+     "label": "Ciclo de vida / fecha objetivo",
+     "funds": [
+      {
+       "ticker": "VLMXJUBB3NC.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      },
+      {
+       "ticker": "VLMXP59A.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      },
+      {
+       "ticker": "VLMXP24B3NC.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      },
+      {
+       "ticker": "VLMXP31B3NC.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      },
+      {
+       "ticker": "VLMXP38B3NC.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      },
+      {
+       "ticker": "VLMXP45B1CO.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      },
+      {
+       "ticker": "VLMXP45B3NC.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      },
+      {
+       "ticker": "VLMXP52B2NC.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      },
+      {
+       "ticker": "VLMXP52B3NC.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      },
+      {
+       "ticker": "VLMXP59B0NC.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      },
+      {
+       "ticker": "VLMXP59B1FI.MX",
+       "name": "Ciclo de vida / fecha objetivo · 2 series"
+      },
+      {
+       "ticker": "VLMXP59B2NC.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      },
+      {
+       "ticker": "VLMXP59B3NC.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      }
+     ]
+    },
+    {
+     "label": "ESG / sustentables",
+     "funds": [
+      {
+       "ticker": "VLMXESGA.MX",
+       "name": "ESG / sustentables"
+      },
+      {
+       "ticker": "VLMXESGB0CF.MX",
+       "name": "ESG / sustentables · 2 series"
+      },
+      {
+       "ticker": "VLMXESGB1CF.MX",
+       "name": "ESG / sustentables · 4 series"
+      },
+      {
+       "ticker": "VLMXESGB2FI.MX",
+       "name": "ESG / sustentables"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "VALMX14B0NC.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "VALMX34B1CF.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "VALMXESB3.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "VALMXHCA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "VALMXHCB0CF.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "VALMXHCB1CF.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "VALMXVLB3.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "VALUEF1B3.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "VALUEF2B3.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "VALUEF3B3.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "VALUEF4B3.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "VALUEF7B3.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "VLMXDMEA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "VLMXDMEB0CO.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "VLMXDMEB1CF.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "VLMXTECA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "VLMXTECB0CF.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "VLMXTECB1CF.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "VXINFRAA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "VXINFRAB0CO.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "VXTBILLA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "VXTBILLB0CO.MX",
+       "name": "Clave opaca"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "HSBC",
+   "subgroups": [
+    {
+     "label": "Deuda gubernamental",
+     "funds": [
+      {
+       "ticker": "HSBCGOBA.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "HSBCGOBBI1.MX",
+       "name": "Deuda gubernamental · 2 series"
+      },
+      {
+       "ticker": "HSBCGOBBIE1.MX",
+       "name": "Deuda gubernamental · 8 series"
+      },
+      {
+       "ticker": "HSBGOB2A.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "HSBGOB2BI1.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "HSBGOB2BFA.MX",
+       "name": "Deuda gubernamental · 6 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda corto plazo",
+     "funds": [
+      {
+       "ticker": "HSBCPRAA.MX",
+       "name": "Deuda corto plazo"
+      },
+      {
+       "ticker": "HSBCPRABFA.MX",
+       "name": "Deuda corto plazo · 7 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda mediano plazo",
+     "funds": [
+      {
+       "ticker": "HSBC-D2BIE2.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "HSBCEMPA.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "HSBCEMPBI1.MX",
+       "name": "Deuda mediano plazo · 2 series"
+      },
+      {
+       "ticker": "HSBCEMPBFA.MX",
+       "name": "Deuda mediano plazo · 9 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda largo plazo",
+     "funds": [
+      {
+       "ticker": "HSBCDLPA.MX",
+       "name": "Deuda largo plazo"
+      },
+      {
+       "ticker": "HSBCDLPBI.MX",
+       "name": "Deuda largo plazo · 2 series"
+      },
+      {
+       "ticker": "HSBCDLPBFA.MX",
+       "name": "Deuda largo plazo · 9 series"
+      }
+     ]
+    },
+    {
+     "label": "Cobertura cambiaria / dolares (USD)",
+     "funds": [
+      {
+       "ticker": "HSBCDOLA.MX",
+       "name": "Cobertura cambiaria / dolares"
+      },
+      {
+       "ticker": "HSBCDOLBFA.MX",
+       "name": "Cobertura cambiaria / dolares · 9 series"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable nacional (IPC)",
+     "funds": [
+      {
+       "ticker": "HSBCMEXA.MX",
+       "name": "Renta variable nacional"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable internacional / global",
+     "funds": [
+      {
+       "ticker": "HSBCUSAA.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "HSBCUSABFA.MX",
+       "name": "Renta variable internacional / global · 8 series"
+      }
+     ]
+    },
+    {
+     "label": "Mixtos / balanceados / perfilados",
+     "funds": [
+      {
+       "ticker": "HSBCBALA.MX",
+       "name": "Mixtos / balanceados / perfilados"
+      },
+      {
+       "ticker": "HSBCBALBI1.MX",
+       "name": "Mixtos / balanceados / perfilados"
+      },
+      {
+       "ticker": "HSBCBALBFA.MX",
+       "name": "Mixtos / balanceados / perfilados · 7 series"
+      },
+      {
+       "ticker": "HSBCCREA.MX",
+       "name": "Mixtos / balanceados / perfilados"
+      },
+      {
+       "ticker": "HSBCCREBI1.MX",
+       "name": "Mixtos / balanceados / perfilados"
+      },
+      {
+       "ticker": "HSBCCREBFA.MX",
+       "name": "Mixtos / balanceados / perfilados · 7 series"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "HSBC-70BI2.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "HSBC-80BI1.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "HSBC-90BI1.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "HSBC-90A.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "HSBC-F1BFU.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "HSBCCORA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "HSBCCORBM1.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "HSBCCORBFA.MX",
+       "name": "Clave opaca · 8 series"
+      },
+      {
+       "ticker": "HSBCDC+A.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "HSBCDC+BFA.MX",
+       "name": "Clave opaca · 9 series"
+      },
+      {
+       "ticker": "HSBCDGPA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "HSBCDGPBFA.MX",
+       "name": "Clave opaca · 8 series"
+      },
+      {
+       "ticker": "HSBCDYNBFU.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "HSBCGLEA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "HSBCGLEBFA.MX",
+       "name": "Clave opaca · 8 series"
+      },
+      {
+       "ticker": "HSBCMDLA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "HSBCMDLBFE.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "HSBCMEDA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "HSBCMEDBI1.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "HSBCMEDBFA.MX",
+       "name": "Clave opaca · 9 series"
+      },
+      {
+       "ticker": "HSBCMEXBI1.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "HSBCMEXBFA.MX",
+       "name": "Clave opaca · 9 series"
+      },
+      {
+       "ticker": "HSBCSGEA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "HSBCSGEBI.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "HSBCSGEBFA.MX",
+       "name": "Clave opaca · 8 series"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Franklin Templeton",
+   "subgroups": [
+    {
+     "label": "Deuda corto plazo",
+     "funds": [
+      {
+       "ticker": "FMXMDFD1.MX",
+       "name": "Deuda corto plazo · 2 series"
+      },
+      {
+       "ticker": "FMXPZOXD14.MX",
+       "name": "Deuda corto plazo"
+      }
+     ]
+    },
+    {
+     "label": "Deuda corporativa / privada",
+     "funds": [
+      {
+       "ticker": "FT-CORPBF2.MX",
+       "name": "Deuda corporativa / privada · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda (generica / plazo n/d)",
+     "funds": [
+      {
+       "ticker": "FMXFIF7.MX",
+       "name": "Deuda · 2 series"
+      },
+      {
+       "ticker": "FMXFIXF0.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "FMXRFA.MX",
+       "name": "Deuda · 7 series"
+      },
+      {
+       "ticker": "FMXRFFC0.MX",
+       "name": "Deuda · 7 series"
+      },
+      {
+       "ticker": "FMXRFM+0.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "FMXRFX+0.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "FMXTRF7.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "FMXTRFD7.MX",
+       "name": "Deuda"
+      }
+     ]
+    },
+    {
+     "label": "Cobertura cambiaria / dolares (USD)",
+     "funds": [
+      {
+       "ticker": "FMXUSDF.MX",
+       "name": "Cobertura cambiaria / dolares · 3 series"
+      },
+      {
+       "ticker": "FMXUSDF+.MX",
+       "name": "Cobertura cambiaria / dolares"
+      },
+      {
+       "ticker": "FMXUSDX+.MX",
+       "name": "Cobertura cambiaria / dolares"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable nacional (IPC)",
+     "funds": [
+      {
+       "ticker": "FT-MEXABM2.MX",
+       "name": "Renta variable nacional · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable internacional / global",
+     "funds": [
+      {
+       "ticker": "FMXINDX+.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "FMXUSAF.MX",
+       "name": "Renta variable internacional / global · 3 series"
+      },
+      {
+       "ticker": "FMXUSAF+.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "FMXUSAM+.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "FMXUSAX+.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "FT-EUROBF3.MX",
+       "name": "Renta variable internacional / global · 2 series"
+      },
+      {
+       "ticker": "FT-GLOBBE1.MX",
+       "name": "Renta variable internacional / global · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Indizados / replica de indice",
+     "funds": [
+      {
+       "ticker": "FMXINDF.MX",
+       "name": "Indizados / replica de indice"
+      },
+      {
+       "ticker": "FMXINDF+.MX",
+       "name": "Indizados / replica de indice"
+      }
+     ]
+    },
+    {
+     "label": "Mixtos / balanceados / perfilados",
+     "funds": [
+      {
+       "ticker": "FMXMIXA.MX",
+       "name": "Mixtos / balanceados / perfilados · 3 series"
+      },
+      {
+       "ticker": "FMXMIXF+.MX",
+       "name": "Mixtos / balanceados / perfilados"
+      },
+      {
+       "ticker": "FMXMIXX+.MX",
+       "name": "Mixtos / balanceados / perfilados"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "FMXMDF1.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "FMXMDFC1.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "FMXPAF.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "FMXPAF+.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "FMXPREF0.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "FMXPREXD0.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "FMXPZOA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "FMXPZOFR2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "FMXPZOF14.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "FMXPZOFC14.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "FMXPZOM14.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "FMXPZOX14.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "FMXPZOX+14.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "FMXSICF.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "FMXSICXF.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "FMXSICM+.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "FMXSICX+.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "FMXTRA.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "FMXTRMC7.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "FT-BONDBM3.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "FT-BONOBE2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "TEMGBIAA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "TEMGBIABE1.MX",
+       "name": "Clave opaca · 6 series"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Actinver",
+   "subgroups": [
+    {
+     "label": "Deuda gubernamental",
+     "funds": [
+      {
+       "ticker": "ACTIGOBB.MX",
+       "name": "Deuda gubernamental · 2 series"
+      },
+      {
+       "ticker": "ACTIGOBCE.MX",
+       "name": "Deuda gubernamental · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda (generica / plazo n/d)",
+     "funds": [
+      {
+       "ticker": "ACTDUALFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "ACTIEDFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "ACTIG+2FF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "ALTERNFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "ESFERAFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "PROTEGEFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "ROBOTIKFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "TEMATIKFF.MX",
+       "name": "Deuda"
+      }
+     ]
+    },
+    {
+     "label": "Cobertura cambiaria / dolares (USD)",
+     "funds": [
+      {
+       "ticker": "ACTICOBB.MX",
+       "name": "Cobertura cambiaria / dolares · 2 series"
+      },
+      {
+       "ticker": "ACTICOBCE.MX",
+       "name": "Cobertura cambiaria / dolares"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable internacional / global",
+     "funds": [
+      {
+       "ticker": "ACTIEURB.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "JPMRVUSE.MX",
+       "name": "Renta variable internacional / global · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable (region n/d)",
+     "funds": [
+      {
+       "ticker": "ACTIRVTA.MX",
+       "name": "Renta variable · 4 series"
+      }
+     ]
+    },
+    {
+     "label": "Mixtos / balanceados / perfilados",
+     "funds": [
+      {
+       "ticker": "ACTICREE.MX",
+       "name": "Mixtos / balanceados / perfilados · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Ciclo de vida / fecha objetivo",
+     "funds": [
+      {
+       "ticker": "ACT2025A.MX",
+       "name": "Ciclo de vida / fecha objetivo · 4 series"
+      },
+      {
+       "ticker": "ACT2030B-1.MX",
+       "name": "Ciclo de vida / fecha objetivo · 3 series"
+      },
+      {
+       "ticker": "ACT2035B-1.MX",
+       "name": "Ciclo de vida / fecha objetivo · 3 series"
+      },
+      {
+       "ticker": "ACT2040B-1.MX",
+       "name": "Ciclo de vida / fecha objetivo · 3 series"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "ACOP8591.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "ACOP659A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "ACOP859A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "ACT4560A.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "ACT4560B-1.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "ACTDUALA.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "ACTI500B.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "ACTIEDA.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "ACTIEDCE.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "ACTIG+B.MX",
+       "name": "Clave opaca · 6 series"
+      },
+      {
+       "ticker": "ACTIMEDB.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "ACTINTKE.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "ACTIOP1A.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "ACTIPLUB.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "ACTIPT4M.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "ACTIPT4B-1.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "ACTIRENB.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "ACTVIDAB.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "ALTERNB.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "ESCALAA.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "ESFERAA.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "MAXIMOB.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "MAYAM.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "PROTEGEA.MX",
+       "name": "Clave opaca · 6 series"
+      },
+      {
+       "ticker": "ROBOTIKA.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "SALUDA.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "TEMATIKA.MX",
+       "name": "Clave opaca · 4 series"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Principal",
+   "subgroups": [
+    {
+     "label": "Deuda mediano plazo",
+     "funds": [
+      {
+       "ticker": "PRINFMPA.MX",
+       "name": "Deuda mediano plazo · 8 series"
+      },
+      {
+       "ticker": "PRINFMPEC.MX",
+       "name": "Deuda mediano plazo · 2 series"
+      },
+      {
+       "ticker": "PRINFMPFFX.MX",
+       "name": "Deuda mediano plazo"
+      }
+     ]
+    },
+    {
+     "label": "Deuda largo plazo",
+     "funds": [
+      {
+       "ticker": "PRINGLPA.MX",
+       "name": "Deuda largo plazo · 9 series"
+      },
+      {
+       "ticker": "PRINGLPEC.MX",
+       "name": "Deuda largo plazo · 2 series"
+      },
+      {
+       "ticker": "PRINGLPFFX.MX",
+       "name": "Deuda largo plazo"
+      }
+     ]
+    },
+    {
+     "label": "Deuda corporativa / privada",
+     "funds": [
+      {
+       "ticker": "PRINHYDA.MX",
+       "name": "Deuda corporativa / privada · 4 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda (generica / plazo n/d)",
+     "funds": [
+      {
+       "ticker": "GLREITSFFX.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "PRINFGUA.MX",
+       "name": "Deuda · 19 series"
+      },
+      {
+       "ticker": "PRINFGUEC.MX",
+       "name": "Deuda · 3 series"
+      },
+      {
+       "ticker": "PRINFGUFFX.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "PRINFTRF1.MX",
+       "name": "Deuda · 3 series"
+      },
+      {
+       "ticker": "PRINFTRFB.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "PRINFTRFFX.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "PRINMASFFX.MX",
+       "name": "Deuda"
+      }
+     ]
+    },
+    {
+     "label": "Mercado de dinero / liquidez",
+     "funds": [
+      {
+       "ticker": "LIQUIDOA.MX",
+       "name": "Mercado de dinero / liquidez · 8 series"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable nacional (IPC)",
+     "funds": [
+      {
+       "ticker": "PRINRVAA.MX",
+       "name": "Renta variable nacional"
+      },
+      {
+       "ticker": "PRINRVAEC.MX",
+       "name": "Renta variable nacional · 9 series"
+      },
+      {
+       "ticker": "PRINRVAFFX.MX",
+       "name": "Renta variable nacional"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable internacional / global",
+     "funds": [
+      {
+       "ticker": "PEMERGEA.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "PEMERGEEC.MX",
+       "name": "Renta variable internacional / global · 7 series"
+      },
+      {
+       "ticker": "PEMERGEFFX.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "PRGLOBA.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "PRGLOBEC.MX",
+       "name": "Renta variable internacional / global · 7 series"
+      }
+     ]
+    },
+    {
+     "label": "Ciclo de vida / fecha objetivo",
+     "funds": [
+      {
+       "ticker": "PRINLS0A.MX",
+       "name": "Ciclo de vida / fecha objetivo · 4 series"
+      },
+      {
+       "ticker": "PRINLS0EC.MX",
+       "name": "Ciclo de vida / fecha objetivo · 9 series"
+      },
+      {
+       "ticker": "PRINLS1EC.MX",
+       "name": "Ciclo de vida / fecha objetivo · 11 series"
+      },
+      {
+       "ticker": "PRINLS1FPLUS.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      },
+      {
+       "ticker": "PRINLS2EC.MX",
+       "name": "Ciclo de vida / fecha objetivo · 10 series"
+      },
+      {
+       "ticker": "PRINLS2FPLUS.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      },
+      {
+       "ticker": "PRINLS3EC.MX",
+       "name": "Ciclo de vida / fecha objetivo · 9 series"
+      },
+      {
+       "ticker": "PRINLS3FPLUS.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      },
+      {
+       "ticker": "PRINR25A.MX",
+       "name": "Ciclo de vida / fecha objetivo · 5 series"
+      },
+      {
+       "ticker": "PRINR25M1.MX",
+       "name": "Ciclo de vida / fecha objetivo · 7 series"
+      },
+      {
+       "ticker": "PRINR30M1.MX",
+       "name": "Ciclo de vida / fecha objetivo · 7 series"
+      },
+      {
+       "ticker": "PRINR35M1.MX",
+       "name": "Ciclo de vida / fecha objetivo · 7 series"
+      },
+      {
+       "ticker": "PRINR45M1.MX",
+       "name": "Ciclo de vida / fecha objetivo · 7 series"
+      },
+      {
+       "ticker": "PRINR55M1.MX",
+       "name": "Ciclo de vida / fecha objetivo · 7 series"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "GLREITSA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "GLREITSEC.MX",
+       "name": "Clave opaca · 7 series"
+      },
+      {
+       "ticker": "PRINFTRA.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "PRINFTREC.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "PRINMASA.MX",
+       "name": "Clave opaca · 9 series"
+      },
+      {
+       "ticker": "PRINMASEC.MX",
+       "name": "Clave opaca · 2 series"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "BlackRock",
+   "subgroups": [
+    {
+     "label": "Deuda gubernamental",
+     "funds": [
+      {
+       "ticker": "BLKGUB1A.MX",
+       "name": "Deuda gubernamental · 2 series"
+      },
+      {
+       "ticker": "BLKGUB1B0-A.MX",
+       "name": "Deuda gubernamental · 17 series"
+      },
+      {
+       "ticker": "BLKGUB3B1-B.MX",
+       "name": "Deuda gubernamental · 7 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda corto plazo",
+     "funds": [
+      {
+       "ticker": "BLKCPA.MX",
+       "name": "Deuda corto plazo · 3 series"
+      },
+      {
+       "ticker": "BLKCP1A.MX",
+       "name": "Deuda corto plazo"
+      },
+      {
+       "ticker": "BLKCP1C0-B.MX",
+       "name": "Deuda corto plazo · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda (generica / plazo n/d)",
+     "funds": [
+      {
+       "ticker": "BLKFIHA.MX",
+       "name": "Deuda · 7 series"
+      }
+     ]
+    },
+    {
+     "label": "Mercado de dinero / liquidez",
+     "funds": [
+      {
+       "ticker": "BLKLIQ+A.MX",
+       "name": "Mercado de dinero / liquidez · 4 series"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable nacional (IPC)",
+     "funds": [
+      {
+       "ticker": "BLKDIPC0-C.MX",
+       "name": "Renta variable nacional"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable internacional / global",
+     "funds": [
+      {
+       "ticker": "BLKEURVA.MX",
+       "name": "Renta variable internacional / global · 4 series"
+      },
+      {
+       "ticker": "BLKFUSAA.MX",
+       "name": "Renta variable internacional / global · 7 series"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable (region n/d)",
+     "funds": [
+      {
+       "ticker": "BLKUSEQA.MX",
+       "name": "Renta variable · 7 series"
+      }
+     ]
+    },
+    {
+     "label": "Mixtos / balanceados / perfilados",
+     "funds": [
+      {
+       "ticker": "BLKCREA.MX",
+       "name": "Mixtos / balanceados / perfilados · 4 series"
+      },
+      {
+       "ticker": "BLKPATA.MX",
+       "name": "Mixtos / balanceados / perfilados · 7 series"
+      }
+     ]
+    },
+    {
+     "label": "Ciclo de vida / fecha objetivo",
+     "funds": [
+      {
+       "ticker": "BLK2030A.MX",
+       "name": "Ciclo de vida / fecha objetivo · 4 series"
+      },
+      {
+       "ticker": "BLK2030C0-A.MX",
+       "name": "Ciclo de vida / fecha objetivo · 2 series"
+      },
+      {
+       "ticker": "BLK2040C0-A.MX",
+       "name": "Ciclo de vida / fecha objetivo · 2 series"
+      },
+      {
+       "ticker": "BLK2050C0-A.MX",
+       "name": "Ciclo de vida / fecha objetivo · 2 series"
+      },
+      {
+       "ticker": "BLK2060C0-A.MX",
+       "name": "Ciclo de vida / fecha objetivo · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "ESG / sustentables",
+     "funds": [
+      {
+       "ticker": "BLKMESGA.MX",
+       "name": "ESG / sustentables · 4 series"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "BLK1MASA.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BLKCORA.MX",
+       "name": "Clave opaca · 10 series"
+      },
+      {
+       "ticker": "BLKDIAA.MX",
+       "name": "Clave opaca · 25 series"
+      },
+      {
+       "ticker": "BLKEM1A.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BLKEM1B1-A.MX",
+       "name": "Clave opaca · 6 series"
+      },
+      {
+       "ticker": "BLKGLO2A.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BLKGLO2B1-A.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "BLKGLO3B1-A.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BLKGLO4B1-A.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BLKINCA.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BLKINT1A.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BLKINT1B0-E.MX",
+       "name": "Clave opaca · 7 series"
+      },
+      {
+       "ticker": "BLKMDA.MX",
+       "name": "Clave opaca · 8 series"
+      },
+      {
+       "ticker": "BLKMAGA.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "BLKMEDA.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "BLKMEGAA.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "BLKPZOA.MX",
+       "name": "Clave opaca · 6 series"
+      },
+      {
+       "ticker": "BLKRETA.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BLKUDI+A.MX",
+       "name": "Clave opaca · 6 series"
+      },
+      {
+       "ticker": "BLKUSLQA.MX",
+       "name": "Clave opaca · 6 series"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Scotia",
+   "subgroups": [
+    {
+     "label": "Deuda largo plazo",
+     "funds": [
+      {
+       "ticker": "SCOTLPGF.MX",
+       "name": "Deuda largo plazo · 2 series"
+      },
+      {
+       "ticker": "SCOTLPGFBF.MX",
+       "name": "Deuda largo plazo · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda (generica / plazo n/d)",
+     "funds": [
+      {
+       "ticker": "FINBOLA.MX",
+       "name": "Deuda"
+      }
+     ]
+    },
+    {
+     "label": "Cobertura cambiaria / dolares (USD)",
+     "funds": [
+      {
+       "ticker": "SCOTDOLFBF.MX",
+       "name": "Cobertura cambiaria / dolares · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable (region n/d)",
+     "funds": [
+      {
+       "ticker": "SCOT-RVS.MX",
+       "name": "Renta variable"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "SCOT100A.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "SCOT-29FBE.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SCOT-36FBE.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SCOT-43FBE.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SCOT-57A.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SCOT-57E.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SCOT-FRII0.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SCOT-FRC1E.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SCOT-FXS.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SCOT200CU1.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SCOTCANA.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "SCOTD+1A.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SCOTD+1F1.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "SCOTDGHA.MX",
+       "name": "Clave opaca · 6 series"
+      },
+      {
+       "ticker": "SCOTDGHCU1.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "SCOTDGHC1E.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SCOTDIHA.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "SCOTDL+A.MX",
+       "name": "Clave opaca · 6 series"
+      },
+      {
+       "ticker": "SCOTDL+C1E.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SCOTDL+FBF.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SCOTDVCA.MX",
+       "name": "Clave opaca · 11 series"
+      },
+      {
+       "ticker": "SCOTGL+A.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "SCOTGL+FBM.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SCOTIAGE3.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "SCOTIA1E1.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "SCOTIAGFBM.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SCOTMA1A.MX",
+       "name": "Clave opaca · 10 series"
+      },
+      {
+       "ticker": "SCOTMA1F1.MX",
+       "name": "Clave opaca · 10 series"
+      },
+      {
+       "ticker": "SCOTMA2F1.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "SCOTMA2FBF.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SCOTMA3FBM.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SCOTRETA.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "SCOTRETFBE.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SCOTUDIS.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SCOTUDIFBF.MX",
+       "name": "Clave opaca"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Santander",
+   "subgroups": [
+    {
+     "label": "Deuda gubernamental",
+     "funds": [
+      {
+       "ticker": "STERGOBA.MX",
+       "name": "Deuda gubernamental · 18 series"
+      },
+      {
+       "ticker": "STERGOBBD.MX",
+       "name": "Deuda gubernamental · 5 series"
+      },
+      {
+       "ticker": "STRGOB2B0.MX",
+       "name": "Deuda gubernamental · 8 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda corto plazo",
+     "funds": [
+      {
+       "ticker": "SAMUSCPA.MX",
+       "name": "Deuda corto plazo · 4 series"
+      },
+      {
+       "ticker": "SAMUSCPGS.MX",
+       "name": "Deuda corto plazo"
+      }
+     ]
+    },
+    {
+     "label": "Deuda mediano plazo",
+     "funds": [
+      {
+       "ticker": "RCOMP-1A.MX",
+       "name": "Deuda mediano plazo · 58 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda (generica / plazo n/d)",
+     "funds": [
+      {
+       "ticker": "DEUDAOPA.MX",
+       "name": "Deuda · 7 series"
+      },
+      {
+       "ticker": "DEUDAOPBD.MX",
+       "name": "Deuda · 3 series"
+      }
+     ]
+    },
+    {
+     "label": "Cobertura cambiaria / dolares (USD)",
+     "funds": [
+      {
+       "ticker": "STERUSDA.MX",
+       "name": "Cobertura cambiaria / dolares · 7 series"
+      },
+      {
+       "ticker": "STERUSDGS.MX",
+       "name": "Cobertura cambiaria / dolares"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable internacional / global",
+     "funds": [
+      {
+       "ticker": "SAM-FTWA.MX",
+       "name": "Renta variable internacional / global · 4 series"
+      },
+      {
+       "ticker": "SAM-FTWGS.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "STERNDQA.MX",
+       "name": "Renta variable internacional / global · 4 series"
+      },
+      {
+       "ticker": "STERNDQGS.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "USA-EQB3.MX",
+       "name": "Renta variable internacional / global"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable (region n/d)",
+     "funds": [
+      {
+       "ticker": "SAMCAP0A.MX",
+       "name": "Renta variable · 23 series"
+      }
+     ]
+    },
+    {
+     "label": "ESG / sustentables",
+     "funds": [
+      {
+       "ticker": "SAM-ESGB3.MX",
+       "name": "ESG / sustentables"
+      },
+      {
+       "ticker": "SAM-ESGGS.MX",
+       "name": "ESG / sustentables"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "FONSER1A.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "FONSER1B1.MX",
+       "name": "Clave opaca · 21 series"
+      },
+      {
+       "ticker": "SAM-HDGB4.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SAM-REDA.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "SAM-SPB1.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SAM-SPE.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SAMBPIAA.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "SAMEME1A.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "SAMEME1B0.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "ST&ER-1A.MX",
+       "name": "Clave opaca · 18 series"
+      },
+      {
+       "ticker": "ST&ERPBB3.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "STER-OPE1.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "STEREALA.MX",
+       "name": "Clave opaca · 6 series"
+      },
+      {
+       "ticker": "STEREALED.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "STERMXNA.MX",
+       "name": "Clave opaca · 6 series"
+      },
+      {
+       "ticker": "STERMXNBD.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "STRATB-M1.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "XPERT-BA.MX",
+       "name": "Clave opaca · 12 series"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "INVEX",
+   "subgroups": [
+    {
+     "label": "Deuda gubernamental",
+     "funds": [
+      {
+       "ticker": "INVEXGUBE1.MX",
+       "name": "Deuda gubernamental · 10 series"
+      },
+      {
+       "ticker": "INVEXGUBEG.MX",
+       "name": "Deuda gubernamental"
+      }
+     ]
+    },
+    {
+     "label": "Deuda corto plazo",
+     "funds": [
+      {
+       "ticker": "INVEXCPA.MX",
+       "name": "Deuda corto plazo"
+      },
+      {
+       "ticker": "INVEXCPBE1.MX",
+       "name": "Deuda corto plazo · 7 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda mediano plazo",
+     "funds": [
+      {
+       "ticker": "INVEXMPA.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "INVEXMPBM.MX",
+       "name": "Deuda mediano plazo · 8 series"
+      },
+      {
+       "ticker": "INVEXMPBEG.MX",
+       "name": "Deuda mediano plazo"
+      }
+     ]
+    },
+    {
+     "label": "Deuda largo plazo",
+     "funds": [
+      {
+       "ticker": "INVEXLPA.MX",
+       "name": "Deuda largo plazo"
+      },
+      {
+       "ticker": "INVEXLPBM.MX",
+       "name": "Deuda largo plazo · 7 series"
+      }
+     ]
+    },
+    {
+     "label": "Cobertura cambiaria / dolares (USD)",
+     "funds": [
+      {
+       "ticker": "INVEXCOBF.MX",
+       "name": "Cobertura cambiaria / dolares · 4 series"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "INVER65IIA.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "INVER70IIB.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "INVER80IIA.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "INVER90IIA.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "INVEXBEA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "INVEXBEBE2.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "INVEXCOA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "INVEXDOA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "INVEXDOBM.MX",
+       "name": "Clave opaca · 7 series"
+      },
+      {
+       "ticker": "INVEXGUA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "INVEXINA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "INVEXINBE1.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "INVEXINBEG.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "INVEXMXA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "INVEXMXBE1.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "INVEXMXBEG.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "INVEXPHA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "INVEXPHBF0.MX",
+       "name": "Clave opaca · 8 series"
+      },
+      {
+       "ticker": "INVEXTKA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "INVEXTKBE1.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "INVEXTKBEG.MX",
+       "name": "Clave opaca · 4 series"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Nafinsa",
+   "subgroups": [
+    {
+     "label": "Deuda gubernamental",
+     "funds": [
+      {
+       "ticker": "NAF-UMSA.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "NAF-UMSPF1.MX",
+       "name": "Deuda gubernamental · 2 series"
+      },
+      {
+       "ticker": "NAFCGUBA.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "NAFCGUBPF1.MX",
+       "name": "Deuda gubernamental · 2 series"
+      },
+      {
+       "ticker": "NAFGUBDA.MX",
+       "name": "Deuda gubernamental"
+      },
+      {
+       "ticker": "NAFGUBDPM1.MX",
+       "name": "Deuda gubernamental · 3 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda largo plazo",
+     "funds": [
+      {
+       "ticker": "NAFG-LPPF1.MX",
+       "name": "Deuda largo plazo · 2 series"
+      },
+      {
+       "ticker": "NAFG-LPA.MX",
+       "name": "Deuda largo plazo"
+      }
+     ]
+    },
+    {
+     "label": "Deuda (generica / plazo n/d)",
+     "funds": [
+      {
+       "ticker": "ENERFINA.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "ENERFINPF1.MX",
+       "name": "Deuda · 3 series"
+      },
+      {
+       "ticker": "NAFFP28A.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "NAFFP28PF1.MX",
+       "name": "Deuda · 2 series"
+      },
+      {
+       "ticker": "NAFINTRA.MX",
+       "name": "Deuda · 5 series"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable internacional / global",
+     "funds": [
+      {
+       "ticker": "NAFINDXA.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "NAFINDXPF1.MX",
+       "name": "Renta variable internacional / global · 3 series"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable (region n/d)",
+     "funds": [
+      {
+       "ticker": "NAF-DRVPM1.MX",
+       "name": "Renta variable"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "NAFCDVIA.MX",
+       "name": "Clave opaca · 7 series"
+      },
+      {
+       "ticker": "NAFM-EXPX1.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "NAFM-EXA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "NAFMEX7A.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "NAFMEX7PX1.MX",
+       "name": "Clave opaca · 2 series"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Azimut",
+   "subgroups": [
+    {
+     "label": "Deuda corto plazo",
+     "funds": [
+      {
+       "ticker": "AZMT-D1FF10B.MX",
+       "name": "Deuda corto plazo"
+      }
+     ]
+    },
+    {
+     "label": "Deuda (generica / plazo n/d)",
+     "funds": [
+      {
+       "ticker": "AZMT-C1FF10B.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "AZMT-V1FF10B.MX",
+       "name": "Deuda"
+      }
+     ]
+    },
+    {
+     "label": "Cobertura cambiaria / dolares (USD)",
+     "funds": [
+      {
+       "ticker": "AZMTUSDF4.MX",
+       "name": "Cobertura cambiaria / dolares · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Mixtos / balanceados / perfilados",
+     "funds": [
+      {
+       "ticker": "AZMTCREF1.MX",
+       "name": "Mixtos / balanceados / perfilados"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "AZMT-G1E2.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "AZMT-V1.MX",
+       "name": "Clave opaca · 6 series"
+      },
+      {
+       "ticker": "AZMT-V1A.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "AZMT-V1F10A.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "AZMTCHIE1.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "AZMTCONF1.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "AZMTEUAM4.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "AZMTMODF1.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "AZT6569IIA.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "AZT7074IIA.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "AZT8084IIA.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "AZT9094IIA.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "AZTBPENB2.MX",
+       "name": "Clave opaca"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Inbursa",
+   "subgroups": [
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "DINBUR1A.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "DINBUR3B-1.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "INB6569A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "INB7074A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "INB8084A1.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "INB9094A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "INB9599A1.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "INBINICA2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "INBPENSA2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "INBUREXA.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "INBURSAA.MX",
+       "name": "Clave opaca · 4 series"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Monex",
+   "subgroups": [
+    {
+     "label": "Deuda corto plazo",
+     "funds": [
+      {
+       "ticker": "MONEXCPA.MX",
+       "name": "Deuda corto plazo"
+      },
+      {
+       "ticker": "MONEXCPBMB.MX",
+       "name": "Deuda corto plazo · 13 series"
+      }
+     ]
+    },
+    {
+     "label": "ESG / sustentables",
+     "funds": [
+      {
+       "ticker": "MONXESGA.MX",
+       "name": "ESG / sustentables"
+      },
+      {
+       "ticker": "MONXESGBEC-1.MX",
+       "name": "ESG / sustentables · 3 series"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "MONEXGA.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "MONEX28BEC-1.MX",
+       "name": "Clave opaca · 8 series"
+      },
+      {
+       "ticker": "MONEXCRA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "MONEXCRBEC-1.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "MONEXGBEC-1.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "MONEXM+A.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "MONEXM+BFD.MX",
+       "name": "Clave opaca · 11 series"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Intercam",
+   "subgroups": [
+    {
+     "label": "Deuda largo plazo",
+     "funds": [
+      {
+       "ticker": "+TASALPF1.MX",
+       "name": "Deuda largo plazo · 3 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda (generica / plazo n/d)",
+     "funds": [
+      {
+       "ticker": "+TASAG1.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "+TASAFF.MX",
+       "name": "Deuda · 3 series"
+      },
+      {
+       "ticker": "+TASAMEG.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "+TASAPRA.MX",
+       "name": "Deuda · 5 series"
+      },
+      {
+       "ticker": "+TASAPRME1.MX",
+       "name": "Deuda · 2 series"
+      },
+      {
+       "ticker": "+TASAPRMEG.MX",
+       "name": "Deuda"
+      }
+     ]
+    },
+    {
+     "label": "Mercado de dinero / liquidez",
+     "funds": [
+      {
+       "ticker": "+TASAAHO1.MX",
+       "name": "Mercado de dinero / liquidez · 2 series"
+      },
+      {
+       "ticker": "+TASALPAHO1.MX",
+       "name": "Mercado de dinero / liquidez · 2 series"
+      },
+      {
+       "ticker": "+TASAPRAHO1.MX",
+       "name": "Mercado de dinero / liquidez · 3 series"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Compass/Vinci",
+   "subgroups": [
+    {
+     "label": "Deuda corporativa / privada",
+     "funds": [
+      {
+       "ticker": "I+CORPB-E0.MX",
+       "name": "Deuda corporativa / privada · 13 series"
+      }
+     ]
+    },
+    {
+     "label": "Mercado de dinero / liquidez",
+     "funds": [
+      {
+       "ticker": "I+LIQGB-E0.MX",
+       "name": "Mercado de dinero / liquidez · 6 series"
+      }
+     ]
+    },
+    {
+     "label": "Cobertura cambiaria / dolares (USD)",
+     "funds": [
+      {
+       "ticker": "I+USDB-N0.MX",
+       "name": "Cobertura cambiaria / dolares"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable internacional / global",
+     "funds": [
+      {
+       "ticker": "I+GLOBVB-E0.MX",
+       "name": "Renta variable internacional / global · 10 series"
+      }
+     ]
+    },
+    {
+     "label": "Mixtos / balanceados / perfilados",
+     "funds": [
+      {
+       "ticker": "CRECE+A.MX",
+       "name": "Mixtos / balanceados / perfilados · 24 series"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "+HAYEK+E10F.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "+HAYEK+F10.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "+VALORA.MX",
+       "name": "Clave opaca · 5 series"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Afirme",
+   "subgroups": [
+    {
+     "label": "Deuda (generica / plazo n/d)",
+     "funds": [
+      {
+       "ticker": "AFIRCORA.MX",
+       "name": "Deuda · 3 series"
+      },
+      {
+       "ticker": "AFIRCORBE.MX",
+       "name": "Deuda · 4 series"
+      },
+      {
+       "ticker": "AFIRMESA.MX",
+       "name": "Deuda · 8 series"
+      },
+      {
+       "ticker": "AFIRMESBE.MX",
+       "name": "Deuda · 5 series"
+      },
+      {
+       "ticker": "AFIRPLUA.MX",
+       "name": "Deuda · 8 series"
+      },
+      {
+       "ticker": "AFIRPLUBE.MX",
+       "name": "Deuda · 5 series"
+      },
+      {
+       "ticker": "AFIRVISA.MX",
+       "name": "Deuda · 8 series"
+      },
+      {
+       "ticker": "AFIRVISBE.MX",
+       "name": "Deuda · 5 series"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Finaccess",
+   "subgroups": [
+    {
+     "label": "Deuda (generica / plazo n/d)",
+     "funds": [
+      {
+       "ticker": "AXESFINA.MX",
+       "name": "Deuda · 3 series"
+      }
+     ]
+    },
+    {
+     "label": "Cobertura cambiaria / dolares (USD)",
+     "funds": [
+      {
+       "ticker": "AXESCOBE3.MX",
+       "name": "Cobertura cambiaria / dolares · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable (region n/d)",
+     "funds": [
+      {
+       "ticker": "AXESCAPE1.MX",
+       "name": "Renta variable"
+      }
+     ]
+    },
+    {
+     "label": "Mixtos / balanceados / perfilados",
+     "funds": [
+      {
+       "ticker": "AXESPROF1.MX",
+       "name": "Mixtos / balanceados / perfilados · 3 series"
+      }
+     ]
+    },
+    {
+     "label": "ESG / sustentables",
+     "funds": [
+      {
+       "ticker": "AXESESGA.MX",
+       "name": "ESG / sustentables · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "AXESDVDA.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "AXESEDME4.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "AXESPROA.MX",
+       "name": "Clave opaca · 3 series"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Ve por Mas (BX+)",
+   "subgroups": [
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "BX+0A.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "BX+0X1.MX",
+       "name": "Clave opaca · 10 series"
+      },
+      {
+       "ticker": "BX+1X1.MX",
+       "name": "Clave opaca · 8 series"
+      },
+      {
+       "ticker": "BX+2B-E1.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BX+3B-E1.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BX+4B-E1.MX",
+       "name": "Clave opaca · 6 series"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Vector",
+   "subgroups": [
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "DYNAMICA.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "DYNAMICFE.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "DYNAMICF+.MX",
+       "name": "Clave opaca"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Multiva",
+   "subgroups": [
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "MULTIREBE-0.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "MVFANG+A.MX",
+       "name": "Clave opaca · 8 series"
+      },
+      {
+       "ticker": "MVJERBF-T28.MX",
+       "name": "Clave opaca"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Citibanamex/BlackRock",
+   "subgroups": [
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "BNMXAVPA.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "BNMXBAIA.MX",
+       "name": "Clave opaca · 4 series"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Skandia",
+   "subgroups": [
+    {
+     "label": "Deuda gubernamental",
+     "funds": [
+      {
+       "ticker": "SK-GUBE1.MX",
+       "name": "Deuda gubernamental · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda corto plazo",
+     "funds": [
+      {
+       "ticker": "SK-DCPA.MX",
+       "name": "Deuda corto plazo · 4 series"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Otras / boutiques",
+   "subgroups": [
+    {
+     "label": "Deuda gubernamental",
+     "funds": [
+      {
+       "ticker": "FINAGUBBE2.MX",
+       "name": "Deuda gubernamental"
+      }
+     ]
+    },
+    {
+     "label": "Deuda corto plazo",
+     "funds": [
+      {
+       "ticker": "APICPE1.MX",
+       "name": "Deuda corto plazo"
+      },
+      {
+       "ticker": "APICPAPIF.MX",
+       "name": "Deuda corto plazo"
+      },
+      {
+       "ticker": "APICPE3S.MX",
+       "name": "Deuda corto plazo"
+      }
+     ]
+    },
+    {
+     "label": "Deuda mediano plazo",
+     "funds": [
+      {
+       "ticker": "MPAGORFB1.MX",
+       "name": "Deuda mediano plazo"
+      },
+      {
+       "ticker": "PRORV45EMP.MX",
+       "name": "Deuda mediano plazo"
+      }
+     ]
+    },
+    {
+     "label": "Deuda largo plazo",
+     "funds": [
+      {
+       "ticker": "ALPHA+B-E1.MX",
+       "name": "Deuda largo plazo · 5 series"
+      }
+     ]
+    },
+    {
+     "label": "Deuda (generica / plazo n/d)",
+     "funds": [
+      {
+       "ticker": "DIGITALFF.MX",
+       "name": "Deuda"
+      },
+      {
+       "ticker": "FIRMA-EL2.MX",
+       "name": "Deuda · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable nacional (IPC)",
+     "funds": [
+      {
+       "ticker": "SMX-50C3.MX",
+       "name": "Renta variable nacional"
+      },
+      {
+       "ticker": "SMX-60C3.MX",
+       "name": "Renta variable nacional"
+      },
+      {
+       "ticker": "SMX-70C3.MX",
+       "name": "Renta variable nacional"
+      },
+      {
+       "ticker": "SMX-80C3.MX",
+       "name": "Renta variable nacional"
+      },
+      {
+       "ticker": "SMX-90C3.MX",
+       "name": "Renta variable nacional"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable internacional / global",
+     "funds": [
+      {
+       "ticker": "FSUSA0B1YO.MX",
+       "name": "Renta variable internacional / global"
+      },
+      {
+       "ticker": "GLOBAL+B-E1.MX",
+       "name": "Renta variable internacional / global · 4 series"
+      },
+      {
+       "ticker": "GOLD1+B0-D.MX",
+       "name": "Renta variable internacional / global · 2 series"
+      },
+      {
+       "ticker": "GOLD2+B1-A.MX",
+       "name": "Renta variable internacional / global · 3 series"
+      },
+      {
+       "ticker": "GOLD3+A.MX",
+       "name": "Renta variable internacional / global · 5 series"
+      },
+      {
+       "ticker": "GOLD4+B0-E.MX",
+       "name": "Renta variable internacional / global · 3 series"
+      },
+      {
+       "ticker": "GOLD5+B0-E.MX",
+       "name": "Renta variable internacional / global"
+      }
+     ]
+    },
+    {
+     "label": "Renta variable (region n/d)",
+     "funds": [
+      {
+       "ticker": "EQUITYXF.MX",
+       "name": "Renta variable"
+      },
+      {
+       "ticker": "PRORV45BF0.MX",
+       "name": "Renta variable"
+      },
+      {
+       "ticker": "RVMAX1B-E1.MX",
+       "name": "Renta variable"
+      }
+     ]
+    },
+    {
+     "label": "Mixtos / balanceados / perfilados",
+     "funds": [
+      {
+       "ticker": "BALANCEXD.MX",
+       "name": "Mixtos / balanceados / perfilados"
+      }
+     ]
+    },
+    {
+     "label": "Ciclo de vida / fecha objetivo",
+     "funds": [
+      {
+       "ticker": "CJUBILA1.MX",
+       "name": "Ciclo de vida / fecha objetivo"
+      },
+      {
+       "ticker": "CJUBILAA2.MX",
+       "name": "Ciclo de vida / fecha objetivo · 2 series"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "1SSEMYM1.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "1SSEMYMA2.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "1SSEMYMB201.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "ALTER1+B-E1.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "AMVALORB-M1.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "APIBONOE4.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "BMRPREVH2.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BMX6569B.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "BONDDIAPM1.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "BTGALFAB1.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "COMMODQXF.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "DIGITALB.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "DYNVALBM1.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "ECOFUNDM.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "HEYGBO.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "IDEAB-F2.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "INCOMEXD.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "MXRATESM.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "NEXTGENM.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "NEXTGENXF.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "NUMCB0-B.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "PAMB-M1.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "PAMB-N2.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "PEIS851.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "PEIS65IIA.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "PEIS70IIA.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "PEIS80IIA.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "PEIS90IIA.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "PORTMANE10F.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SAURORTB3.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SNXA.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SNXB.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SNXE.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SNXM.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SSB60641.MX",
+       "name": "Clave opaca · 4 series"
+      },
+      {
+       "ticker": "SSB6569A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "SSB7074A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "SSB8084A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "SSB8589B2.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "SSB9094A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "SSBINICA2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "SSBPENS1.MX",
+       "name": "Clave opaca"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Afore / SIEFORE (retiro)",
+   "subgroups": [
+    {
+     "label": "Deuda largo plazo",
+     "funds": [
+      {
+       "ticker": "XXINTEBB2LP2.MX",
+       "name": "Deuda largo plazo"
+      },
+      {
+       "ticker": "XXINTECB2LP1.MX",
+       "name": "Deuda largo plazo"
+      }
+     ]
+    },
+    {
+     "label": "Mixtos / balanceados / perfilados",
+     "funds": [
+      {
+       "ticker": "PROF-55A1.MX",
+       "name": "Mixtos / balanceados / perfilados"
+      },
+      {
+       "ticker": "PROF-65A-I.MX",
+       "name": "Mixtos / balanceados / perfilados · 3 series"
+      },
+      {
+       "ticker": "PROF-70A-II.MX",
+       "name": "Mixtos / balanceados / perfilados · 2 series"
+      },
+      {
+       "ticker": "PROF-80A-II.MX",
+       "name": "Mixtos / balanceados / perfilados · 2 series"
+      },
+      {
+       "ticker": "PROF-85A1.MX",
+       "name": "Mixtos / balanceados / perfilados · 3 series"
+      },
+      {
+       "ticker": "PROF-90A-II.MX",
+       "name": "Mixtos / balanceados / perfilados · 2 series"
+      },
+      {
+       "ticker": "PROF-LPA1.MX",
+       "name": "Mixtos / balanceados / perfilados · 3 series"
+      }
+     ]
+    },
+    {
+     "label": "Clave opaca",
+     "funds": [
+      {
+       "ticker": "APRIN601.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "APRIN60A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "APRIN75A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "APRIN85A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "APRININB.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "XXI70741.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "XXI6064B2.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "XXI6569A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "XXI7074A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "XXI7579A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "XXI8084A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "XXI8589A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "XXI9094A2.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "XXINTEB1.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "XXINTE01.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "XXINTE0A2.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "XXINTEAB2C1.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "XXINTEAB2P00.MX",
+       "name": "Clave opaca · 5 series"
+      },
+      {
+       "ticker": "XXINTEBB2V1.MX",
+       "name": "Clave opaca · 2 series"
+      },
+      {
+       "ticker": "XXINTEBB2P06.MX",
+       "name": "Clave opaca · 3 series"
+      },
+      {
+       "ticker": "XXINTECB2C2.MX",
+       "name": "Clave opaca"
+      },
+      {
+       "ticker": "XXINTECB2P00.MX",
+       "name": "Clave opaca · 5 series"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
