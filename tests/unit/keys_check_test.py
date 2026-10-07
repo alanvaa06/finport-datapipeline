@@ -67,7 +67,8 @@ def fred(*, rejected=False, down=False):
                 400, text='{"error_message":"Bad Request.  The value for variable api_key is not registered."}'
             )
         if request.url.path.endswith("/observations"):
-            return httpx.Response(200, text=json.dumps({"observations": [{"date": "2026-08-01", "value": "4.3"}]}))
+            row = {"realtime_start": "2026-09-04", "date": "2026-08-01", "value": "4.3"}
+            return httpx.Response(200, text=json.dumps({"observations": [row]}))
         meta = {
             "id": "UNRATE",
             "title": "Unemployment Rate",

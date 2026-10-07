@@ -33,6 +33,7 @@ from data_pipeline.store.model import (
 from data_pipeline.store.sources.base import Source
 from data_pipeline.store.storage import (
     INDEX_DTYPES,
+    KEY,
     KIND_DOCUMENT,
     KIND_SERIES,
     KIND_TABLE,
@@ -156,6 +157,15 @@ def observation_rows(series: SeriesData, fetched_at: datetime.datetime, today: d
         }
         for observation in series.observations
     ]
+
+
+def _append_observations(old: pd.DataFrame, new: pd.DataFrame) -> tuple[pd.DataFrame, int, int]:
+    """Store what changed. A row the source dated is one version of its period, kept once; a row
+    without a date replaces the period's latest value only when that value changed."""
+    dated = new["published_at"].notna().to_numpy()
+    merged, added, revised = append_changes(old, new[~dated])
+    merged, more, changed = append_versions(merged, new[dated], KEY, ["value"])
+    return merged, added + more, revised + changed
 
 
 def last_real(observations: pd.DataFrame, today: datetime.date) -> dict[str, LastReal]:
@@ -481,7 +491,7 @@ def _sync_source(
                 fresh = [series for series in batch.series if series.key not in done]
                 rows = [row for series in fresh for row in observation_rows(series, now, today)]
                 if rows:
-                    observations, more, changed = append_changes(observations, typed(rows, OBS_DTYPES))
+                    observations, more, changed = _append_observations(observations, typed(rows, OBS_DTYPES))
                     added += more
                     revised += changed
                     storage.write_observations(name, observations)
@@ -525,6 +535,18 @@ def _sync_source(
     )
 
 
+def _release_moved_aliases(index: dict[str, Row], entries: Sequence[CatalogEntry]) -> bool:
+    """Take each alias the catalog gives to a series away from any other stored series that still
+    has it (the catalog moved it, say from a mirror to the publisher). True when one was taken."""
+    owners = {entry.alias: entry.key for entry in entries if entry.alias is not None}
+    moved = [
+        key for key, row in index.items() if isinstance(row["alias"], str) and owners.get(row["alias"], key) != key
+    ]
+    for key in moved:
+        index[key] = {**index[key], "alias": None}
+    return bool(moved)
+
+
 def sync(
     storage: Storage,
     entries: Sequence[CatalogEntry],
@@ -541,6 +563,8 @@ def sync(
         storage.prepare()
         check_catalog(entries, sources)
         index: dict[str, Row] = {str(row["key"]): row for row in records(storage.read_index())}
+        if _release_moved_aliases(index, entries):
+            storage.write_index(typed(list(index.values()), INDEX_DTYPES))
         runs = storage.read_runs()
         today = now.date()
         reports = []

@@ -9,7 +9,7 @@ import data_pipeline
 from data_pipeline.store.api import Store
 from data_pipeline.store.errors import CatalogError, StoreError, UnknownSeriesError
 
-from .helpers import NOW
+from .helpers import NOT_IN_ALFRED, NOW
 
 CATALOG = """
 - source: fred
@@ -41,6 +41,7 @@ class Fred:
             "UNRATE": {"2026-04-01": "4.0", "2026-05-01": "4.1"},
             "DGS10": {"2026-06-04": "4.40", "2026-06-05": "4.45"},
         }
+        self.vintages: dict[str, list[dict[str, str]]] = {}  # series kept by ALFRED: its rows
         self.requests = 0
 
     def __call__(self, request):
@@ -48,6 +49,10 @@ class Fred:
         series_id = request.url.params["series_id"]
         if series_id not in META:
             return httpx.Response(400, text='{"error_message":"Bad Request.  The series does not exist."}')
+        if "realtime_start" in request.url.params:
+            if series_id not in self.vintages:
+                return httpx.Response(400, json=NOT_IN_ALFRED)
+            return httpx.Response(200, json={"observations": self.vintages[series_id]})
         if request.url.path.endswith("/observations"):
             rows = [{"date": date, "value": value} for date, value in self.observations[series_id].items()]
             return httpx.Response(200, text=json.dumps({"observations": rows}))
@@ -199,7 +204,7 @@ def test_sync_can_be_restricted(world):
     store, server, _ = world
     store.sync(keys=["fred:DGS10"])
     assert sorted(store.index()["key"]) == ["fred:DGS10"]
-    assert server.requests == 2
+    assert server.requests == 3  # metadata, the vintages ALFRED does not keep, the observations
     assert store.sync(sources=["bls"]).sources == ()
 
 
@@ -280,3 +285,19 @@ def test_a_bundled_catalog_is_loaded_by_name(tmp_path, monkeypatch):
 def test_an_unknown_credential_name_is_refused_when_the_store_is_built(tmp_path):
     with pytest.raises(StoreError, match=r"Unknown credential: FRED_KEY. Known: FRED_API_KEY, BLS_API_KEY"):
         Store(tmp_path / "store", credentials={"FRED_KEY": "x"})
+
+
+def test_a_series_with_vintages_reads_as_it_was_published_before_the_first_sync(world):
+    store, server, _clock = world
+    server.vintages["UNRATE"] = [
+        {"realtime_start": "2026-05-08", "date": "2026-04-01", "value": "4.0"},
+        {"realtime_start": "2026-06-05", "date": "2026-04-01", "value": "4.1"},
+        {"realtime_start": "2026-06-05", "date": "2026-05-01", "value": "4.2"},
+    ]
+    store.sync(keys=["fred:UNRATE"])
+    assert list(store.series("fred:UNRATE")["value"]) == [4.1, 4.2]
+    assert list(store.series("fred:UNRATE", as_of="2026-05-31")["value"]) == [4.0]
+    assert store.series("fred:UNRATE", as_of="2026-05-07").empty
+    history = store.revisions("fred:UNRATE")
+    assert list(history["value"]) == [4.0, 4.1, 4.2]
+    assert list(history["published_at"].dt.date.astype(str)) == ["2026-05-08", "2026-06-05", "2026-06-05"]

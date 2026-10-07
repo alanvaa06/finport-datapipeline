@@ -10,7 +10,7 @@ from data_pipeline.store.api import Store
 from data_pipeline.store.cli import cli
 from data_pipeline.store.sync import LOCK_FILE
 
-from .helpers import NOW
+from .helpers import NOT_IN_ALFRED, NOW
 
 META = {
     "title": "Tasa de desempleo áéí →",
@@ -24,6 +24,8 @@ OBSERVATIONS = [{"date": "2026-04-01", "value": "4.0"}, {"date": "2026-05-01", "
 def handler(request):
     if request.url.params["series_id"] != "UNRATE":
         return httpx.Response(400, text='{"error_message":"Bad Request.  The series does not exist."}')
+    if "realtime_start" in request.url.params:  # kept by FRED, not by ALFRED: dated by its fetch
+        return httpx.Response(400, json=NOT_IN_ALFRED)
     if request.url.path.endswith("/observations"):
         return httpx.Response(200, text=json.dumps({"observations": OBSERVATIONS}))
     return httpx.Response(200, text=json.dumps({"seriess": [META]}))
@@ -59,7 +61,7 @@ def test_sync_prints_the_report_and_exits_zero(workspace):
     root, _ = workspace
     result = invoke("sync", "--root", str(root / "store"))
     assert result.exit_code == 0
-    assert result.output == "[ok]  fred        1 series, 2 new, 0 revised, 2 calls\n"
+    assert result.output == "[ok]  fred        1 series, 2 new, 0 revised, 3 calls\n"
 
 
 def test_the_root_can_come_from_the_environment(workspace):

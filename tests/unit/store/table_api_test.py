@@ -11,7 +11,7 @@ from data_pipeline.store.cli import cli
 from data_pipeline.store.errors import StoreError, UnknownSeriesError
 from data_pipeline.store.sources.comtrade import Comtrade
 
-from .helpers import NOW
+from .helpers import NOT_IN_ALFRED, NOW
 
 LATER = NOW + datetime.timedelta(days=30)
 CATALOG = """
@@ -42,6 +42,8 @@ class Services:
 
     def __call__(self, request):
         if "stlouisfed" in request.url.host:
+            if "realtime_start" in request.url.params:  # kept by FRED, not by ALFRED
+                return httpx.Response(400, json=NOT_IN_ALFRED)
             if request.url.path.endswith("/observations"):
                 return httpx.Response(200, json={"observations": [{"date": "2026-05-01", "value": "4.1"}]})
             meta = {"title": "Unemployment", "units": "Percent", "frequency_short": "M"}

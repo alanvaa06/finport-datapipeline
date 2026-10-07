@@ -135,7 +135,8 @@ def latest(
     *,
     by_publication: bool = False,
 ) -> pd.DataFrame:
-    """Per key (for a series: key and period), the row fetched last. Sorted by `order`.
+    """Per key (for a series: key and period), the row fetched last; among the rows of one
+    fetch, the one published last. Sorted by `order`.
 
     With `by_publication`, the row published last: for tables whose source dates every version.
     """
@@ -146,7 +147,7 @@ def latest(
         ordered = observations.assign(known_at=known_at).sort_values(["known_at", "fetched_at"], kind="stable")
         ordered = ordered.drop(columns="known_at")
     else:
-        ordered = observations.sort_values("fetched_at", kind="stable")
+        ordered = observations.sort_values(STAMP_COLUMNS, kind="stable", na_position="first")
     current = ordered.drop_duplicates(list(key), keep="last")
     return current.sort_values(list(order), kind="stable").reset_index(drop=True)
 

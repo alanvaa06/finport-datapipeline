@@ -5,7 +5,8 @@ import pytest
 
 from data_pipeline.store.errors import CatalogError, LockHeldError
 from data_pipeline.store.model import Failure, Frequency, Observation, Outcome, SeriesData
-from data_pipeline.store.storage import Storage, latest
+from data_pipeline.store.periods import read_period
+from data_pipeline.store.storage import Storage, as_of, latest, to_moment
 from data_pipeline.store.sync import LOCK_FILE, NOT_RETURNED, SourceReport, SyncReport, sync, window_start
 
 from .helpers import NOW, FakeSource, client, entry, monthly
@@ -266,3 +267,70 @@ def test_a_name_declared_in_the_catalog_replaces_the_name_of_the_source(tmp_path
     source.answers["UNRATE"] = monthly(named, {"2026-05": 4.1})
     run(tmp_path, source, entries=[named])
     assert index_row(tmp_path)["name"] == "Unemployment rate, curated"
+
+
+def vintages(catalog_entry, versions):
+    """A monthly series whose source dates every version: [("2026-04", 4.0, "2026-05-08"), ...]."""
+    observations = tuple(
+        Observation(
+            *read_period(period, Frequency.MONTHLY),
+            value,
+            published_at=datetime.datetime.fromisoformat(published).replace(tzinfo=datetime.UTC),
+        )
+        for period, value, published in versions
+    )
+    return SeriesData(catalog_entry, catalog_entry.key, "Name", Frequency.MONTHLY, observations=observations)
+
+
+UNRATE_VINTAGES = [("2026-04", 4.0, "2026-05-08"), ("2026-04", 4.1, "2026-06-05"), ("2026-05", 4.2, "2026-06-05")]
+
+
+def test_every_dated_version_is_stored_and_read_as_of_its_publication(tmp_path):
+    source = FakeSource()
+    source.answers["UNRATE"] = vintages(UNRATE, UNRATE_VINTAGES)
+    report = run(tmp_path, source)
+    assert (report.sources[0].new, report.sources[0].revised) == (2, 1)
+    stored = Storage(tmp_path).read_observations("fake")
+    assert len(stored) == 3
+    assert stored_values(tmp_path) == {"2026-04": 4.1, "2026-05": 4.2}
+    known = as_of(stored, to_moment("2026-05-31"))
+    assert dict(zip(known["period"], known["value"], strict=True)) == {"2026-04": 4.0}
+
+
+def test_dated_versions_received_again_add_nothing(tmp_path):
+    source = FakeSource()
+    source.answers["UNRATE"] = vintages(UNRATE, UNRATE_VINTAGES)
+    run(tmp_path, source)
+    report = run(tmp_path, source, now=LATER)
+    assert (report.sources[0].new, report.sources[0].revised) == (0, 0)
+    assert len(Storage(tmp_path).read_observations("fake")) == 3
+
+
+def test_a_new_dated_version_is_a_revision(tmp_path):
+    source = FakeSource()
+    source.answers["UNRATE"] = vintages(UNRATE, UNRATE_VINTAGES)
+    run(tmp_path, source)
+    source.answers["UNRATE"] = vintages(UNRATE, [*UNRATE_VINTAGES, ("2026-05", 4.3, "2026-07-03")])
+    report = run(tmp_path, source, now=LATER)
+    assert (report.sources[0].new, report.sources[0].revised) == (0, 1)
+    assert stored_values(tmp_path) == {"2026-04": 4.1, "2026-05": 4.3}
+
+
+def test_a_dated_missing_value_received_again_adds_nothing(tmp_path):
+    source = FakeSource()
+    source.answers["UNRATE"] = vintages(UNRATE, [("2026-04", math.nan, "2026-05-08")])
+    run(tmp_path, source)
+    run(tmp_path, source, now=LATER)
+    assert len(Storage(tmp_path).read_observations("fake")) == 1
+
+
+def test_an_alias_that_moves_to_another_series_leaves_the_old_one(tmp_path):
+    source = FakeSource()
+    old, new = entry("OLD", alias="e_us_x"), entry("NEW", alias="e_us_x")
+    source.answers["OLD"] = monthly(old, {"2026-04": 1.0})
+    source.answers["NEW"] = monthly(new, {"2026-05": 2.0})
+    run(tmp_path, source, entries=[old])
+    run(tmp_path, source, entries=[new], now=LATER)
+    index = Storage(tmp_path).read_index().set_index("key")["alias"]
+    assert index["fake:NEW"] == "e_us_x"
+    assert index.isna()["fake:OLD"]
