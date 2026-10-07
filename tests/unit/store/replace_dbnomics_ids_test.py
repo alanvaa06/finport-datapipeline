@@ -134,11 +134,12 @@ def test_every_region_of_the_catalog_has_a_country_code(finder):
     assert finder.ISO3["MX"] == "MEX"
 
 
-def test_every_concept_on_dbnomics_but_industrial_production_has_a_template(finder):
+def test_every_concept_on_dbnomics_has_a_template(finder):
     text = (ROOT / "src/data_pipeline/store/catalogs/macro.yaml").read_text(encoding="utf-8")
     entries = finder.dbnomics_entries(text)
     concepts = {finder.concept_of(entry["alias"]) for entry in entries}
-    assert concepts - set(finder.FLOWS) == {"ind_prod"}
+    assert concepts - set(finder.FLOWS) == set()
+    assert finder.FLOWS["ind_prod"] == ("oecd", "DSD_STES@DF_INDSERV", ".{f}.PRVM.IX.BTE....")
 
 
 def test_rewrite_moves_accepted_series_and_annotates_the_rest_leaving_everything_else_alone(finder):
@@ -227,3 +228,108 @@ def test_rewrite_with_units_moves_the_scaled_series_and_records_the_factor(finde
     }
     assert finder.rewrite(rewritten, results, 1e-4, stamp="2026-10", units=True) == rewritten
     assert "replaced, other units" in finder.report(results, units=True)
+
+
+def test_publisher_calls_are_kept_on_disk_so_a_second_run_needs_no_network(finder, tmp_path, monkeypatch):
+    import httpx
+
+    monkeypatch.setattr(finder.time, "sleep", lambda _seconds: None)
+    body = b"""<?xml version="1.0"?>
+<message:StructureSpecificData xmlns:message="http://www.sdmx.org/resources/sdmxml/schemas/v2_1/message">
+<message:DataSet><Series COUNTRY="ARG" INDICATOR="XDC_USD" TYPE_OF_TRANSFORMATION="EOP_RT" FREQUENCY="M">
+<Obs TIME_PERIOD="2024-M01" OBS_VALUE="800.5"/></Series></message:DataSet></message:StructureSpecificData>"""
+    calls = []
+
+    def answer(request):
+        calls.append(request)
+        return httpx.Response(200, content=body)
+
+    with httpx.Client(transport=httpx.MockTransport(answer)) as client:
+        first = finder.Publishers(client, tmp_path).series("imf", "ER", "ARG...M", "2000")
+
+    def offline(_request):
+        msg = "offline"
+        raise httpx.ConnectError(msg)
+
+    with httpx.Client(transport=httpx.MockTransport(offline)) as client:
+        again = finder.Publishers(client, tmp_path).series("imf", "ER", "ARG...M", "2000")
+    assert len(calls) == 1
+    assert again == first == (200, {"ARG.XDC_USD.EOP_RT.M": {"2024-M01": 800.5}})
+
+
+def test_a_rebased_index_is_close_but_a_rescaled_level_is_not(finder):
+    reference = months([100.0 + i for i in range(30)])
+    rebased = months([(100.0 + i) * 0.8 for i in range(36)])
+    outcome = finder.compare(reference, rebased, "cpi")
+    assert (outcome["how"], outcome["median_gap"]) == ("rebased", pytest.approx(0.0, abs=1e-12))
+    assert finder.close(outcome)
+    assert not finder.accepted(outcome)
+    assert finder.accepted(outcome, near=True)
+    assert not finder.close(finder.compare(reference, rebased, "reserves"))
+
+
+def test_other_units_are_close_for_any_concept(finder):
+    reference = months([100.0 + i for i in range(30)])
+    outcome = finder.compare(reference, months([(100.0 + i) * 1e6 for i in range(36)]), "reserves")
+    assert (outcome["how"], finder.close(outcome)) == ("other units", True)
+
+
+def test_close_bounds_both_the_typical_and_the_worst_gaps(finder):
+    reference = months([100.0 + i for i in range(30)])
+    slightly = months([(100.0 + i) * (1 + finder.CLOSE_MEDIAN / 2) for i in range(36)])
+    outcome = finder.compare(reference, slightly, "consumer_confidence")
+    assert (outcome["how"], finder.close(outcome)) == ("same units", True)
+    typical = months([(100.0 + i) * (1 + finder.CLOSE_MEDIAN * 2) for i in range(36)])
+    assert not finder.close(finder.compare(reference, typical, "consumer_confidence"))
+    worst = months([(100.0 + i) * (1.5 if i % 3 == 0 else 1.0) for i in range(36)])
+    outcome = finder.compare(reference, worst, "consumer_confidence")
+    assert outcome["median_gap"] == 0.0
+    assert not finder.close(outcome)
+    assert not finder.close(finder.compare(reference, months([100.0 + i for i in range(30)]), "cpi"))  # not newer
+
+
+def test_a_rate_gap_is_measured_in_points_below_one(finder):
+    reference = months([0.10] * 30)
+    candidate = months([0.10 + finder.CLOSE_MEDIAN / 2] * 36)
+    assert finder.close(finder.compare(reference, candidate, "short_rate"))
+    assert not finder.close(finder.compare(reference, candidate, "reserves"))
+
+
+def test_best_prefers_a_close_candidate_to_a_far_one(finder):
+    reference = months([100.0 + i for i in range(30)])
+    candidates = {
+        "A.far": months([(100.0 + i) * (1.1 if i % 2 else 0.9) for i in range(36)]),
+        "B.rebased": months([(100.0 + i) * 0.5 for i in range(36)]),
+    }
+    key, outcome = finder.best(reference, candidates, "cpi")
+    assert (key, finder.close(outcome)) == ("B.rebased", True)
+
+
+def test_rewrite_with_close_moves_the_series_and_says_how_close_it_is(finder):
+    outcome = {"common": 120, "gap": 0.2, "newer": True, "last": "2026-M07", "ratio": 1.25}
+    outcome.update(how="rebased", factor=0.8, median_gap=0.002, p90_gap=0.01)
+    results = {
+        "e_ar_cpi": {"status": "candidate", "source": "imf", "id": "IMF.STA,CPI/ARG.CPI._T.IX.M", "outcome": outcome},
+    }
+    kept = {entry["alias"]: entry for entry in yaml.safe_load(finder.rewrite(CATALOG, results, 1e-4, stamp="2026-10"))}
+    assert kept["e_ar_cpi"]["source"] == "dbnomics"
+    rewritten = finder.rewrite(CATALOG, results, 1e-4, stamp="2026-10", near=True)
+    moved = {entry["alias"]: entry for entry in yaml.safe_load(rewritten)}["e_ar_cpi"]
+    assert (moved["source"], moved["id"]) == ("imf", "IMF.STA,CPI/ARG.CPI._T.IX.M")
+    assert moved["attrs"] == {
+        "region": "AR",
+        "commercial_ok": "restricted",
+        "close_match": (
+            "2026-10: rebased; relative gap to the mirror: median 2.0e-03, 90th percentile 1.0e-02 over 120 periods"
+        ),
+    }
+    assert finder.rewrite(rewritten, results, 1e-4, stamp="2026-10", near=True) == rewritten
+    assert "replaced, close" in finder.report(results, near=True)
+
+
+def test_a_concept_only_takes_candidates_of_its_own_index(finder):
+    assert finder.fits("hicp", "FRA.HICP._T.IX.M")
+    assert not finder.fits("hicp", "FRA.CPI._T.IX.M")
+    assert finder.fits("cpi", "FRA.CPI._T.IX.M")
+    assert not finder.fits("cpi", "FRA.HICP._T.IX.M")
+    assert finder.fits("reserves", "FRA.IRFCLDT1_IRFCL65_USD.S1X.M")
