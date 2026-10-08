@@ -376,3 +376,25 @@ def test_a_slow_run_keeps_what_it_downloaded_at_every_checkpoint(tmp_path):
     ticks = iter(range(0, 10_000, 61))
     sync(storage, entries, {"fake": source}, client(), NOW, monotonic=lambda: float(next(ticks)))
     assert storage.writes["observations"] == 3
+
+
+def test_a_dated_version_stored_as_a_projection_becomes_actual_when_its_period_closes(tmp_path):
+    source = FakeSource()
+    source.answers["UNRATE"] = vintages(UNRATE, [("2026-06", 4.3, "2026-06-05")])  # June still open on NOW
+    run(tmp_path, source)
+    assert bool(latest(Storage(tmp_path).read_observations("fake"))["projection"].iloc[0])
+    run(tmp_path, source, now=LATER)
+    current = latest(Storage(tmp_path).read_observations("fake"))
+    assert not bool(current["projection"].iloc[0])
+    assert index_row(tmp_path)["last_period"] == "2026-06"
+
+
+def test_a_version_repeated_with_a_later_date_adds_nothing(tmp_path):
+    source = FakeSource()
+    source.answers["UNRATE"] = vintages(UNRATE, [("2026-04", 4.0, "2026-05-08")])
+    run(tmp_path, source)
+    # FRED cuts a row at the start of the real-time period asked for: the same version, dated later
+    source.answers["UNRATE"] = vintages(UNRATE, [("2026-04", 4.0, "2026-05-20")])
+    report = run(tmp_path, source, now=LATER)
+    assert (report.sources[0].new, report.sources[0].revised) == (0, 0)
+    assert len(Storage(tmp_path).read_observations("fake")) == 1
