@@ -206,7 +206,8 @@ def test_sync_can_be_restricted(world):
     store.sync(keys=["fred:DGS10"])
     assert sorted(store.index()["key"]) == ["fred:DGS10"]
     assert server.requests == 3  # metadata, the vintages ALFRED does not keep, the observations
-    assert store.sync(sources=["bls"]).sources == ()
+    with pytest.raises(StoreError, match="no catalog entry has source 'bls'"):
+        store.sync(sources=["bls"])
 
 
 def test_add_with_an_unknown_source_fails_at_sync(world):

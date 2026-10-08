@@ -118,6 +118,13 @@ def test_a_damaged_store_file_is_a_configuration_error_that_names_it(workspace):
     assert "Traceback" not in result.output
 
 
+def test_an_unknown_source_exits_two_and_names_it(workspace):
+    root, _ = workspace
+    result = invoke("sync", "--root", str(root / "store"), "--source", "fredd")
+    assert result.exit_code == 2
+    assert result.output.splitlines() == ["[x]   no catalog entry has source 'fredd' (sources in the catalog: fred)"]
+
+
 def test_status_lists_each_series_and_exits_by_freshness(workspace):
     root, state = workspace
     invoke("sync", "--root", str(root / "store"))

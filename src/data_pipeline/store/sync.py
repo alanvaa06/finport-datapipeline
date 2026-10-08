@@ -24,7 +24,7 @@ from typing import Any
 import pandas as pd
 
 from data_pipeline.store.catalog import check_catalog
-from data_pipeline.store.errors import LockHeldError, QuotaExhaustedError
+from data_pipeline.store.errors import LockHeldError, QuotaExhaustedError, StoreError
 from data_pipeline.store.http import Client
 from data_pipeline.store.model import (
     CatalogEntry,
@@ -739,6 +739,31 @@ def _run_record(
     }
 
 
+def _check_selection(
+    entries: Sequence[CatalogEntry], only_sources: Collection[str], only_keys: Collection[str]
+) -> None:
+    """A source or key asked for that the catalog does not declare (a typo, say) is an error,
+    not a run that syncs nothing and reports success."""
+    declared = {entry.source for entry in entries}
+    unknown = sorted(set(only_sources) - declared)
+    if unknown:
+        names = ", ".join(repr(name) for name in unknown)
+        msg = f"no catalog entry has source {names} (sources in the catalog: {', '.join(sorted(declared)) or 'none'})"
+        raise StoreError(msg)
+    unknown = sorted(set(only_keys) - {entry.key for entry in entries})
+    if unknown:
+        msg = f"no catalog entry has key {', '.join(repr(key) for key in unknown)}"
+        raise StoreError(msg)
+    selected = [
+        entry
+        for entry in entries
+        if (not only_sources or entry.source in only_sources) and (not only_keys or entry.key in only_keys)
+    ]
+    if (only_sources or only_keys) and not selected:
+        msg = "the sources and keys asked for select no catalog entry together"
+        raise StoreError(msg)
+
+
 def _release_moved_aliases(index: dict[str, Row], entries: Sequence[CatalogEntry]) -> bool:
     """Take each alias the catalog gives to a series away from any other stored series that still
     has it (the catalog moved it, say from a mirror to the publisher). True when one was taken."""
@@ -768,6 +793,7 @@ def sync(
     `clock` stamps each batch with the time it arrived (by default, always `now`); `monotonic`
     times the checkpoints."""
     stamp = clock or (lambda: now)
+    _check_selection(entries, only_sources, only_keys)
     with lock(storage.root):
         storage.prepare()
         check_catalog(entries, sources)

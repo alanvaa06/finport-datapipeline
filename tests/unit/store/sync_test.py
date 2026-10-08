@@ -9,7 +9,7 @@ import time
 import pandas as pd
 import pytest
 
-from data_pipeline.store.errors import CatalogError, LockHeldError
+from data_pipeline.store.errors import CatalogError, LockHeldError, StoreError
 from data_pipeline.store.model import Failure, Frequency, Observation, Outcome, SeriesData
 from data_pipeline.store.periods import read_period
 from data_pipeline.store.storage import Storage, as_of, latest, to_moment
@@ -550,3 +550,26 @@ def test_a_series_whose_frequency_changes_fails_and_keeps_its_data(tmp_path):
     assert stored_values(tmp_path) == {"2026-01": 10.0, "2026-02": 11.0, "2026-03": 12.0}
     row = index_row(tmp_path)
     assert (row["status"], row["frequency"], row["last_period"]) == ("failed", "M", "2026-03")
+
+
+@pytest.mark.parametrize(
+    ("options", "message"),
+    [
+        ({"only_sources": ["fredd"]}, r"no catalog entry has source 'fredd' \(sources in the catalog: fake\)"),
+        ({"only_keys": ["fake:UNRAT", "fake:DGS10"]}, "no catalog entry has key 'fake:UNRAT'"),
+        ({"only_sources": ["fake"], "only_keys": ["other:X"]}, "no catalog entry has key 'other:X'"),
+    ],
+)
+def test_a_source_or_key_the_catalog_does_not_declare_is_an_error_not_an_empty_run(tmp_path, options, message):
+    source = FakeSource()
+    with pytest.raises(StoreError, match=message):
+        run(tmp_path, source, entries=[UNRATE, DGS10], **options)
+    assert source.seen == []
+    assert not (tmp_path / LOCK_FILE).exists()
+
+
+def test_sources_and_keys_that_select_nothing_together_are_an_error(tmp_path):
+    other = entry("X", source="other")
+    with pytest.raises(StoreError, match="select no catalog entry"):
+        sync(Storage(tmp_path), [UNRATE, other], {"fake": FakeSource(), "other": FakeSource("other")}, client(), NOW,
+             only_sources=["fake"], only_keys=["other:X"])
