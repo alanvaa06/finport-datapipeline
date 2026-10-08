@@ -1630,15 +1630,15 @@
   attrs:
     region: CH
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/M.CH.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/CHE.TBG_USD.G001.M
   alias: e_ch_trade_balance_goods
   name: Switzerland goods trade balance (USD)
   frequency: M
   attrs:
     region: CH
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.3e-06, 90th percentile 2.1e-02 over the last 10 years (113 of 785 common periods)"
 - source: imf
   id: IMF.STA,LS/CHE.U.PT.M
   alias: e_ch_unemployment
@@ -1794,15 +1794,15 @@
   attrs:
     region: CL
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.CL.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/CHL.MG.CIF_USD.A
   alias: e_cl_imports_goods
   name: Chile goods imports, CIF (USD)
   frequency: A
   attrs:
     region: CL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 3.2e-04, 90th percentile 6.4e-04 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/CHL
   alias: e_cl_imports_gs
@@ -2213,15 +2213,15 @@
   attrs:
     region: CO
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.CO.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/COL.XG.FOB_USD.A
   alias: e_co_exports_goods
   name: Colombia goods exports, FOB (USD)
   frequency: A
   attrs:
     region: CO
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.5e-03, 90th percentile 1.2e-02 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/COL
   alias: e_co_exports_gs
@@ -4017,15 +4017,15 @@
   attrs:
     region: FR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.FR.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/FRA.XG.FOB_USD.A
   alias: e_fr_exports_goods
   name: France goods exports, FOB (USD)
   frequency: A
   attrs:
     region: FR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 7.4e-03, 90th percentile 2.2e-02 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/FRA
   alias: e_fr_exports_gs
@@ -4090,15 +4090,15 @@
   attrs:
     region: FR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.FR.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/FRA.MG.CIF_USD.A
   alias: e_fr_imports_goods
   name: France goods imports, CIF (USD)
   frequency: A
   attrs:
     region: FR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.0e-03, 90th percentile 5.7e-03 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/FRA
   alias: e_fr_imports_gs
@@ -4290,15 +4290,15 @@
   attrs:
     region: GR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.GR.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/GRC.XG.FOB_USD.A
   alias: e_gr_exports_goods
   name: Greece goods exports, FOB (USD)
   frequency: A
   attrs:
     region: GR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 8.2e-04, 90th percentile 1.8e-03 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/GRC
   alias: e_gr_exports_gs
@@ -4355,15 +4355,15 @@
   attrs:
     region: GR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.GR.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/GRC.MG.CIF_USD.A
   alias: e_gr_imports_goods
   name: Greece goods imports, CIF (USD)
   frequency: A
   attrs:
     region: GR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.3e-03, 90th percentile 1.6e-02 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/GRC
   alias: e_gr_imports_gs
@@ -4512,15 +4512,15 @@
   attrs:
     region: HK
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.HK.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/HKG.XG.FOB_USD.A
   alias: e_hk_exports_goods
   name: Hong Kong goods exports, FOB (USD)
   frequency: A
   attrs:
     region: HK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 3.1e-03, 90th percentile 1.4e-02 over the last 10 years (10 of 76 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/HKG
   alias: e_hk_exports_gs
@@ -4577,15 +4577,15 @@
   attrs:
     region: HK
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.HK.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/HKG.MG.CIF_USD.A
   alias: e_hk_imports_goods
   name: Hong Kong goods imports, CIF (USD)
   frequency: A
   attrs:
     region: HK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.0e-03, 90th percentile 2.8e-03 over the last 10 years (10 of 76 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/HKG
   alias: e_hk_imports_gs
@@ -4744,15 +4744,15 @@
   attrs:
     region: HU
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.HU.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/HUN.XG.FOB_USD.A
   alias: e_hu_exports_goods
   name: Hungary goods exports, FOB (USD)
   frequency: A
   attrs:
     region: HU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 7.4e-05, 90th percentile 2.6e-02 over the last 10 years (10 of 63 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/HUN
   alias: e_hu_exports_gs
@@ -4809,15 +4809,15 @@
   attrs:
     region: HU
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.HU.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/HUN.MG.CIF_USD.A
   alias: e_hu_imports_goods
   name: Hungary goods imports, CIF (USD)
   frequency: A
   attrs:
     region: HU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 3.2e-04, 90th percentile 1.2e-02 over the last 10 years (10 of 63 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/HUN
   alias: e_hu_imports_gs
@@ -5000,15 +5000,15 @@
   attrs:
     region: ID
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.ID.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/IDN.XG.FOB_USD.A
   alias: e_id_exports_goods
   name: Indonesia goods exports, FOB (USD)
   frequency: A
   attrs:
     region: ID
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 7.0e-04, 90th percentile 6.8e-03 over the last 10 years (10 of 75 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/IDN
   alias: e_id_exports_gs
@@ -5065,15 +5065,15 @@
   attrs:
     region: ID
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.ID.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/IDN.MG.CIF_USD.A
   alias: e_id_imports_goods
   name: Indonesia goods imports, CIF (USD)
   frequency: A
   attrs:
     region: ID
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 8.3e-04, 90th percentile 7.3e-03 over the last 10 years (10 of 75 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/IDN
   alias: e_id_imports_gs
@@ -5538,15 +5538,15 @@
   attrs:
     region: IL
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.IL.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/ISR.MG.CIF_USD.A
   alias: e_il_imports_goods
   name: Israel goods imports, CIF (USD)
   frequency: A
   attrs:
     region: IL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.1e-03, 90th percentile 1.3e-02 over the last 10 years (10 of 76 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/ISR
   alias: e_il_imports_gs
@@ -5705,15 +5705,15 @@
   attrs:
     region: IN
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.IN.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/IND.XG.FOB_USD.A
   alias: e_in_exports_goods
   name: India goods exports, FOB (USD)
   frequency: A
   attrs:
     region: IN
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 3.0e-03, 90th percentile 1.0e-02 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/IND
   alias: e_in_exports_gs
@@ -6273,15 +6273,15 @@
   attrs:
     region: JP
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.JP.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/JPN.MG.CIF_USD.A
   alias: e_jp_imports_goods
   name: Japan goods imports, CIF (USD)
   frequency: A
   attrs:
     region: JP
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.4e-03, 90th percentile 3.2e-03 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/JPN
   alias: e_jp_imports_gs
@@ -6600,15 +6600,15 @@
   attrs:
     region: KR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/M.KR.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/KOR.TBG_USD.G001.M
   alias: e_kr_trade_balance_goods
   name: South Korea goods trade balance (USD)
   frequency: M
   attrs:
     region: KR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 0.0e+00, 90th percentile 1.9e-16 over the last 10 years (113 of 776 common periods)"
 - source: imf
   id: IMF.STA,LS/KOR.U.PT.M
   alias: e_kr_unemployment
@@ -6684,15 +6684,15 @@
   attrs:
     region: MX
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.MX.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/MEX.XG.FOB_USD.A
   alias: e_mx_exports_goods
   name: Mexico goods exports, FOB (USD)
   frequency: A
   attrs:
     region: MX
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.0e-05, 90th percentile 1.5e-05 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/MEX
   alias: e_mx_exports_gs
@@ -7214,15 +7214,15 @@
   attrs:
     region: NL
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.NL.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/NLD.MG.CIF_USD.A
   alias: e_nl_imports_goods
   name: Netherlands goods imports, CIF (USD)
   frequency: A
   attrs:
     region: NL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 6.5e-03, 90th percentile 7.7e-03 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/NLD
   alias: e_nl_imports_gs
@@ -7722,15 +7722,15 @@
   attrs:
     region: NZ
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.NZ.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/NZL.MG.CIF_USD.A
   alias: e_nz_imports_goods
   name: New Zealand goods imports, CIF (USD)
   frequency: A
   attrs:
     region: NZ
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 8.2e-03, 90th percentile 1.4e-02 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/NZL
   alias: e_nz_imports_gs
@@ -8272,15 +8272,15 @@
   attrs:
     region: PL
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.PL.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/POL.XG.FOB_USD.A
   alias: e_pl_exports_goods
   name: Poland goods exports, FOB (USD)
   frequency: A
   attrs:
     region: PL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 4.0e-03, 90th percentile 7.5e-03 over the last 10 years (10 of 63 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/POL
   alias: e_pl_exports_gs
@@ -8337,15 +8337,15 @@
   attrs:
     region: PL
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.PL.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/POL.MG.CIF_USD.A
   alias: e_pl_imports_goods
   name: Poland goods imports, CIF (USD)
   frequency: A
   attrs:
     region: PL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 4.7e-03, 90th percentile 7.5e-03 over the last 10 years (10 of 63 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/POL
   alias: e_pl_imports_gs
@@ -9243,15 +9243,15 @@
   attrs:
     region: SE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.SE.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/SWE.XG.FOB_USD.A
   alias: e_se_exports_goods
   name: Sweden goods exports, FOB (USD)
   frequency: A
   attrs:
     region: SE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 7.8e-03, 90th percentile 1.2e-02 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/SWE
   alias: e_se_exports_gs
@@ -9308,15 +9308,15 @@
   attrs:
     region: SE
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.SE.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/SWE.MG.CIF_USD.A
   alias: e_se_imports_goods
   name: Sweden goods imports, CIF (USD)
   frequency: A
   attrs:
     region: SE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 7.2e-04, 90th percentile 2.8e-03 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/SWE
   alias: e_se_imports_gs
@@ -10272,15 +10272,15 @@
   attrs:
     region: US
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.US.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/USA.XG.FOB_USD.A
   alias: e_us_exports_goods
   name: United States goods exports, FOB (USD)
   frequency: A
   attrs:
     region: US
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.1e-03, 90th percentile 2.0e-03 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/USA
   alias: e_us_exports_gs
@@ -10551,15 +10551,15 @@
   attrs:
     region: ZA
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.ZA.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/ZAF.XG.FOB_USD.A
   alias: e_za_exports_goods
   name: South Africa goods exports, FOB (USD)
   frequency: A
   attrs:
     region: ZA
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 5.9e-03, 90th percentile 1.5e-02 over the last 10 years (10 of 27 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/ZAF
   alias: e_za_exports_gs
@@ -10701,15 +10701,15 @@
   attrs:
     region: ZA
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/M.ZA.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/ZAF.TBG_USD.G001.M
   alias: e_za_trade_balance_goods
   name: South Africa goods trade balance (USD)
   frequency: M
   attrs:
     region: ZA
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 5.2e-07, 90th percentile 3.8e-05 over the last 10 years (113 of 329 common periods)"
 - source: dbnomics
   id: IMF/IFS/M.ZA.LUR_PT
   alias: e_za_unemployment
