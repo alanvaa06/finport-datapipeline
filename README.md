@@ -95,6 +95,8 @@ fetched it.
 - **FRED series kept in ALFRED** (most macro series, such as `UNRATE`, `GDP`, `CPIAUCSL`,
   `DGS10`): every vintage is stored with the day FRED published it, so `as_of` works back to
   ALFRED's first vintage, years before your first sync. `store.revisions(...)` lists each one.
+  FRED gives the day, not the hour, so a vintage counts as known from the end of that day (UTC):
+  `as_of="2026-10-02"` sees what came out that day, `as_of="2026-10-02T12:00Z"` does not.
 - **SEC XBRL facts:** each version is dated with the day the filing was received.
 - **Every other source,** and FRED series that ALFRED does not keep (such as `SP500`): the
   source does not say when a value was published, so the store dates it by its own fetch. On

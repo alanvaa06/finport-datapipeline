@@ -44,6 +44,7 @@ from data_pipeline.store.storage import (
     append_rows,
     append_versions,
     document_rows,
+    drop_repeated_versions,
     latest,
     records,
     table_frame,
@@ -160,11 +161,13 @@ def observation_rows(series: SeriesData, fetched_at: datetime.datetime, today: d
 
 
 def _append_observations(old: pd.DataFrame, new: pd.DataFrame) -> tuple[pd.DataFrame, int, int]:
-    """Store what changed. A row the source dated is one version of its period, kept once; a row
-    without a date replaces the period's latest value only when that value changed."""
+    """Store what changed. A row the source dated is one version of its period, kept once and
+    only when it says something new; a row without a date replaces the period's latest value only
+    when that value (or its projection flag) changed."""
     dated = new["published_at"].notna().to_numpy()
     merged, added, revised = append_changes(old, new[~dated])
-    merged, more, changed = append_versions(merged, new[dated], KEY, ["value"])
+    fresh = drop_repeated_versions(merged, new[dated])
+    merged, more, changed = append_versions(merged, fresh, KEY, ["value", "projection"])
     return merged, added + more, revised + changed
 
 

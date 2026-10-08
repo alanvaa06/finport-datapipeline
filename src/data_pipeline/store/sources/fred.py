@@ -6,7 +6,9 @@ Two calls per series: /series (title, units, frequency, seasonal adjustment) and
 Observations are asked for with every vintage (ALFRED): each version of a period comes with
 the day FRED first published it, `realtime_start`, so the store can read the series as it was
 known on any past day, before the store existed. Asked from `since`, the real-time period also
-starts at `since`: a period is never published before it begins.
+starts at `since`, which keeps a daily series under FRED's limit. A period published before it
+began (a projection) then comes back cut at `since`, dated later than it was known; the store
+drops such a row when it repeats the version it already holds.
 
 FRED serves at most MAX_VINTAGES vintage dates in one call. A series with more (a daily series
 asked for its whole history) is asked for in windows of real time, from /series/vintagedates;
@@ -75,8 +77,10 @@ def _same(before: float, after: float) -> bool:
 def read_observations(rows: Sequence[Row], frequency: Frequency, *, dated: bool) -> tuple[Observation, ...]:
     """Rows -> observations, oldest period first and, within a period, oldest version first.
 
-    With `dated`, each row is one version published on its `realtime_start`; a version whose
-    value repeats the one before it is dropped.
+    With `dated`, each row is one version published on its `realtime_start`, known from the end
+    of that day (UTC): FRED gives the day, not the hour, and a release comes out during the day, so
+    an earlier moment could see it before it was out. A version whose value repeats the one before
+    it is dropped.
     """
     observations = []
     for row in rows:
@@ -84,7 +88,7 @@ def read_observations(rows: Sequence[Row], frequency: Frequency, *, dated: bool)
         published = None
         if dated:
             day = datetime.date.fromisoformat(str(row["realtime_start"]))
-            published = datetime.datetime.combine(day, datetime.time(), datetime.UTC)
+            published = datetime.datetime.combine(day, datetime.time.max, datetime.UTC)
         observations.append(Observation(period, date, number(row["value"]), published_at=published))
     observations.sort(key=lambda item: (item.date, item.published_at or UNDATED))
     kept: list[Observation] = []

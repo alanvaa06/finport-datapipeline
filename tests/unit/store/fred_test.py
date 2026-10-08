@@ -53,11 +53,13 @@ def test_every_vintage_is_asked_for_and_dated_by_the_day_it_was_published():
     series = fetch(serve(seen), [Request(entry("UNRATE", "fred"))])[0].series[0]
     params = seen[1].url.params
     assert (params["realtime_start"], params["realtime_end"]) == ("1776-07-04", "9999-12-31")
+    # known by the end of the day FRED published it, never earlier: a release comes out during that day
+    end = datetime.time.max
     assert [observation.published_at for observation in series.observations] == [
-        datetime.datetime(2026, 4, 3, tzinfo=datetime.UTC),
-        datetime.datetime(2026, 5, 8, tzinfo=datetime.UTC),
-        datetime.datetime(2026, 6, 5, tzinfo=datetime.UTC),
-        datetime.datetime(2026, 7, 3, tzinfo=datetime.UTC),
+        datetime.datetime.combine(datetime.date(2026, 4, 3), end, datetime.UTC),
+        datetime.datetime.combine(datetime.date(2026, 5, 8), end, datetime.UTC),
+        datetime.datetime.combine(datetime.date(2026, 6, 5), end, datetime.UTC),
+        datetime.datetime.combine(datetime.date(2026, 7, 3), end, datetime.UTC),
     ]
 
 

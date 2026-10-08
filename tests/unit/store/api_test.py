@@ -298,6 +298,8 @@ def test_a_series_with_vintages_reads_as_it_was_published_before_the_first_sync(
     assert list(store.series("fred:UNRATE")["value"]) == [4.1, 4.2]
     assert list(store.series("fred:UNRATE", as_of="2026-05-31")["value"]) == [4.0]
     assert store.series("fred:UNRATE", as_of="2026-05-07").empty
+    assert list(store.series("fred:UNRATE", as_of="2026-06-05T12:00:00+00:00")["value"]) == [4.0]  # not out yet
+    assert list(store.series("fred:UNRATE", as_of="2026-06-05")["value"]) == [4.1, 4.2]
     history = store.revisions("fred:UNRATE")
     assert list(history["value"]) == [4.0, 4.1, 4.2]
     assert list(history["published_at"].dt.date.astype(str)) == ["2026-05-08", "2026-06-05", "2026-06-05"]

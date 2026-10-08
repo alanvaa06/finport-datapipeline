@@ -259,6 +259,28 @@ def append_versions(
     return merged, fresh_keys, len(to_append) - fresh_keys
 
 
+def drop_repeated_versions(old: pd.DataFrame, new: pd.DataFrame) -> pd.DataFrame:
+    """The dated series rows of `new` that say something the store did not already know then:
+    a row is dropped when the version of its period known at its `published_at` has the same
+    value and projection flag. A source that cuts a row at the start of the period asked for (FRED)
+    sends an old version again with a later date; that is not a revision."""
+    if old.empty or new.empty:
+        return new
+    known = old.assign(known_at=old["published_at"].fillna(old["fetched_at"]))
+    known = known.sort_values(["known_at", "fetched_at"], kind="stable")[[*KEY, "known_at", "value", "projection"]]
+    probe = new.reset_index(drop=True).assign(position=range(len(new))).sort_values("published_at", kind="stable")
+    joined = pd.merge_asof(
+        probe, known, left_on="published_at", right_on="known_at", by=KEY, suffixes=("", "_known")
+    )
+    before = joined["value_known"].to_numpy(dtype=float)
+    after = joined["value"].to_numpy(dtype=float)
+    same_value = (np.isnan(before) & np.isnan(after)) | np.isclose(before, after, rtol=TOLERANCE, atol=0.0)
+    flag = joined["projection_known"].astype("boolean").to_numpy(dtype=bool, na_value=False)
+    same = joined["known_at"].notna().to_numpy() & same_value & (flag == joined["projection"].astype(bool).to_numpy())
+    kept = sorted(joined.loc[~same, "position"])
+    return new.reset_index(drop=True).iloc[kept]
+
+
 def append_rows(
     old: pd.DataFrame,
     new: pd.DataFrame,
