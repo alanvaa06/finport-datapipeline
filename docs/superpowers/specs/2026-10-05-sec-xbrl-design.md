@@ -56,8 +56,8 @@ stays until the user deletes it.
 | `form` | attribute | Form of the filing that reported this version (`10-K`, `10-Q`, `20-F`, ...) |
 | `accession` | attribute | Accession number of that filing |
 | `filed` | attribute | Day the SEC received that filing |
-| `fiscal_year`, `fiscal_period` | attribute | The SEC's `fy` and `fp`, as given. They describe the filing, not the period the fact measures |
-| `frame` | attribute | The SEC's `frame` label, when it gives one |
+| `fiscal_year`, `fiscal_period` | attribute | The SEC's `fy` and `fp` of that filing, as given. They describe the filing, not the period the fact measures |
+| `frame` | attribute | The SEC's `frame` label, when any appearance of this version carries it |
 | `fetched_at`, `published_at` | | As for every stored row; `published_at` is `filed` at 00:00 UTC |
 
 ### Versions
@@ -65,7 +65,12 @@ stays until the user deletes it.
 The SEC lists one appearance of a fact per filing that reports it: the original and every later
 filing that repeats it as a comparative. For each fact the appearances are ordered by `filed`,
 then by accession. The first is a version; a later one is a version only when its value differs
-from the previous version (relative tolerance 1e-9). Repeats of the same value are dropped.
+from the previous version (relative tolerance 1e-9). Repeats of the same value are dropped,
+except for their `frame`: the SEC sets it on one appearance of a fact only, the latest filed,
+so a version takes it from whichever of its appearances carries it. The other attributes are
+those of the version's first appearance. A store synced before this change holds an empty
+`frame` on such versions until its table is deleted and synced again (attributes are never
+compared, so a sync does not rewrite them).
 
 A version is identified by its key columns and its `published_at`. A sync appends the versions
 that are not stored; no stored row is changed or deleted. A second sync right after a first adds

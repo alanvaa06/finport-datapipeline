@@ -9,6 +9,11 @@ appearance of a fact per filing that reports it, the original and every later fi
 repeats it as a comparative. Here a fact keeps its first appearance and each later one whose
 value differs from the version before it; every version is dated with the day the SEC received
 the filing. Nothing is mapped or derived: reading the concepts is the consumer's work.
+
+A version describes the filing that first reported it (form, accession, filed, fiscal year and
+period, which the SEC gives per filing), except for `frame`: the SEC sets it on one appearance
+of a fact only, the latest filed, which is often a comparative, so a version takes it from
+whichever of its appearances carries it.
 """
 
 import datetime
@@ -68,7 +73,8 @@ def versions(payload: Mapping[str, Any]) -> tuple[Row, ...]:
     """The versions of every fact of a company-facts answer, as table rows.
 
     Appearances of a fact are ordered by filing day, then accession number. The first is a
-    version; a later one is a version only when its value differs from the version before it.
+    version; a later one is a version only when its value differs from the version before it,
+    and otherwise only lends the version its `frame` when it carries one.
     """
     rows: list[Row] = []
     for taxonomy, concepts in (payload.get("facts") or {}).items():
@@ -76,32 +82,34 @@ def versions(payload: Mapping[str, Any]) -> tuple[Row, ...]:
             for unit, items in (node.get("units") or {}).items():
                 for (start, end), found in _appearances(items).items():
                     previous: float | None = None
+                    current: Row = {}
                     for item in sorted(found, key=lambda item: (str(item["filed"]), _text(item.get("accn")))):
                         value = float(item["val"])
                         if previous is not None and _same(previous, value):
+                            if item.get("frame"):
+                                current["frame"] = _text(item["frame"])
                             continue
                         previous = value
                         filed = datetime.date.fromisoformat(str(item["filed"]))
-                        rows.append(
-                            {
-                                "taxonomy": str(taxonomy),
-                                "concept": str(concept),
-                                "unit": str(unit),
-                                "start": start,
-                                "end": end,
-                                "date": datetime.date.fromisoformat(end),
-                                "value": value,
-                                "form": _text(item.get("form")),
-                                "accession": _text(item.get("accn")),
-                                "filed": filed.isoformat(),
-                                "fiscal_year": _text(item.get("fy")),
-                                "fiscal_period": _text(item.get("fp")),
-                                "frame": _text(item.get("frame")),
-                                # the SEC gives the day it received the filing, not the hour: known
-                                # from the end of that day, so no moment within it sees it early
-                                "published_at": datetime.datetime.combine(filed, datetime.time.max, datetime.UTC),
-                            }
-                        )
+                        current = {
+                            "taxonomy": str(taxonomy),
+                            "concept": str(concept),
+                            "unit": str(unit),
+                            "start": start,
+                            "end": end,
+                            "date": datetime.date.fromisoformat(end),
+                            "value": value,
+                            "form": _text(item.get("form")),
+                            "accession": _text(item.get("accn")),
+                            "filed": filed.isoformat(),
+                            "fiscal_year": _text(item.get("fy")),
+                            "fiscal_period": _text(item.get("fp")),
+                            "frame": _text(item.get("frame")),
+                            # the SEC gives the day it received the filing, not the hour: known
+                            # from the end of that day, so no moment within it sees it early
+                            "published_at": datetime.datetime.combine(filed, datetime.time.max, datetime.UTC),
+                        }
+                        rows.append(current)
     return tuple(rows)
 
 

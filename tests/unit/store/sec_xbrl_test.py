@@ -110,6 +110,27 @@ def test_a_value_restated_and_restated_back_is_three_versions():
     ]
 
 
+def test_a_version_takes_the_frame_from_whichever_of_its_appearances_carries_it():
+    # the SEC sets `frame` on one appearance of a fact, the latest filed, often a comparative
+    original = appearance(5601000000, "2009-10-27", "0001193125-09-214859", fy=2009, fp="FY")
+    comparative = appearance(5601000000, "2010-01-25", "0001193125-10-012085", form="10-Q", fy=2010, fp="Q1")
+    (row,) = versions(facts([original, {**comparative, "frame": "CY2009Q3I"}]))
+    assert row["frame"] == "CY2009Q3I"
+    # everything else describes the filing that first reported the version
+    assert (row["accession"], row["form"], row["fiscal_year"], row["fiscal_period"]) == (
+        "0001193125-09-214859",
+        "10-K",
+        "2009",
+        "FY",
+    )
+
+
+def test_a_frame_on_a_restatement_stays_with_the_restated_version():
+    framed = {**appearance(383000000000, "2026-10-30", "0000320193-26-000001"), "frame": "CY2023"}
+    rows = versions(facts([{**ORIGINAL, "frame": ""}, RESTATED, framed]))
+    assert [(row["filed"], row["frame"]) for row in rows] == [("2023-11-03", ""), ("2025-10-31", "CY2023")]
+
+
 def test_filings_of_the_same_day_are_ordered_by_accession():
     first = appearance(1.0, "2024-02-01", "0000320193-24-000001")
     amended = appearance(2.0, "2024-02-01", "0000320193-24-000002", form="10-K/A")
