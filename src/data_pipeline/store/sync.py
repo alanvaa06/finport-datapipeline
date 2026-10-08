@@ -315,7 +315,7 @@ def _ok_row(
         "units": series.units,
         "seasonal_adjustment": series.seasonal_adjustment,
         "stale_after_days": entry.stale_after_days,
-        "attrs": json.dumps(dict(entry.attrs), sort_keys=True),
+        "attrs": json.dumps({**series.attrs, **entry.attrs}, sort_keys=True),
         "first_fetched_at": first if first is not None and pd.notna(first) else now,
         "last_fetched_at": now,
         "last_period": last[0] if last else None,

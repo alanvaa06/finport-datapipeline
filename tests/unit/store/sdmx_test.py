@@ -174,6 +174,16 @@ def test_the_unit_is_the_first_unit_column_present_and_a_colon_is_a_missing_valu
     assert math.isnan(series.observations[0].value)
 
 
+def test_unit_mult_is_recorded_and_the_values_are_kept_as_published():
+    header = "REF_AREA,TIME_PERIOD,OBS_VALUE,UNIT_MULT"
+    series = read_csv(header + "\nMX,2025,1.5,6\nMX,2026,2.5,6\n", entry("ITG/MX.A", "imf"))
+    assert series.attrs == {"unit_mult": "6"}
+    assert [item.value for item in series.observations] == [1.5, 2.5]
+    mixed = read_csv(header + "\nMX,2025,1500,3\nMX,2026,2.5,6\n", entry("ITG/MX.A", "imf"))
+    assert mixed.attrs == {"unit_mult": "3,6"}
+    assert read_csv("REF_AREA,TIME_PERIOD,OBS_VALUE\nMX,2025,1\n", entry("ITG/MX.A", "imf")).attrs == {}
+
+
 @pytest.mark.parametrize(
     ("status", "outcome"), [(404, Outcome.NOT_FOUND), (400, Outcome.NOT_FOUND), (418, Outcome.SOURCE_ERROR)]
 )

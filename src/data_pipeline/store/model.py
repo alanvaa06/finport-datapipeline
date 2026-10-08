@@ -100,6 +100,7 @@ class SeriesData:
     seasonal_adjustment: str = ""
     country: str = ""
     observations: tuple[Observation, ...] = ()
+    attrs: Mapping[str, str] = dataclasses.field(default_factory=dict)  # added to the entry's in the index
 
 
 @dataclasses.dataclass(frozen=True, slots=True)

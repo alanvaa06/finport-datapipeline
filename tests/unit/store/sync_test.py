@@ -1,4 +1,6 @@
+import dataclasses
 import datetime
+import json
 import math
 import os
 import signal
@@ -65,6 +67,17 @@ def test_first_sync_asks_for_full_history_and_stores_it(tmp_path):
     assert (row["status"], row["name"], row["frequency"], row["units"]) == ("ok", "Name of UNRATE", "M", "Percent")
     assert row["last_period"] == "2026-05"
     assert row["first_fetched_at"] == row["last_fetched_at"]
+
+
+def test_the_attrs_a_source_gives_a_series_join_the_entrys_in_the_index(tmp_path):
+    source = FakeSource()
+    unrate = entry("UNRATE", attrs={"region": "US", "unit_mult": "from the catalog"})
+    gdp = entry("GDP")
+    source.answers["UNRATE"] = dataclasses.replace(monthly(unrate, {"2026-05": 4.1}), attrs={"unit_mult": "6"})
+    source.answers["GDP"] = dataclasses.replace(monthly(gdp, {"2026-05": 1.0}), attrs={"unit_mult": "6"})
+    run(tmp_path, source, entries=(unrate, gdp))
+    assert json.loads(index_row(tmp_path)["attrs"]) == {"region": "US", "unit_mult": "from the catalog"}
+    assert json.loads(index_row(tmp_path, "fake:GDP")["attrs"]) == {"unit_mult": "6"}
 
 
 def test_a_declared_start_is_used_on_the_first_sync(tmp_path):

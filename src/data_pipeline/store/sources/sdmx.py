@@ -10,7 +10,10 @@ A series id is `<flow>/<key>`, split at the first `/`:
 
 Every provider is asked for CSV and answers with the columns TIME_PERIOD and OBS_VALUE. The key
 of an id must select exactly one series: a key with an open dimension returns several and is
-refused. IMF WEO years after LATEST_ACTUAL_ANNUAL_DATA are projections.
+refused. IMF WEO years after LATEST_ACTUAL_ANNUAL_DATA are projections. UNIT_MULT, the power of
+ten the values are expressed in, is recorded in the index as `attrs.unit_mult` (several values
+joined by commas), so a series in millions and one in units show it; values are stored as
+published, never rescaled.
 
 Series of one flow that differ in a single position of the key (usually the country) are asked
 for in one call, with the values of that position joined by `+`:
@@ -194,6 +197,13 @@ def splitting_column(rows: Sequence[Row], values: Sequence[str]) -> str | None:
     return candidates[0][1]
 
 
+def unit_mult(rows: Sequence[Row]) -> dict[str, str]:
+    """`{"unit_mult": "6"}` when the rows carry UNIT_MULT (its distinct values joined by commas
+    when they differ), else nothing."""
+    found = sorted({(row.get("UNIT_MULT") or "").strip() for row in rows} - {""}, key=lambda text: (len(text), text))
+    return {"unit_mult": ",".join(found)} if found else {}
+
+
 def read_rows(rows: Sequence[Row], entry: CatalogEntry) -> SeriesData | Failure:
     """The one series these rows hold, or the failure they amount to."""
     if not rows:
@@ -218,6 +228,7 @@ def read_rows(rows: Sequence[Row], entry: CatalogEntry) -> SeriesData | Failure:
         frequency=frequency,
         units=next((first[column] for column in UNIT_COLUMNS if first.get(column)), ""),
         observations=tuple(sorted(observations.values(), key=lambda observation: observation.date)),
+        attrs=unit_mult(rows),
     )
 
 
