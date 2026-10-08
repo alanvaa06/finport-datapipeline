@@ -9,15 +9,14 @@
   attrs:
     region: AR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.AR.PCPI_IX
+- source: imf
+  id: IMF.STA,CPI/ARG.CPI._T.IX.M
   alias: e_ar_cpi
   name: Argentina CPI (all items, index)
   frequency: M
   attrs:
     region: AR
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
 - source: bis
   id: WS_TC/Q.AR.P.A.M.770.A
   alias: e_ar_credit_private
@@ -641,15 +640,14 @@
     region: AU
     commercial_ok: restricted
     close_match: "2026-10: other units; relative gap to the mirror: median 3.9e-04, 90th percentile 3.6e-02 over 305 periods"
-- source: dbnomics
-  id: IMF/IFS/M.AU.FITB_PA
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/AUS.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_au_short_rate
-  name: Australia short-term interest rate
+  name: "Australia short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: AU
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 2013-05)"
 - source: imf
   id: IMF.STA,IMTS/AUS.TBG_USD.G001.M
   alias: e_au_trade_balance_goods
@@ -1183,14 +1181,14 @@
     region: BR
     commercial_ok: 'yes'
 - source: oecd
-  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CAN.M.MABM.XDC._Z.Y._Z._Z.N
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CAN.M.MABM.IX._Z.Y._Z._Z.N
   alias: e_ca_broad_money
   name: Canada broad money M3 (index, SA)
   frequency: M
   attrs:
     region: CA
     commercial_ok: restricted
-    close_match: "2026-10: rebased; relative gap to the mirror: median 2.1e-03, 90th percentile 3.8e-03 over 404 periods"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 3.5e-07, 90th percentile 5.3e-03 over 644 periods"
 - source: imf
   id: IMF.RES,WEO/CAN.GGXCNL_NGDP.A
   alias: e_ca_budget_balance_gdp
@@ -1324,14 +1322,14 @@
     commercial_ok: restricted
     close_match: "2026-10: rebased; relative gap to the mirror: median 1.9e-03, 90th percentile 1.9e-02 over 406 periods"
 - source: oecd
-  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CAN.M.MANM.XDC._Z.Y._Z._Z.N
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CAN.M.MANM.IX._Z.Y._Z._Z.N
   alias: e_ca_m1
   name: Canada narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: CA
     commercial_ok: restricted
-    close_match: "2026-10: rebased; relative gap to the mirror: median 9.3e-16, 90th percentile 1.8e-03 over 404 periods"
+    close_match: "2026-10: same units; relative gap to the mirror: median 9.1e-08, 90th percentile 3.7e-04 over 824 periods"
 - source: bis
   id: WS_EER/M.N.B.CA
   alias: e_ca_neer
@@ -1374,15 +1372,14 @@
     region: CA
     commercial_ok: restricted
     close_match: "2026-10: other units; relative gap to the mirror: median 8.9e-06, 90th percentile 2.9e-03 over 295 periods"
-- source: dbnomics
-  id: IMF/IFS/M.CA.FITB_PA
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/CAN.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_ca_short_rate
-  name: Canada short-term interest rate
+  name: "Canada short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: CA
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 2017-04)"
 - source: imf
   id: IMF.STA,IMTS/CAN.TBG_USD.G001.M
   alias: e_ca_trade_balance_goods
@@ -1882,15 +1879,14 @@
     region: CL
     commercial_ok: restricted
     close_match: "2026-10: other units; relative gap to the mirror: median 3.7e-04, 90th percentile 4.0e-03 over 299 periods"
-- source: dbnomics
-  id: IMF/IFS/M.CL.FIMM_PA
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/CHL.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_cl_short_rate
-  name: Chile short-term interest rate
+  name: "Chile short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: CL
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 2025-05)"
 - source: imf
   id: IMF.STA,IMTS/CHL.TBG_USD.G001.M
   alias: e_cl_trade_balance_goods
@@ -2125,15 +2121,14 @@
     region: CN
     commercial_ok: restricted
     close_match: "2026-10: other units; relative gap to the mirror: median 9.8e-05, 90th percentile 1.9e-04 over 121 periods"
-- source: dbnomics
-  id: IMF/IFS/M.CN.FIDR_PA
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/CHN.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_cn_short_rate
-  name: China short-term interest rate
+  name: "China short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: CN
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
 - source: imf
   id: IMF.STA,IMTS/CHN.TBG_USD.G001.M
   alias: e_cn_trade_balance_goods
@@ -3598,14 +3593,15 @@
   attrs:
     region: EZ
     commercial_ok: 'yes'
-- source: eurostat
-  id: prc_hicp_midx/M.I15.CP00.EA
+- source: imf
+  id: IMF.STA,CPI/G163.HICP._T.IX.M
   alias: e_ez_hicp
   name: Euro-area HICP
   frequency: M
   attrs:
     region: EZ
-    commercial_ok: unverified
+    commercial_ok: restricted
+    close_match: "2026-10: replaces Eurostat's prc_hicp_midx (2015=100), which ends 2025-12; the IMF's index is 7.0e-04 to 9.4e-04 above it over 2025"
 - source: bis
   id: WS_SPP/Q.XM.N.628
   alias: e_ez_house_prices
@@ -5137,15 +5133,14 @@
     region: ID
     commercial_ok: restricted
     close_match: "2026-10: other units; relative gap to the mirror: median 4.5e-05, 90th percentile 1.5e-04 over 224 periods"
-- source: dbnomics
-  id: IMF/IFS/M.ID.FIMM_PA
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/IDN.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_id_short_rate
-  name: Indonesia short-term interest rate
+  name: "Indonesia short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: ID
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 2017-02)"
 - source: imf
   id: IMF.STA,IMTS/IDN.TBG_USD.G001.M
   alias: e_id_trade_balance_goods
@@ -5560,15 +5555,14 @@
   attrs:
     region: IL
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.IL.AIP_IX
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_INDSERV/ISR.M.PRVM.IX.BTE.N._Z._Z.N
   alias: e_il_ind_prod
   name: Israel industrial production (index)
   frequency: M
   attrs:
     region: IL
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/ISR.M.MANM.IX._Z.Y._Z._Z.N
   alias: e_il_m1
@@ -5628,15 +5622,14 @@
     region: IL
     commercial_ok: restricted
     close_match: "2026-10: other units; relative gap to the mirror: median 6.5e-04, 90th percentile 4.7e-03 over 227 periods"
-- source: dbnomics
-  id: IMF/IFS/M.IL.FITB_PA
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/ISR.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_il_short_rate
-  name: Israel short-term interest rate
+  name: "Israel short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: IL
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 2024-12)"
 - source: imf
   id: IMF.STA,IMTS/ISR.TBG_USD.G001.M
   alias: e_il_trade_balance_goods
@@ -5854,15 +5847,14 @@
     region: IN
     commercial_ok: restricted
     close_match: "2026-10: other units; relative gap to the mirror: median 9.4e-04, 90th percentile 3.3e-02 over 39 periods"
-- source: dbnomics
-  id: IMF/IFS/M.IN.FIMM_PA
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/IND.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_in_short_rate
-  name: India short-term interest rate
+  name: "India short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: IN
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
 - source: imf
   id: IMF.STA,IMTS/IND.TBG_USD.G001.M
   alias: e_in_trade_balance_goods
@@ -6159,14 +6151,14 @@
     region: IT
     commercial_ok: 'yes'
 - source: oecd
-  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/JPN.M.MABM.XDC._Z.Y._Z._Z.N
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/JPN.M.MABM.IX._Z.Y._Z._Z.N
   alias: e_jp_broad_money
   name: Japan broad money M3 (index, SA)
   frequency: M
   attrs:
     region: JP
     commercial_ok: restricted
-    close_match: "2026-10: rebased; relative gap to the mirror: median 6.6e-16, 90th percentile 8.3e-05 over 405 periods"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 4.5e-08, 90th percentile 3.7e-05 over 525 periods"
 - source: imf
   id: IMF.RES,WEO/JPN.GGXCNL_NGDP.A
   alias: e_jp_budget_balance_gdp
@@ -6308,14 +6300,14 @@
     commercial_ok: restricted
     close_match: "2026-10: rebased; relative gap to the mirror: median 1.9e-07, 90th percentile 2.0e-04 over 407 periods"
 - source: oecd
-  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/JPN.M.MANM.XDC._Z.Y._Z._Z.N
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/JPN.M.MANM.IX._Z.Y._Z._Z.N
   alias: e_jp_m1
   name: Japan narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: JP
     commercial_ok: restricted
-    close_match: "2026-10: rebased; relative gap to the mirror: median 3.9e-08, 90th percentile 1.3e-04 over 405 periods"
+    close_match: "2026-10: same units; relative gap to the mirror: median 7.3e-08, 90th percentile 3.8e-07 over 825 periods"
 - source: bis
   id: WS_EER/M.N.B.JP
   alias: e_jp_neer
@@ -6358,15 +6350,14 @@
     region: JP
     commercial_ok: restricted
     close_match: "2026-10: other units; relative gap to the mirror: median 1.3e-06, 90th percentile 9.8e-04 over 26 periods"
-- source: dbnomics
-  id: IMF/IFS/M.JP.FITB_PA
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/JPN.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_jp_short_rate
-  name: Japan short-term interest rate
+  name: "Japan short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: JP
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 2017-06)"
 - source: imf
   id: IMF.STA,IMTS/JPN.TBG_USD.G001.M
   alias: e_jp_trade_balance_goods
@@ -7041,15 +7032,14 @@
     region: MY
     commercial_ok: restricted
     close_match: "2026-10: other units; relative gap to the mirror: median 2.7e-04, 90th percentile 2.4e-03 over 304 periods"
-- source: dbnomics
-  id: IMF/IFS/M.MY.FITB_PA
+- source: imf
+  id: IMF.STA,MFS_IR/MYS.MMRT_RT_PT_A_PT.M
   alias: e_my_short_rate
-  name: Malaysia short-term interest rate
+  name: "Malaysia short-term interest rate: money-market rate (% p.a.)"
   frequency: M
   attrs:
     region: MY
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 2016-12)"
 - source: imf
   id: IMF.STA,IMTS/MYS.TBG_USD.G001.M
   alias: e_my_trade_balance_goods
@@ -8440,15 +8430,14 @@
   attrs:
     region: PL
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.PL.FITB_PA
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/POL.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_pl_short_rate
-  name: Poland short-term interest rate
+  name: "Poland short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: PL
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 2017-02)"
 - source: imf
   id: IMF.STA,IMTS/POL.TBG_USD.G001.M
   alias: e_pl_trade_balance_goods
@@ -9892,14 +9881,15 @@
   attrs:
     region: TR
     commercial_ok: 'yes'
-- source: eurostat
-  id: irt_lt_mcby_m/M.MCBY.UK
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/GBR.M.IRLT.PA._Z._Z._Z._Z.N
   alias: e_uk_10y
   name: United Kingdom 10Y govt bond yield
   frequency: M
   attrs:
     region: UK
-    commercial_ok: 'yes'
+    commercial_ok: restricted
+    close_match: "2026-10: replaces Eurostat's irt_lt_mcby_m UK, which ends 2025-04; gap to it: median 0.05, max 0.14 percentage points over 71 months"
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/GBR.M.MABM.IX._Z.Y._Z._Z.N
   alias: e_uk_broad_money
@@ -10117,15 +10107,14 @@
     region: UK
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
-- source: dbnomics
-  id: IMF/IFS/M.GB.FITB_PA
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/GBR.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_uk_short_rate
-  name: United Kingdom short-term interest rate
+  name: "United Kingdom short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: UK
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
 - source: imf
   id: IMF.STA,IMTS/GBR.TBG_USD.G001.M
   alias: e_uk_trade_balance_goods
@@ -10144,14 +10133,15 @@
     region: UK
     commercial_ok: restricted
     stale: "2026-10: publisher has nothing newer (last 2020-09)"
-- source: eurostat
-  id: une_rt_m/M.SA.TOTAL.PC_ACT.T.UK
+- source: oecd
+  id: OECD.SDD.TPS,DSD_LFS@DF_IALFS_UNE_M/GBR.UNE_LF_M.PT_LF_SUB._Z.Y._T.Y_GE15._Z.M
   alias: e_uk_unemployment_harmonised
   name: United Kingdom unemployment rate, harmonised SA (%)
   frequency: M
   attrs:
     region: UK
-    commercial_ok: 'yes'
+    commercial_ok: restricted
+    close_match: "2026-10: replaces Eurostat's une_rt_m UK, which ends 2020-09; gap to it: median 0.2, max 0.4 percentage points over 16 months"
 - source: worldbank
   id: SL.UEM.1524.ZS/GBR
   alias: e_uk_unemployment_youth
@@ -10209,14 +10199,14 @@
     region: US
     commercial_ok: 'no'
 - source: oecd
-  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/USA.M.MABM.XDC._Z.Y._Z._Z.N
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/USA.M.MABM.IX._Z.Y._Z._Z.N
   alias: e_us_broad_money
   name: United States broad money M3 (index, SA)
   frequency: M
   attrs:
     region: US
     commercial_ok: restricted
-    close_match: "2026-10: rebased; relative gap to the mirror: median 1.0e-03, 90th percentile 2.0e-03 over 405 periods"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 1.4e-04, 90th percentile 2.5e-03 over 777 periods"
 - source: imf
   id: IMF.RES,WEO/USA.GGXCNL_NGDP.A
   alias: e_us_budget_balance_gdp
@@ -10389,14 +10379,14 @@
     region: US
     commercial_ok: 'no'
 - source: oecd
-  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/USA.M.MANM.XDC._Z.Y._Z._Z.N
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/USA.M.MANM.IX._Z.Y._Z._Z.N
   alias: e_us_m1
   name: United States narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: US
     commercial_ok: restricted
-    close_match: "2026-10: rebased; relative gap to the mirror: median 1.2e-15, 90th percentile 6.2e-03 over 405 periods"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 8.3e-08, 90th percentile 4.0e-03 over 777 periods"
 - source: fred
   id: M2SL
   alias: e_us_m2
