@@ -75,7 +75,6 @@ INDEX_DTYPES: Mapping[str, str] = {
 }
 OBS_COLUMNS = list(OBS_DTYPES)
 INDEX_COLUMNS = list(INDEX_DTYPES)
-_DATE_ONLY_LENGTH = len("2026-06-15")
 
 
 def typed(rows: Sequence[Mapping[str, Any]], dtypes: Mapping[str, str]) -> pd.DataFrame:
@@ -103,15 +102,32 @@ def empty_index() -> pd.DataFrame:
     return typed([], INDEX_DTYPES)
 
 
+def _end_of(day: datetime.date) -> pd.Timestamp:
+    return pd.Timestamp(datetime.datetime.combine(day, datetime.time.max, tzinfo=datetime.UTC))
+
+
 def to_moment(value: str | datetime.date | datetime.datetime) -> pd.Timestamp:
-    """An as-of argument as a UTC instant. A date without a time means the end of that day."""
+    """An as-of argument as a UTC instant, by one rule.
+
+    A date without a time (a `datetime.date`, or ISO text such as "2026-06-15" or "20260615")
+    means the end of that day, UTC. A `datetime` (a pandas Timestamp too, even at midnight) or ISO
+    text with a time ("2026-06-15T08:00+02:00") is that instant, UTC when it has no zone. Any
+    other text ("2026/06/15", "2026-6-15") is a StoreError rather than a guess.
+    """
     if isinstance(value, datetime.datetime):
         moment = pd.Timestamp(value)
-    elif isinstance(value, datetime.date) or len(value) == _DATE_ONLY_LENGTH:
-        day = value if isinstance(value, datetime.date) else datetime.date.fromisoformat(value)
-        moment = pd.Timestamp(datetime.datetime.combine(day, datetime.time.max, tzinfo=datetime.UTC))
+    elif isinstance(value, datetime.date):
+        moment = _end_of(value)
     else:
-        moment = pd.Timestamp(value)
+        text = str(value).strip()
+        try:
+            moment = _end_of(datetime.date.fromisoformat(text))
+        except ValueError:
+            try:
+                moment = pd.Timestamp(datetime.datetime.fromisoformat(text))
+            except ValueError:
+                msg = f"as_of {value!r} is not a date: write it as 2026-06-15, or with a time as 2026-06-15T08:00Z"
+                raise StoreError(msg) from None
     return moment.tz_localize("UTC") if moment.tzinfo is None else moment.tz_convert("UTC")
 
 

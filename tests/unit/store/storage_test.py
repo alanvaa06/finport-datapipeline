@@ -255,3 +255,26 @@ def test_every_write_reaches_the_disk_before_it_replaces_the_file(tmp_path, monk
     storage.write_runs({"fred": {"ok": 1}})
     storage.write_document("sec_filings", "AAPL", "0001", "a.htm", b"<html></html>")
     assert events == ["fsync", "replace"] * 3
+
+
+@pytest.mark.parametrize("day", ["2026-06-15", "20260615", " 2026-06-15 ", datetime.date(2026, 6, 15)])
+def test_every_date_without_a_time_means_the_end_of_that_day(day):
+    assert to_moment(day) == pd.Timestamp("2026-06-15 23:59:59.999999", tz="UTC")
+
+
+@pytest.mark.parametrize(
+    ("moment", "expected"),
+    [
+        ("2026-06-15T08:00Z", "2026-06-15 08:00"),
+        ("2026-06-15 08:00", "2026-06-15 08:00"),
+        (pd.Timestamp("2026-06-15"), "2026-06-15 00:00"),  # a datetime is an instant, even at midnight
+    ],
+)
+def test_a_time_makes_it_that_instant(moment, expected):
+    assert to_moment(moment) == pd.Timestamp(expected, tz="UTC")
+
+
+@pytest.mark.parametrize("text", ["2026/06/15", "2026-6-15", "15-06-2026", "June 15", ""])
+def test_text_that_is_not_an_iso_date_is_refused(text):
+    with pytest.raises(StoreError, match="is not a date: write it as 2026-06-15"):
+        to_moment(text)

@@ -95,8 +95,13 @@ store.documents("sec_filings", "AAPL", form="10-K")  # the files on disk, with t
 ### Reading as of a past date
 
 `as_of` returns, for each period, the last value known by the end of that day. A value is known
-from the day its source published it, when the source says so; otherwise from the day the store
-fetched it.
+from the day its source published it, when the source says so; otherwise from the moment the
+store downloaded it.
+
+A date without a time (`"2026-06-15"`, `"20260615"` or a `datetime.date`) means the end of that
+day, UTC. With a time (`"2026-06-15T08:00Z"`), or as a `datetime` or pandas `Timestamp` (even at
+midnight), it is that instant, UTC when it has no zone. Other text, such as `"2026/06/15"`, is
+refused with an error (exit 2 for `show --as-of`).
 
 - **FRED series kept in ALFRED** (most macro series, such as `UNRATE`, `GDP`, `CPIAUCSL`,
   `DGS10`): every vintage is stored with the day FRED published it, so `as_of` works back to

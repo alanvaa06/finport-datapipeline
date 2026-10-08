@@ -161,6 +161,9 @@ def test_show_as_of_and_unknown_keys(workspace):
     invoke("sync", "--root", str(root / "store"))
     before = invoke("show", "fred:UNRATE", "--root", str(root / "store"), "--as-of", "2026-01-01")
     assert before.output.splitlines()[2:] == []
+    malformed = invoke("show", "fred:UNRATE", "--root", str(root / "store"), "--as-of", "2026/06/15")
+    assert malformed.exit_code == 2
+    assert "is not a date" in malformed.output
     unknown = invoke("show", "fred:NOPE", "--root", str(root / "store"))
     assert unknown.exit_code == 2
     assert unknown.output == "[x]   no stored series has key 'fred:NOPE'\n"
