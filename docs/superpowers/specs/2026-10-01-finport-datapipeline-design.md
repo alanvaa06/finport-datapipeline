@@ -201,7 +201,8 @@ Limits of as-of reads, stated plainly:
 `frequency`, `units`, `seasonal_adjustment`, `stale_after_days`, `attrs` (JSON text for
 source-specific metadata such as BLS program or NAICS code), `first_fetched_at`,
 `last_fetched_at`, `last_period`, `last_date` (the last day of the last real observation, used
-for freshness), `status` (`ok` or `failed`) and `reason`.
+for freshness), `status` (`ok` or `failed`), `reason` and `asked_from` (the earliest date a
+download of the series asked for; empty for its whole history).
 
 A failed series keeps its previous data and its row records the reason.
 
@@ -334,6 +335,7 @@ One command. `sync()` decides per entry:
 |---|---|
 | Never downloaded | Full history, or from `start` if declared |
 | Already downloaded | From the last stored real period minus the revision window |
+| Already downloaded, `start` now earlier than `asked_from` (or removed) | From `start` (or the full history) |
 
 Revision windows: daily 30 days, weekly 13 weeks, monthly 24 months, quarterly 36 months,
 annual 60 months.

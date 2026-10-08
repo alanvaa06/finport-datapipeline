@@ -1,7 +1,8 @@
 """Sync: download what the catalog declares and store what changed.
 
 An entry never downloaded is asked for its full history (or from its `start`). An entry already
-stored is asked from its last real period minus a revision window. What a source of series
+stored is asked from its last real period minus a revision window, or again from its `start` (or
+for its full history) when the catalog now wants more than was asked. What a source of series
 yields is stored at checkpoints (every FLUSH_SECONDS, at the end of the source, and when the run
 is interrupted), so an interrupted run keeps what it already downloaded. A series that fails
 keeps its previous data; the failure is recorded in the index. A source that breaks (a bug, a
@@ -36,7 +37,7 @@ from data_pipeline.store.model import (
     SeriesData,
     TableData,
 )
-from data_pipeline.store.sources.base import Source
+from data_pipeline.store.sources.base import Source, clock_of_sync
 from data_pipeline.store.storage import (
     INDEX_DTYPES,
     KEY,
@@ -272,12 +273,35 @@ def _frequency_change(series: SeriesData, previous: Row | None) -> str:
 
 
 def _since(entry: CatalogEntry, row: Row | None, last: LastReal | None) -> datetime.date | None:
+    """The first date to ask for: the entry's start (None: the whole history) on a first download,
+    or when the catalog now wants history from before what was asked; else the revision window."""
     if row is None or last is None or not row.get("frequency"):
+        return entry.start
+    asked = row.get("asked_from")
+    if asked is not None and pd.notna(asked) and (entry.start is None or entry.start < pd.Timestamp(asked).date()):
         return entry.start
     return window_start(last[1], Frequency(str(row["frequency"])))
 
 
-def _ok_row(series: SeriesData, previous: Row | None, last: LastReal | None, now: datetime.datetime) -> Row:
+def _asked_from(previous: Row | None, since: datetime.date | None) -> pd.Timestamp | None:
+    """The earliest date asked for a series once a download asked from `since` (None: the whole
+    history, as is a series downloaded before this was recorded)."""
+    downloaded = previous is not None and pd.notna(previous.get("first_fetched_at"))
+    held = previous.get("asked_from") if previous is not None else None
+    if since is None or (downloaded and (held is None or pd.isna(held))):
+        return None
+    if not downloaded:
+        return pd.Timestamp(since)
+    return min(pd.Timestamp(held), pd.Timestamp(since))
+
+
+def _ok_row(
+    series: SeriesData,
+    previous: Row | None,
+    last: LastReal | None,
+    now: datetime.datetime,
+    since: datetime.date | None = None,
+) -> Row:
     entry = series.entry
     first = previous.get("first_fetched_at") if previous else None
     return {
@@ -299,6 +323,7 @@ def _ok_row(series: SeriesData, previous: Row | None, last: LastReal | None, now
         "status": STATUS_OK,
         "reason": "",
         "kind": KIND_SERIES,
+        "asked_from": _asked_from(previous, since),
     }
 
 
@@ -324,6 +349,7 @@ def _failed_row(entry: CatalogEntry, previous: Row | None, reason: str, kind: st
         "status": STATUS_FAILED,
         "reason": reason,
         "kind": kind,
+        "asked_from": None,
     }
 
 
@@ -566,6 +592,7 @@ class _Checkpoints:
     observations: pd.DataFrame
     clock: Clock
     monotonic: Callable[[], float]
+    since: Mapping[str, datetime.date | None] = dataclasses.field(default_factory=dict)  # per key, as asked
     rows: list[Row] = dataclasses.field(default_factory=list)
     series: list[tuple[SeriesData, datetime.datetime]] = dataclasses.field(default_factory=list)
     changed_index: bool = False
@@ -601,7 +628,9 @@ class _Checkpoints:
         if self.series:
             known = last_real(self.observations, self.clock().date())
             for item, received_at in self.series:
-                self.index[item.key] = _ok_row(item, self.index.get(item.key), known.get(item.key), received_at)
+                previous = self.index.get(item.key)
+                since = self.since.get(item.key)
+                self.index[item.key] = _ok_row(item, previous, known.get(item.key), received_at, since)
         if self.series or self.changed_index:
             self.storage.write_index(typed(list(self.index.values()), INDEX_DTYPES))
         self.rows, self.series, self.changed_index = [], [], False
@@ -637,7 +666,8 @@ def _sync_source(
     done: set[str] = set()
     failed: list[tuple[str, str]] = []
     ok = 0
-    checkpoints = _Checkpoints(storage, name, index, observations, clock, monotonic)
+    since = {request.entry.key: request.since for request in requests}
+    checkpoints = _Checkpoints(storage, name, index, observations, clock, monotonic, since)
     stopped = ""
     quota = remaining is not None and remaining <= 0
     if not quota:
@@ -794,14 +824,13 @@ def sync(
     times the checkpoints."""
     stamp = clock or (lambda: now)
     _check_selection(entries, only_sources, only_keys)
-    with lock(storage.root):
+    with lock(storage.root), clock_of_sync(stamp):
         storage.prepare()
         check_catalog(entries, sources)
         index: dict[str, Row] = {str(row["key"]): row for row in records(storage.read_index())}
         if _release_moved_aliases(index, entries):
             storage.write_index(typed(list(index.values()), INDEX_DTYPES))
         runs = storage.read_runs()
-        today = now.date()
         reports = []
         for name in sorted({entry.source for entry in entries}):
             if only_sources and name not in only_sources:
@@ -809,6 +838,7 @@ def sync(
             wanted = [entry for entry in entries if entry.source == name and (not only_keys or entry.key in only_keys)]
             if not wanted:
                 continue
+            today = stamp().date()  # each source's budget day, by the clock when it starts
             spent = _calls_today(runs.get(name), today)
             calls_before = client.calls.get(name, 0)
             before = {entry.key: index.get(entry.key) for entry in wanted}
@@ -822,7 +852,10 @@ def sync(
                 report = _broken_source(sources[name], wanted, index, before, _stopped(exc, client), calls)
                 storage.write_index(typed(list(index.values()), INDEX_DTYPES))
             finally:  # also when the run is interrupted: the calls spent today are never forgotten
-                budget = {"day": today.isoformat(), "calls": spent + client.calls.get(name, 0) - calls_before}
+                # Calls of a source that crossed midnight count on the new day, all of them: never fewer.
+                day = stamp().date()
+                calls = client.calls.get(name, 0) - calls_before
+                budget = {"day": day.isoformat(), "calls": (spent if day == today else 0) + calls}
                 runs[name] = _run_record(runs.get(name), report, now, budget)
                 storage.write_runs(runs)
             reports.append(report)

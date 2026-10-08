@@ -12,6 +12,7 @@ import pytest
 from data_pipeline.store.errors import CatalogError, LockHeldError, StoreError
 from data_pipeline.store.model import Failure, Frequency, Observation, Outcome, SeriesData
 from data_pipeline.store.periods import read_period
+from data_pipeline.store.sources.base import utc_today
 from data_pipeline.store.storage import Storage, as_of, latest, to_moment
 from data_pipeline.store.sync import LOCK_FILE, NOT_RETURNED, SourceReport, SyncReport, lock, sync, window_start
 
@@ -573,3 +574,51 @@ def test_sources_and_keys_that_select_nothing_together_are_an_error(tmp_path):
     with pytest.raises(StoreError, match="select no catalog entry"):
         sync(Storage(tmp_path), [UNRATE, other], {"fake": FakeSource(), "other": FakeSource("other")}, client(), NOW,
              only_sources=["fake"], only_keys=["other:X"])
+
+
+def test_a_start_moved_earlier_asks_for_the_history_before_what_was_asked(tmp_path):
+    source = FakeSource()
+    source.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
+    run(tmp_path, source, entries=[entry("UNRATE", start=datetime.date(2020, 1, 1))])
+    run(tmp_path, source, entries=[entry("UNRATE", start=datetime.date(1990, 1, 1))], now=LATER)
+    run(tmp_path, source, entries=[entry("UNRATE", start=datetime.date(1990, 1, 1))], now=LATER)
+    run(tmp_path, source, entries=[UNRATE], now=LATER)  # no start: the whole history
+    run(tmp_path, source, entries=[UNRATE], now=LATER)
+    assert [request.since for request in source.seen] == [
+        datetime.date(2020, 1, 1),
+        datetime.date(1990, 1, 1),
+        datetime.date(2024, 5, 1),
+        None,
+        datetime.date(2024, 5, 1),
+    ]
+
+
+def test_sources_read_today_from_the_clock_of_the_sync(tmp_path):
+    seen = []
+
+    class Dated(FakeSource):
+        def fetch(self, requests):
+            seen.append(utc_today())
+            yield from super().fetch(requests)
+
+    later = datetime.datetime(2031, 1, 2, 3, 0, tzinfo=datetime.UTC)
+    run(tmp_path, Dated(), now=later, clock=lambda: later)
+    assert seen == [datetime.date(2031, 1, 2)]
+    assert utc_today() != datetime.date(2031, 1, 2)  # outside a sync: the system's clock
+
+
+def test_the_budget_day_follows_the_clock_not_the_start_of_the_run(tmp_path):
+    http = client()
+    first, second = FakeSource(daily_budget=5, client=http), FakeSource("other", daily_budget=5, client=http)
+    wanted = entry("X", source="other")
+    first.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
+    second.answers["X"] = monthly(wanted, {"2026-05": 1.0})
+    late = NOW.replace(hour=23, minute=30)
+
+    def clock():  # every request takes an hour: the first one ends after midnight UTC
+        return late + datetime.timedelta(hours=len(first.seen) + len(second.seen))
+
+    sync(Storage(tmp_path), [UNRATE, wanted], {"fake": first, "other": second}, http, late, clock=clock)
+    runs = Storage(tmp_path).read_runs()
+    assert runs["fake"]["budget"] == {"day": "2026-06-07", "calls": 1}
+    assert runs["other"]["budget"] == {"day": "2026-06-07", "calls": 1}

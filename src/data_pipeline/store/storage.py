@@ -72,6 +72,7 @@ INDEX_DTYPES: Mapping[str, str] = {
     "status": "object",
     "reason": "object",
     "kind": "object",
+    "asked_from": DAY,  # the earliest date a download of the series asked for; empty: its whole history
 }
 OBS_COLUMNS = list(OBS_DTYPES)
 INDEX_COLUMNS = list(INDEX_DTYPES)
@@ -466,6 +467,8 @@ class Storage:
         if "kind" not in frame.columns:  # a store written before tables existed
             frame["kind"] = KIND_SERIES
         frame["kind"] = frame["kind"].fillna(KIND_SERIES)
+        if "asked_from" not in frame.columns:  # a store written before it was recorded: as if the whole history
+            frame["asked_from"] = pd.Series(pd.NaT, index=frame.index, dtype=DAY)
         return frame
 
     def table_path(self, source: str, name: str) -> pathlib.Path:
