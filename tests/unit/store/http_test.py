@@ -28,7 +28,7 @@ def test_retries_then_succeeds():
     response = client.get("fred", "https://example.test/x", per_minute=6_000_000)
     assert response.text == "ok"
     assert [wait for wait in waits if wait >= 2.0] == [2.0, 4.0]
-    assert client.calls == {"fred": 3}
+    assert client.calls == {"fred": 2}  # the retry after the 429 is the same request
     assert client.throttled == {"fred": 1}
 
 
@@ -178,3 +178,36 @@ def test_a_redirect_to_another_host_or_to_plain_http_is_refused_without_sending_
     assert [request.url.host for request in seen] == ["api.example.test"]
     assert "s3cr3t" not in str(raised.value)
     assert client.calls == {"bls": 1}
+
+
+def test_a_429_waits_as_long_as_retry_after_asks_and_its_retries_are_not_more_calls():
+    answers = iter([httpx.Response(429, headers={"Retry-After": "5"}), httpx.Response(429), httpx.Response(200)])
+    waits = []
+    transport = httpx.MockTransport(lambda _request: next(answers))
+    client = Client(transport=transport, sleep=waits.append, clock=lambda: 0.0)
+    assert client.get("oecd", "https://example.test/x", per_minute=6_000_000).status_code == 200
+    assert [wait for wait in waits if wait >= 2.0] == [5.0, 4.0]
+    assert client.calls == {"oecd": 1}  # one request, asked again because the source said "later"
+    assert client.throttled == {"oecd": 2}
+
+
+@pytest.mark.parametrize("later", ["3600", "Wed, 21 Oct 2099 07:28:00 GMT"])
+def test_a_429_that_asks_for_a_long_wait_stops_at_once(later):
+    waits = []
+    client = Client(
+        transport=httpx.MockTransport(lambda _request: httpx.Response(429, headers={"Retry-After": later})),
+        sleep=waits.append,
+    )
+    with pytest.raises(RateLimitedError, match=r"HTTP 429, asked to wait \d+ s"):
+        client.get("oecd", "https://example.test/x")
+    assert client.throttled == {"oecd": 1}
+    assert [wait for wait in waits if wait >= 2.0] == []
+
+
+def test_a_retry_after_date_in_the_past_retries_without_waiting():
+    answers = iter([httpx.Response(503, headers={"Retry-After": "Wed, 21 Oct 2015 07:28:00 GMT"}), httpx.Response(200)])
+    waits = []
+    transport = httpx.MockTransport(lambda _request: next(answers))
+    client = Client(transport=transport, sleep=waits.append, clock=lambda: 0.0)
+    assert client.get("ecb", "https://example.test/x", per_minute=6_000_000).status_code == 200
+    assert [wait for wait in waits if wait >= 1.0] == []

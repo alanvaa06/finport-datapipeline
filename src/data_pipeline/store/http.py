@@ -1,5 +1,6 @@
 """The one HTTP client of the store: per-source pacing, retries on 429/5xx and network errors
-(waits 2, 4, 8 s), and secrets scrubbed from every message it raises and from the log lines
+(waits 2, 4, 8 s, or what the answer's Retry-After asks for, up to RETRY_AFTER_LIMIT; a longer
+wait ends the request at once), and secrets scrubbed from every message it raises and from the log lines
 httpx and httpcore write (a key sent as a query parameter would otherwise show up at INFO level,
 and in a redirect's Location at DEBUG level).
 
@@ -9,6 +10,8 @@ refused before anything is sent to it, because the request carries the source's 
 header, the URL or a POST body).
 """
 
+import datetime
+import email.utils
 import logging
 import time
 import types
@@ -27,6 +30,22 @@ DEFAULT_PER_MINUTE = 30
 USER_AGENT = "finport-datapipeline (public data store)"
 HIDDEN = "***"
 MAX_REDIRECTS = 5
+RETRY_AFTER_LIMIT = 60.0  # seconds: a source asking for a longer wait is not asked again in this run
+
+
+def retry_after(response: httpx.Response) -> float | None:
+    """The seconds an answer asks to wait before the next request (its Retry-After, in seconds or
+    as an HTTP date), or None when it does not say."""
+    value = response.headers.get("Retry-After", "").strip()
+    if value.isdigit():
+        return float(value)
+    try:
+        moment = email.utils.parsedate_to_datetime(value)
+    except (TypeError, ValueError):
+        return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=datetime.UTC)
+    return max(0.0, (moment - datetime.datetime.now(datetime.UTC)).total_seconds())
 
 
 def scrub(text: str, secrets: Sequence[str]) -> str:
@@ -89,6 +108,9 @@ class Client:
         self._clock = clock
         self._retries = retries
         self._last: dict[str, float] = {}
+        # Requests made per source, what a daily budget counts. A request asked again after a 429
+        # is still one request: the source refused to serve it, and counting each attempt would
+        # spend the budget on refusals.
         self.calls: dict[str, int] = {}
         self.throttled: dict[str, int] = {}
         self._scrubber = _Scrubber(self._secrets)
@@ -141,9 +163,13 @@ class Client:
     ) -> httpx.Response:
         reason = ""
         limited = False
+        attempts = 0
         for attempt in range(self._retries + 1):
             self._wait_turn(source, per_minute)
-            self.calls[source] = self.calls.get(source, 0) + 1
+            if not limited:  # the retry of a refused (429) request is not another call
+                self.calls[source] = self.calls.get(source, 0) + 1
+            attempts += 1
+            wait = None
             try:
                 request = self._http.build_request(method, url, params=params, headers=headers, json=body)
                 response = self._send(source, request)
@@ -157,9 +183,13 @@ class Client:
                     self.throttled[source] = self.throttled.get(source, 0) + 1
                 reason = f"HTTP {response.status_code}"
                 limited = response.status_code == TOO_MANY_REQUESTS
+                wait = retry_after(response)
+                if wait is not None and wait > RETRY_AFTER_LIMIT:
+                    reason += f", asked to wait {wait:.0f} s"
+                    break
             if attempt < self._retries:
-                self._sleep(2.0 ** (attempt + 1))
-        msg = self.scrub(f"{source}: {reason} after {self._retries + 1} attempts")
+                self._sleep(wait if wait is not None else 2.0 ** (attempt + 1))
+        msg = self.scrub(f"{source}: {reason} after {attempts} attempt{'s' if attempts > 1 else ''}")
         if limited:
             raise RateLimitedError(msg) from None
         raise NetworkError(msg) from None
