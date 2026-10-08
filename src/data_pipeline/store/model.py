@@ -69,13 +69,15 @@ class Request:
     """A catalog entry plus what the store already has of it.
 
     For a series: `since`, the first date to ask for (`None` means full history).
-    For a table: `held`, the (frequency, period) pairs already stored.
+    For a table: `held`, the (frequency, period) pairs already stored, each followed by its values
+    in the columns the source names in its optional `held_by` attribute (Comtrade: partner, flow
+    and level), so that a source can tell what one partner holds from what another does.
     For documents: `groups`, the names of the documents already stored.
     """
 
     entry: CatalogEntry
     since: datetime.date | None = None
-    held: frozenset[tuple[str, str]] = frozenset()
+    held: frozenset[tuple[str, ...]] = frozenset()
     groups: frozenset[str] = frozenset()
 
 

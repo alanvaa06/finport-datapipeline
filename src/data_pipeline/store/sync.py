@@ -353,11 +353,13 @@ def _failed_row(entry: CatalogEntry, previous: Row | None, reason: str, kind: st
     }
 
 
-def held_periods(table: pd.DataFrame) -> frozenset[tuple[str, str]]:
-    """The (frequency, period) pairs a stored table holds, whatever their version."""
+def held_periods(table: pd.DataFrame, by: Sequence[str] = ()) -> frozenset[tuple[str, ...]]:
+    """The (frequency, period) pairs a stored table holds, whatever their version, each followed
+    by its values in the columns `by` ("" for a missing value or a column the table lacks)."""
     if table.empty or "frequency" not in table.columns or "period" not in table.columns:
         return frozenset()
-    return frozenset(zip(table["frequency"].astype(str), table["period"].astype(str), strict=True))
+    distinct = table.reindex(columns=["frequency", "period", *by]).drop_duplicates().fillna("").astype(str)
+    return frozenset(distinct.itertuples(index=False, name=None))
 
 
 def _table_row(table: TableData, previous: Row | None, stored: pd.DataFrame, now: datetime.datetime) -> Row:
@@ -411,8 +413,9 @@ def _sync_tables(
 ) -> SourceReport:
     """Sync a source of kind table. There is no `since`: each request carries what is stored."""
     name = source.name
+    by: Sequence[str] = getattr(source, "held_by", ())  # columns a source tells its stored rows apart by
     requests = [
-        Request(entry, held=frozenset() if full else held_periods(storage.read_table(name, entry.source_id)))
+        Request(entry, held=frozenset() if full else held_periods(storage.read_table(name, entry.source_id), by))
         for entry in wanted
     ]
     calls_before = client.calls.get(name, 0)

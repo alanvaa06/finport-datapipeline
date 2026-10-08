@@ -10,6 +10,7 @@ from data_pipeline.store.api import Store
 from data_pipeline.store.cli import cli
 from data_pipeline.store.errors import StoreError, UnknownSeriesError
 from data_pipeline.store.sources.comtrade import Comtrade
+from data_pipeline.store.storage import Storage
 
 from .helpers import NOT_IN_ALFRED, NOW
 
@@ -99,9 +100,18 @@ def test_sync_stores_a_table_per_reporter(store, services):
 def test_table_returns_the_key_columns_the_date_and_the_values(store):
     table = store.table("comtrade", "MEX")
     assert list(table.columns) == [
-        "reporter", "partner", "flow", "product", "frequency", "period", "date", "value_usd", "weight_kg",
+        "reporter", "partner", "flow", "product", "frequency", "period", "date", "value_usd", "weight_kg", "level",
     ]  # fmt: skip
     assert list(table["period"]) == ["2024", "2024", "2025", "2026-04", "2026-05"]
+
+
+def test_a_table_written_before_a_column_existed_reads_it_as_missing(store, tmp_path):
+    storage = Storage(tmp_path / "store")
+    older = storage.read_table("comtrade", "USA").drop(columns="level")  # as stored before `level` existed
+    older.to_parquet(storage.table_path("comtrade", "USA"))
+    both = store.table("comtrade")
+    assert list(both["level"].isna()) == [False] * 5 + [True]
+    assert list(store.table("comtrade", level="AG2")["reporter"].unique()) == ["MEX"]
 
 
 def test_filters_keep_the_rows_whose_column_equals_the_value(store):
@@ -169,8 +179,8 @@ def test_show_prints_the_citation_and_the_newest_rows_of_a_table(store, tmp_path
     lines = result.output.splitlines()
     assert lines[0] == "[UN Comtrade: MEX, 2026-05, fetched 2026-06-06]"
     assert lines[1] == "Goods trade of MEX by HS product (AG2) | 5 rows"
-    assert lines[2] == "reporter  partner  flow  product  frequency  period  value_usd  weight_kg"
-    assert lines[-1] == "MEX  WLD  X  27  M  2026-05  10.0  1.0"
+    assert lines[2] == "reporter  partner  flow  product  frequency  period  value_usd  weight_kg  level"
+    assert lines[-1] == "MEX  WLD  X  27  M  2026-05  10.0  1.0  AG2"
     assert len(lines) == 8
 
 

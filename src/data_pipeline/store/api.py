@@ -290,6 +290,8 @@ class Store:
         parts = []
         for name in names if id is None else [id]:
             stored = self._storage.read_table(source, name)
+            # a column added after this table was written reads as missing
+            stored = stored.reindex(columns=[*stored.columns, *(c for c in columns if c not in stored)])
             if as_of is None:
                 current = st.latest(stored, key, order, by_publication=schema.versioned)
             else:

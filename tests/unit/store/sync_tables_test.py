@@ -97,6 +97,21 @@ def test_held_periods_are_the_pairs_of_a_stored_table():
     assert held_periods(frame) == {("A", "2024"), ("M", "2026-05")}
 
 
+def test_held_periods_carry_the_values_of_the_columns_named():
+    frame = pd.DataFrame([row(), row(product="87"), row("USA", period="2026-05")]).assign(level=["AG2", "AG2", None])
+    assert held_periods(frame, ("reporter", "level")) == {("A", "2024", "MEX", "AG2"), ("M", "2026-05", "USA", "")}
+    assert held_periods(frame, ("partner",)) == {("A", "2024", ""), ("M", "2026-05", "")}  # a column it lacks
+
+
+def test_a_source_that_names_its_held_by_columns_gets_their_values(tmp_path):
+    source, http = setup()
+    source.held_by = ("reporter",)
+    source.calls["MEX"] = [[row(), row(period="2026-05")]]
+    run(tmp_path, source, http)
+    run(tmp_path, source, http, now=LATER)
+    assert source.seen[1].held == {("A", "2024", "MEX"), ("M", "2026-05", "MEX")}
+
+
 def test_first_sync_merges_every_batch_into_the_table(tmp_path):
     source, http = setup()
     source.calls["MEX"] = [[row(), row(product="87")], [row(period="2026-05", value=7.0)]]
