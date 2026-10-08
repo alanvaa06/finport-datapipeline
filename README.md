@@ -73,7 +73,8 @@ can narrow them with `--source` and `--region`. It needs no store, no key and no
 
 `sync` exits with 0 when everything is up to date, 1 when there were failures, 2 for a
 configuration error and 3 when a quota stopped it (run it again tomorrow). If a source is down,
-the store keeps what it already had. A source that breaks (an unexpected answer, a damaged file)
+the store keeps what it already had; after three requests in a row fail, the rest of its series
+are not asked in that run and fail with `network_error`. A source that breaks (an unexpected answer, a damaged file)
 fails its own series and the run goes on with the next source.
 
 ## Python

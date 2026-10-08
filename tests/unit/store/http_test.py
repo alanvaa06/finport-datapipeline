@@ -211,3 +211,41 @@ def test_a_retry_after_date_in_the_past_retries_without_waiting():
     client = Client(transport=transport, sleep=waits.append, clock=lambda: 0.0)
     assert client.get("ecb", "https://example.test/x", per_minute=6_000_000).status_code == 200
     assert [wait for wait in waits if wait >= 1.0] == []
+
+
+def test_after_three_failed_requests_a_source_is_not_called_again_in_this_run():
+    seen = []
+
+    def handler(request):
+        seen.append(request.url.host)
+        if request.url.host == "down.test":
+            msg = "timed out"
+            raise httpx.ReadTimeout(msg, request=request)
+        return httpx.Response(200)
+
+    client = Client(transport=httpx.MockTransport(handler), sleep=lambda _seconds: None)
+    for _ in range(3):
+        with pytest.raises(NetworkError, match="after 4 attempts"):
+            client.get("dbnomics", "https://down.test/x")
+    with pytest.raises(NetworkError, match=r"not asked: its last 3 requests failed \(ReadTimeout: timed out"):
+        client.get("dbnomics", "https://down.test/x")
+    assert seen == ["down.test"] * 12
+    assert client.calls == {"dbnomics": 12}
+    assert client.get("fred", "https://up.test/x").status_code == 200  # another source is still asked
+
+
+def test_an_answer_resets_the_count_of_failed_requests():
+    answers = iter([503, 503, 200, 503, 503, 503])
+    client = Client(
+        transport=httpx.MockTransport(lambda _request: httpx.Response(next(answers))),
+        sleep=lambda _seconds: None,
+        retries=0,
+    )
+    outcomes = []
+    for _ in range(6):
+        try:
+            outcomes.append(client.get("ecb", "https://example.test/x").status_code)
+        except NetworkError:
+            outcomes.append("failed")
+    assert outcomes == ["failed", "failed", 200, "failed", "failed", "failed"]
+    assert client.calls == {"ecb": 6}

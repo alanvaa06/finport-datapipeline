@@ -1,6 +1,8 @@
 """The one HTTP client of the store: per-source pacing, retries on 429/5xx and network errors
 (waits 2, 4, 8 s, or what the answer's Retry-After asks for, up to RETRY_AFTER_LIMIT; a longer
-wait ends the request at once), and secrets scrubbed from every message it raises and from the log lines
+wait ends the request at once), a stop for a source that is down (after BREAKER requests in a
+row fail every attempt, the rest of its requests in this client fail at once, without a call),
+and secrets scrubbed from every message it raises and from the log lines
 httpx and httpcore write (a key sent as a query parameter would otherwise show up at INFO level,
 and in a redirect's Location at DEBUG level).
 
@@ -31,6 +33,7 @@ USER_AGENT = "finport-datapipeline (public data store)"
 HIDDEN = "***"
 MAX_REDIRECTS = 5
 RETRY_AFTER_LIMIT = 60.0  # seconds: a source asking for a longer wait is not asked again in this run
+BREAKER = 3  # requests in a row that failed every attempt: the source is down for the rest of the run
 
 
 def retry_after(response: httpx.Response) -> float | None:
@@ -113,6 +116,7 @@ class Client:
         # spend the budget on refusals.
         self.calls: dict[str, int] = {}
         self.throttled: dict[str, int] = {}
+        self._failing: dict[str, tuple[int, str]] = {}  # per source: requests failed in a row, last reason
         self._scrubber = _Scrubber(self._secrets)
         self._loggers = _http_loggers()
         for logger in self._loggers:
@@ -161,6 +165,10 @@ class Client:
         body: Mapping[str, Any] | None,
         per_minute: int,
     ) -> httpx.Response:
+        failing, last = self._failing.get(source, (0, ""))
+        if failing >= BREAKER:
+            msg = self.scrub(f"{source}: not asked: its last {failing} requests failed ({last})")
+            raise NetworkError(msg)
         reason = ""
         limited = False
         attempts = 0
@@ -178,6 +186,7 @@ class Client:
                 limited = False
             else:
                 if response.status_code not in RETRY_STATUS:
+                    self._failing.pop(source, None)
                     return response
                 if response.status_code == TOO_MANY_REQUESTS:
                     self.throttled[source] = self.throttled.get(source, 0) + 1
@@ -190,8 +199,10 @@ class Client:
             if attempt < self._retries:
                 self._sleep(wait if wait is not None else 2.0 ** (attempt + 1))
         msg = self.scrub(f"{source}: {reason} after {attempts} attempt{'s' if attempts > 1 else ''}")
-        if limited:
+        if limited:  # the source answers: it asks for fewer requests, it is not down
+            self._failing.pop(source, None)
             raise RateLimitedError(msg) from None
+        self._failing[source] = (failing + 1, reason)
         raise NetworkError(msg) from None
 
     def _send(self, source: str, request: httpx.Request) -> httpx.Response:
