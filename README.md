@@ -28,16 +28,20 @@ pip install git+https://github.com/alanvaa06/finport-datapipeline.git
 
 ## Keys
 
-Each source's key lives in one `.env` file at the root of your project; it is found from any
-subfolder. A key passed in code wins over the environment, which wins over the file.
+Each source's key lives in one `.env` file at the root of your project, the folder that holds its
+`.git` or `pyproject.toml`; it is found from any subfolder. The search stops at that folder: a
+`.env` above it, in your home folder or in a shared folder is never read or written. Outside a
+project only the current folder's `.env` counts. A key passed in code wins over the environment,
+which wins over the file.
 
 ```bash
 data-pipeline setup
 ```
 
 `setup` asks for each key, hidden as you type it, and checks it with one request to its source
-before saving. To see which keys are set and where each one comes from, run `data-pipeline keys`.
-It never shows the values.
+before saving. It shows the file it writes to, and asks first when that file is in a parent
+folder; with no `.env` in the project yet, it creates one in the current folder. To see which keys
+are set and where each one comes from, run `data-pipeline keys`. It never shows the values.
 
 | Variable | Source | Needed for |
 |---|---|---|

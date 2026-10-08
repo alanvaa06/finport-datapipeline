@@ -60,12 +60,59 @@ def test_an_unknown_name_in_code_is_refused():
         resolve({"FRED_KEY": "x"}, environ={})
 
 
+def project(folder: pathlib.Path, marker: str = ".git") -> pathlib.Path:
+    """Make `folder` the root of a project: a git clone (a `.git` folder) unless `marker` says otherwise."""
+    folder.mkdir(parents=True, exist_ok=True)
+    if marker == ".git":
+        (folder / marker).mkdir()
+    else:
+        (folder / marker).write_text("", encoding="utf-8")
+    return folder
+
+
 def test_the_nearest_env_file_is_found_from_a_subfolder(tmp_path):
+    project(tmp_path)
     (tmp_path / ".env").write_text("FRED_API_KEY=parent\n", encoding="utf-8")
     notebooks = tmp_path / "notebooks" / "deep"
     notebooks.mkdir(parents=True)
     assert find_env_file(notebooks) == tmp_path / ".env"
     assert resolve(environ={}, start=notebooks).get("FRED_API_KEY") == "parent"
+
+
+@pytest.mark.parametrize("marker", [".git", "pyproject.toml", ".git file"])
+def test_the_search_stops_at_the_root_of_the_project(tmp_path, marker):
+    (tmp_path / ".env").write_text("FRED_API_KEY=someone_elses\n", encoding="utf-8")
+    root = tmp_path / "project"
+    if marker == ".git file":  # a git worktree or submodule has a `.git` file, not a folder
+        root.mkdir()
+        (root / ".git").write_text("gitdir: elsewhere\n", encoding="utf-8")
+    else:
+        project(root, marker)
+    notebooks = root / "notebooks"
+    notebooks.mkdir()
+    assert find_env_file(notebooks) is None
+    assert target_env_file(notebooks) == notebooks.resolve() / ".env"
+    assert resolve(environ={}, start=notebooks).get("FRED_API_KEY") is None
+
+
+def test_outside_a_project_only_the_folder_itself_is_searched(tmp_path):
+    (tmp_path / ".env").write_text("FRED_API_KEY=shared\n", encoding="utf-8")  # a shared /tmp/.env, a synced folder's
+    work = tmp_path / "work"
+    work.mkdir()
+    assert find_env_file(work) is None
+    (work / ".env").write_text("FRED_API_KEY=mine\n", encoding="utf-8")
+    assert find_env_file(work) == work / ".env"
+
+
+def test_the_home_folder_is_never_searched_from_below(tmp_path, monkeypatch):
+    home = project(tmp_path / "home")  # a home kept in git, as dotfiles often are
+    (home / ".env").write_text("FRED_API_KEY=home\n", encoding="utf-8")
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    analysis = home / "analysis"
+    analysis.mkdir()
+    assert find_env_file(analysis) is None
+    assert find_env_file(home) == home / ".env"  # from the home folder itself, its own .env counts
 
 
 def test_the_closest_env_file_wins(tmp_path):
@@ -180,8 +227,8 @@ def test_an_explicit_env_file_wins_over_the_search_start(tmp_path):
 def test_a_test_never_finds_an_env_file_outside_its_temp_folder(tmp_path):
     from tests.conftest import confine_env_search
 
-    bound = tmp_path / "bound"
-    outside = tmp_path / "outside"
+    bound = project(tmp_path / "bound")
+    outside = project(tmp_path / "outside")
     (bound / "work").mkdir(parents=True)
     (outside / "work").mkdir(parents=True)
     (outside / ".env").write_text("FRED_API_KEY=real\n", encoding="utf-8")

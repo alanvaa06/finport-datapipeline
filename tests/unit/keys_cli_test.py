@@ -90,6 +90,39 @@ def test_setup_asks_before_replacing_and_no_check_skips_the_check(tmp_path, monk
     assert content == "# mine\nFRED_API_KEY=new\n"
 
 
+def test_setup_never_writes_to_an_env_file_above_the_project(tmp_path, monkeypatch):
+    monkeypatch.setattr(keys_check, "check", checker({}))
+    someone_elses = tmp_path / ".env"
+    someone_elses.write_text("OTHER_TOOL_TOKEN=x\n", encoding="utf-8")
+    root = tmp_path / "project"
+    (root / ".git").mkdir(parents=True)
+    monkeypatch.chdir(root)
+    result = CliRunner().invoke(cli, ["setup"], input="1\nfredvalue\n")
+    assert result.exit_code == 0, result.output
+    assert someone_elses.read_text(encoding="utf-8") == "OTHER_TOOL_TOKEN=x\n"
+    assert (root / ".env").read_text(encoding="utf-8") == "FRED_API_KEY=fredvalue\n"
+    assert f"Keys are saved in {root.resolve() / '.env'}" in result.output
+
+
+def test_setup_asks_before_writing_to_the_env_file_of_a_parent_folder(tmp_path, monkeypatch):
+    monkeypatch.setattr(keys_check, "check", checker({}))
+    root = tmp_path / "project"
+    (root / "notebooks").mkdir(parents=True)
+    (root / "pyproject.toml").write_text("", encoding="utf-8")
+    (root / ".env").write_text("# mine\n", encoding="utf-8")
+    monkeypatch.chdir(root / "notebooks")
+    runner = CliRunner()
+    declined = runner.invoke(cli, ["setup"], input="n\n")
+    assert declined.exit_code == 0, declined.output
+    assert "That .env is in a parent folder. Save the keys there?" in declined.output
+    assert "Nothing saved." in declined.output
+    assert (root / ".env").read_text(encoding="utf-8") == "# mine\n"
+    accepted = runner.invoke(cli, ["setup"], input="y\n1\nfred\n")
+    assert accepted.exit_code == 0, accepted.output
+    assert (root / ".env").read_text(encoding="utf-8") == "# mine\nFRED_API_KEY=fred\n"
+    assert not (root / "notebooks" / ".env").exists()
+
+
 def test_setup_refuses_numbers_outside_the_list(tmp_path):
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):

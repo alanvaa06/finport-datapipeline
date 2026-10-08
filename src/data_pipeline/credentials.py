@@ -1,8 +1,11 @@
 """The keys every part of the library uses, where they come from, and how they are saved.
 
 A value passed in code wins over the process environment, which wins over the nearest `.env`:
-the one in the current folder, else in its parent, and so on up. Credentials are personal:
-`repr` shows only which ones are present, never their values.
+the one in the current folder, else in its parent, and so on up to the root of the project (the
+folder with `.git` or `pyproject.toml`), never above it. Outside a project only the current
+folder's `.env` counts, and the home folder's never does from below it: a `.env` that belongs to
+another project, to the home folder or to a shared folder is neither read nor written.
+Credentials are personal: `repr` shows only which ones are present, never their values.
 
 This module imports nothing from the store: the store and the command line both read it.
 """
@@ -16,6 +19,7 @@ import dotenv
 
 ENV_FILE_NAME = ".env"
 ENV_FILE_ENCODING = "utf-8-sig"  # plain UTF-8, tolerating the BOM some editors add
+PROJECT_MARKERS = (".git", "pyproject.toml")  # a folder holding either is the root of a project
 ORIGIN_CODE = "code"
 ORIGIN_ENVIRONMENT = "environment"
 SETUP_COMMAND = "data-pipeline setup"
@@ -113,10 +117,35 @@ class Credentials:
         return f"Credentials({present})"
 
 
-def find_env_file(start: pathlib.Path | None = None) -> pathlib.Path | None:
-    """The `.env` of `start` (default: the current folder) or of its closest parent that has one."""
-    folder = (start or pathlib.Path.cwd()).resolve()
+def _home() -> pathlib.Path | None:
+    try:
+        return pathlib.Path.home().resolve()
+    except (RuntimeError, OSError):  # no home folder is known, as in some containers
+        return None
+
+
+def _search_path(folder: pathlib.Path) -> list[pathlib.Path]:
+    """The folders whose `.env` counts from `folder`: itself, then each parent up to the project root.
+
+    Outside a project (no `.git` or `pyproject.toml` at `folder` or above it, below the home
+    folder) only `folder` itself counts. The home folder ends the climb: it counts only when it
+    is `folder`.
+    """
+    home = _home()
+    walked: list[pathlib.Path] = []
     for candidate in (folder, *folder.parents):
+        if walked and candidate == home:
+            break
+        walked.append(candidate)
+        if any((candidate / marker).exists() for marker in PROJECT_MARKERS):
+            return walked
+    return walked[:1]
+
+
+def find_env_file(start: pathlib.Path | None = None) -> pathlib.Path | None:
+    """The `.env` of `start` (default: the current folder) or of its closest parent in the same project."""
+    folder = (start or pathlib.Path.cwd()).resolve()
+    for candidate in _search_path(folder):
         path = candidate / ENV_FILE_NAME
         if path.is_file():
             return path

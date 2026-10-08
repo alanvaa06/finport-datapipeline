@@ -24,7 +24,7 @@ def keys_command() -> None:
     """Which keys are set, and where each one comes from. Never shows a value."""
     env_file = credentials.find_env_file()
     resolved = credentials.resolve()
-    echo(f".env: {env_file or 'none found here or in a parent folder (run: data-pipeline setup)'}")
+    echo(f".env: {env_file or 'none found here or in a parent folder of this project (run: data-pipeline setup)'}")
     for key in credentials.REGISTRY:
         origin = resolved.origin(key.name)
         mark = "[ok]" if origin else "[ ] "
@@ -79,10 +79,17 @@ def _ask(key: Key, *, check: bool) -> str | None:
 @cli.command("setup")
 @click.option("--no-check", is_flag=True, help="Save without asking each source whether the key works.")
 def setup_command(*, no_check: bool) -> None:
-    """Fill the nearest .env with the keys you choose, checking each one."""
+    """Fill the nearest .env of this project with the keys you choose, checking each one."""
     env_file: pathlib.Path = credentials.target_env_file()
-    resolved = credentials.resolve(env_file=env_file)
     echo(f"Keys are saved in {env_file}")
+    # The search never leaves the project, but a parent folder's file is still not the one in
+    # front of the person: they confirm it before any key goes there.
+    if env_file.parent != pathlib.Path.cwd().resolve() and not click.confirm(
+        "That .env is in a parent folder. Save the keys there?", default=True
+    ):
+        echo("Nothing saved. To keep the keys in this folder, create an empty .env here and run setup again.")
+        return
+    resolved = credentials.resolve(env_file=env_file)
     echo("")
     for number, key in enumerate(credentials.REGISTRY, start=1):
         state = "set" if resolved.get(key.name) else "missing"
