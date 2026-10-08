@@ -199,3 +199,18 @@ def test_the_short_rates_say_which_rate_and_the_pmi_columns_that_they_are_not_pm
     assert kinds["deposit rate"] == 1  # e_ch_short_rate: the IMF's MFS135 for Switzerland is its deposit rate
     pmi = [entry for entry in entries if concept_of(entry.alias) == "pmi_mfg"]
     assert all(".BCICP.PB." in entry.source_id and "not a PMI (% balance)" in entry.name for entry in pmi)
+
+
+# The commercial_ok flag the README documents for each source.
+COMMERCIAL_OK = {
+    "worldbank": "yes", "eurostat": "yes", "imf": "restricted", "bis": "restricted", "oecd": "restricted",
+    "dbnomics": "restricted", "fred": "no", "banxico": "unverified", "inegi": "unverified", "ecb": "unverified",
+}  # fmt: skip
+
+
+def test_commercial_ok_follows_the_rule_the_readme_documents_for_each_source():
+    entries = load_catalog(pathlib.Path("macro"))
+    assert {entry.source for entry in entries} == set(COMMERCIAL_OK)
+    assert all(entry.attrs["commercial_ok"] == COMMERCIAL_OK[entry.source] for entry in entries)
+    readme = (pathlib.Path(__file__).resolve().parents[3] / "README.md").read_text(encoding="utf-8")
+    assert "- `unverified`: Banxico, INEGI and the ECB." in readme
