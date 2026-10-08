@@ -3,6 +3,7 @@ import json
 
 import pandas as pd
 
+from data_pipeline.store.api import Store
 from data_pipeline.store.storage import Storage, TableSchema, append_versions, as_of, latest, table_frame
 
 from .helpers import NOW
@@ -112,3 +113,14 @@ def test_a_schema_written_before_versions_existed_reads_as_not_versioned(tmp_pat
     old = {"key_columns": ["reporter", "period"], "value_columns": ["value_usd"]}
     (folder / "schema.json").write_text(json.dumps(old), encoding="utf-8")
     assert Storage(tmp_path).table_schema("comtrade") == TableSchema(("reporter", "period"), ("value_usd",))
+
+
+def test_a_filter_never_revives_a_version_that_was_replaced(tmp_path):
+    merged, _, _ = merge(pd.DataFrame(), [version(100.0, "2024-02-01"), version(90.0, "2024-05-01", form="10-K/A")])
+    Storage(tmp_path).write_table("sec_xbrl", "ACME", merged, SCHEMA)
+    store = Store(tmp_path)
+    assert list(store.table("sec_xbrl", "ACME")["value"]) == [90.0]
+    assert store.table("sec_xbrl", "ACME", form="10-K").empty  # the 10-K's value is no longer current
+    assert store.table("sec_xbrl", "ACME", value=100.0).empty
+    assert list(store.table("sec_xbrl", "ACME", form="10-K/A")["value"]) == [90.0]
+    assert list(store.table("sec_xbrl", "ACME", form="10-K", as_of="2024-03-01")["value"]) == [100.0]

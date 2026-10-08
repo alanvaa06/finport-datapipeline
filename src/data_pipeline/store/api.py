@@ -269,6 +269,7 @@ class Store:
 
         One row per key, in its latest version or as it was known at `as_of`. `filters` keep the
         rows whose column equals the value: `table("comtrade", "MEX", flow="X", frequency="A")`.
+        They apply to that version, so `form="10-K"` leaves out a 10-K value a 10-K/A replaced.
         Columns: the key columns, `date`, the value columns, the attribute columns.
         """
         names = self._storage.table_names(source)
@@ -289,13 +290,13 @@ class Store:
         parts = []
         for name in names if id is None else [id]:
             stored = self._storage.read_table(source, name)
-            for column, value in filters.items():
-                stored = stored[stored[column] == value]
             if as_of is None:
                 current = st.latest(stored, key, order, by_publication=schema.versioned)
             else:
                 current = st.as_of(stored, st.to_moment(as_of), key, order)
-            parts.append(current[columns])
+            for column, value in filters.items():  # after the version is chosen: never revive a replaced one
+                current = current[current[column] == value]
+            parts.append(current[columns].reset_index(drop=True))
         filled = [part for part in parts if not part.empty] or parts[:1]
         return filled[0] if len(filled) == 1 else pd.concat(filled, ignore_index=True)
 
