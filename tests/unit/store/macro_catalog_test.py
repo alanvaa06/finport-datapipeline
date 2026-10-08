@@ -2,6 +2,7 @@
 
 import collections
 import pathlib
+import re
 
 from data_pipeline.credentials import Credentials
 from data_pipeline.store import sources
@@ -42,7 +43,6 @@ def test_every_series_still_on_dbnomics_says_why_it_is_stale():
     on_dbnomics = [entry for entry in entries if entry.source == "dbnomics"]
     assert len(on_dbnomics) == 96
     assert all(entry.attrs.get("stale", "").startswith("2026-10: ") for entry in on_dbnomics)
-    assert all("stale" not in entry.attrs for entry in entries if entry.source != "dbnomics")
 
 
 def test_every_series_moved_close_but_not_equal_says_how_close():
@@ -105,3 +105,18 @@ def test_the_series_the_mirror_holds_no_values_for_say_so():
     by_alias = {entry.alias: entry for entry in load_catalog(pathlib.Path("macro"))}
     for alias in ("e_tr_short_rate", "e_ph_ind_prod"):
         assert by_alias[alias].attrs["stale"].startswith("2026-10: no data: the mirror holds no values")
+
+
+def test_a_stale_series_at_its_publisher_says_what_its_last_period_was_and_when():
+    """Outside DBnomics a series is marked stale only from a check against its publisher: the note
+    names the day of the check, and the last period unless it says why the series ended."""
+    entries = load_catalog(pathlib.Path("macro"))
+    at_publishers = [entry for entry in entries if entry.source != "dbnomics"]
+    stale = {entry.alias: entry.attrs["stale"] for entry in at_publishers if "stale" in entry.attrs}
+    assert len(stale) == 62
+    checked = re.compile(r"2026-10: .*\(checked \d{4}-\d{2}-\d{2}\)")
+    assert all(checked.match(note) for note in stale.values())
+    euro = ("at", "be", "de", "es", "fr", "gr", "it", "nl", "pt")
+    for region in euro:  # the national central banks' rates end with the euro
+        assert "e_ecb_rate" in stale[f"e_{region}_policy_rate"]
+    assert stale["e_de_unemployment"].startswith("2026-10: last period at the publisher 2026-02")

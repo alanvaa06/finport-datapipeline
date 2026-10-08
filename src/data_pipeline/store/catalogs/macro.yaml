@@ -1,6 +1,11 @@
 # The macro catalog: one entry per series, named by its e_* alias.
-# Series still on DBnomics whose dataset was retired at the origin carry attrs.stale with the
-# reason; scripts/replace_dbnomics_ids.py looks for their replacement at the publisher.
+# attrs.stale marks a series that is not current, with the reason:
+# - every series still on DBnomics, whose dataset was retired at the origin;
+#   scripts/replace_dbnomics_ids.py looks for their replacement at the publisher;
+# - a series at its publisher whose last period, on the day it was checked, was more than one
+#   period behind the store's staleness threshold for its frequency (STALE_AFTER_DAYS in
+#   store/model.py), so it is stale even after the publisher's next release. The note gives the
+#   last period and the day of the check.
 - source: imf
   id: IMF.RES,WEO/ARG.GGXCNL_NGDP.A
   alias: e_ar_budget_balance_gdp
@@ -123,6 +128,7 @@
   attrs:
     region: AR
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2025-06 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.AR
   alias: e_ar_reer
@@ -363,6 +369,7 @@
   attrs:
     region: AT
     commercial_ok: restricted
+    stale: "2026-10: the national central bank's rate ends 1998-12, when the ECB took over (checked 2026-10-08); the euro area's rate is e_ecb_rate"
 - source: imf
   id: IMF.STA,PPI/AUT.PPI.IX.M
   alias: e_at_ppi
@@ -415,6 +422,7 @@
     region: AT
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 375 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.AT
   alias: e_at_unemployment_harmonised
@@ -666,6 +674,7 @@
     region: AU
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 565 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: worldbank
   id: SL.UEM.1524.ZS/AUS
   alias: e_au_unemployment_youth
@@ -863,6 +872,7 @@
   attrs:
     region: BE
     commercial_ok: restricted
+    stale: "2026-10: the national central bank's rate ends 1998-12, when the ECB took over (checked 2026-10-08); the euro area's rate is e_ecb_rate"
 - source: imf
   id: IMF.STA,PPI/BEL.PPI.IX.M
   alias: e_be_ppi
@@ -871,6 +881,7 @@
   attrs:
     region: BE
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.BE
   alias: e_be_reer
@@ -914,6 +925,7 @@
     region: BE
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 468 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.BE
   alias: e_be_unemployment_harmonised
@@ -1205,6 +1217,7 @@
   attrs:
     region: CA
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: imf
   id: IMF.STA,CPI/CAN.CPI._T.SRP_IX.M
   alias: e_ca_cpi
@@ -1398,6 +1411,7 @@
     region: CA
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 4.2e-03 over 591 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: worldbank
   id: SL.UEM.1524.ZS/CAN
   alias: e_ca_unemployment_youth
@@ -1597,6 +1611,7 @@
   attrs:
     region: CH
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.CH
   alias: e_ch_reer
@@ -1647,6 +1662,7 @@
   attrs:
     region: CH
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2025-12 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.CH
   alias: e_ch_unemployment_harmonised
@@ -1905,6 +1921,7 @@
     region: CL
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 1.1e-02 over 252 periods"
+    stale: "2026-10: last period at the publisher 2025-12 (checked 2026-10-08)"
 - source: worldbank
   id: SL.UEM.1524.ZS/CHL
   alias: e_cl_unemployment_youth
@@ -2388,6 +2405,7 @@
   attrs:
     region: CO
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2025-12 (checked 2026-10-08)"
 - source: worldbank
   id: SL.UEM.1524.ZS/COL
   alias: e_co_unemployment_youth
@@ -2653,6 +2671,7 @@
   attrs:
     region: CZ
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.CZ
   alias: e_cz_unemployment_harmonised
@@ -2874,6 +2893,7 @@
   attrs:
     region: DE
     commercial_ok: restricted
+    stale: "2026-10: the national central bank's rate ends 1998-12, when the ECB took over (checked 2026-10-08); the euro area's rate is e_ecb_rate"
 - source: imf
   id: IMF.STA,PPI/DEU.PPI.IX.M
   alias: e_de_ppi
@@ -2882,6 +2902,7 @@
   attrs:
     region: DE
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.DE
   alias: e_de_reer
@@ -2925,6 +2946,7 @@
     region: DE
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 3.1e-02 over 219 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.DE
   alias: e_de_unemployment_harmonised
@@ -3165,6 +3187,7 @@
   attrs:
     region: DK
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.DK
   alias: e_dk_reer
@@ -3208,6 +3231,7 @@
     region: DK
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 507 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.DK
   alias: e_dk_unemployment_harmonised
@@ -3428,6 +3452,7 @@
   attrs:
     region: ES
     commercial_ok: restricted
+    stale: "2026-10: the national central bank's rate ends 1998-12, when the ECB took over (checked 2026-10-08); the euro area's rate is e_ecb_rate"
 - source: imf
   id: IMF.STA,PPI/ESP.PPI.IX.M
   alias: e_es_ppi
@@ -3437,6 +3462,7 @@
     region: ES
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 5.7e-16, 90th percentile 2.9e-15 over 616 periods"
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.ES
   alias: e_es_reer
@@ -3480,6 +3506,7 @@
     region: ES
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 469 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.ES
   alias: e_es_unemployment_harmonised
@@ -3919,6 +3946,7 @@
   attrs:
     region: FI
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.FI
   alias: e_fi_unemployment_harmonised
@@ -4140,6 +4168,7 @@
   attrs:
     region: FR
     commercial_ok: restricted
+    stale: "2026-10: the national central bank's rate ends 1998-12, when the ECB took over (checked 2026-10-08); the euro area's rate is e_ecb_rate"
 - source: dbnomics
   id: IMF/IFS/M.FR.PPPI_IX
   alias: e_fr_ppi
@@ -4192,6 +4221,7 @@
     region: FR
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 267 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.FR
   alias: e_fr_unemployment_harmonised
@@ -4405,6 +4435,7 @@
   attrs:
     region: GR
     commercial_ok: restricted
+    stale: "2026-10: the national central bank's rate ends 2000-12, when the ECB took over (checked 2026-10-08); the euro area's rate is e_ecb_rate"
 - source: imf
   id: IMF.STA,PPI/GRC.PPI.IX.M
   alias: e_gr_ppi
@@ -4413,6 +4444,7 @@
   attrs:
     region: GR
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.GR
   alias: e_gr_reer
@@ -4456,6 +4488,7 @@
     region: GR
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 324 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.EL
   alias: e_gr_unemployment_harmonised
@@ -4876,6 +4909,7 @@
   attrs:
     region: HU
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.HU
   alias: e_hu_reer
@@ -4918,6 +4952,7 @@
   attrs:
     region: HU
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.HU
   alias: e_hu_unemployment_harmonised
@@ -5141,6 +5176,7 @@
   attrs:
     region: ID
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2025-12 (checked 2026-10-08)"
 - source: imf
   id: IMF.STA,IMTS/IDN.TBG_USD.G001.M
   alias: e_id_trade_balance_goods
@@ -5348,6 +5384,7 @@
   attrs:
     region: IE
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.IE
   alias: e_ie_reer
@@ -5391,6 +5428,7 @@
     region: IE
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 509 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.IE
   alias: e_ie_unemployment_harmonised
@@ -5647,6 +5685,7 @@
   attrs:
     region: IL
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2024-12 (checked 2026-10-08)"
 - source: worldbank
   id: SL.UEM.1524.ZS/ISR
   alias: e_il_unemployment_youth
@@ -5680,6 +5719,7 @@
   attrs:
     region: IN
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: imf
   id: IMF.STA,CPI/IND.CPI._T.SRP_IX.M
   alias: e_in_cpi
@@ -6068,6 +6108,7 @@
   attrs:
     region: IT
     commercial_ok: restricted
+    stale: "2026-10: the national central bank's rate ends 1998-12, when the ECB took over (checked 2026-10-08); the euro area's rate is e_ecb_rate"
 - source: imf
   id: IMF.STA,PPI/ITA.PPI.IX.M
   alias: e_it_ppi
@@ -6076,6 +6117,7 @@
   attrs:
     region: IT
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.IT
   alias: e_it_reer
@@ -6109,6 +6151,7 @@
   attrs:
     region: IT
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-03 (checked 2026-10-08)"
 - source: imf
   id: IMF.STA,IMTS/ITA.TBG_USD.G001.M
   alias: e_it_trade_balance_goods
@@ -6126,6 +6169,7 @@
   attrs:
     region: IT
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.IT
   alias: e_it_unemployment_harmonised
@@ -6273,6 +6317,7 @@
   attrs:
     region: JP
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2025-Q4 (checked 2026-10-08)"
 - source: imf
   id: IMF.STA,ITG/JPN.MG.CIF_USD.A
   alias: e_jp_imports_goods
@@ -6350,6 +6395,7 @@
     region: JP
     commercial_ok: restricted
     close_match: "2026-10: other units; relative gap to the mirror: median 1.3e-06, 90th percentile 9.8e-04 over 26 periods"
+    stale: "2026-10: last period at the publisher 2026-03 (checked 2026-10-08)"
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_FINMARK/JPN.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_jp_short_rate
@@ -6376,6 +6422,7 @@
     region: JP
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 688 periods"
+    stale: "2026-10: last period at the publisher 2026-03 (checked 2026-10-08)"
 - source: worldbank
   id: SL.UEM.1524.ZS/JPN
   alias: e_jp_unemployment_youth
@@ -6618,6 +6665,7 @@
     region: KR
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 505 periods"
+    stale: "2026-10: last period at the publisher 2026-03 (checked 2026-10-08)"
 - source: worldbank
   id: SL.UEM.1524.ZS/KOR
   alias: e_kr_unemployment_youth
@@ -7264,6 +7312,7 @@
   attrs:
     region: NL
     commercial_ok: restricted
+    stale: "2026-10: the national central bank's rate ends 1998-12, when the ECB took over (checked 2026-10-08); the euro area's rate is e_ecb_rate"
 - source: imf
   id: IMF.STA,PPI/NLD.PPI.IX.M
   alias: e_nl_ppi
@@ -7315,6 +7364,7 @@
   attrs:
     region: NL
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.NL
   alias: e_nl_unemployment_harmonised
@@ -7523,6 +7573,7 @@
     region: 'NO'
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 7.7e-16, 90th percentile 2.6e-15 over 581 periods"
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.NO
   alias: e_no_reer
@@ -7575,6 +7626,7 @@
     region: 'NO'
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 436 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.NO
   alias: e_no_unemployment_harmonised
@@ -7806,6 +7858,7 @@
   attrs:
     region: NZ
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2025-09 (checked 2026-10-08)"
 - source: worldbank
   id: SL.UEM.1524.ZS/NZL
   alias: e_nz_unemployment_youth
@@ -8405,6 +8458,7 @@
     region: PL
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 5.4e-16, 90th percentile 2.7e-15 over 479 periods"
+    stale: "2026-10: last period at the publisher 2025-10 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.PL
   alias: e_pl_reer
@@ -8456,6 +8510,7 @@
     region: PL
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 359 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.PL
   alias: e_pl_unemployment_harmonised
@@ -8668,6 +8723,7 @@
   attrs:
     region: PT
     commercial_ok: restricted
+    stale: "2026-10: the national central bank's rate ends 1998-12, when the ECB took over (checked 2026-10-08); the euro area's rate is e_ecb_rate"
 - source: imf
   id: IMF.STA,PPI/PRT.PPI.IX.M
   alias: e_pt_ppi
@@ -8677,6 +8733,7 @@
     region: PT
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 2.9e-16, 90th percentile 2.1e-15 over 305 periods"
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.PT
   alias: e_pt_reer
@@ -8719,6 +8776,7 @@
   attrs:
     region: PT
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.PT
   alias: e_pt_unemployment_harmonised
@@ -8768,6 +8826,7 @@
   attrs:
     region: RU
     commercial_ok: restricted
+    stale: "2026-10: the OECD has no period from 2025-06 on (checked 2026-10-08)"
 - source: dbnomics
   id: OECD/MEI/RUS.CSCICP03.IXNSA.M
   alias: e_ru_consumer_confidence
@@ -8918,6 +8977,7 @@
   attrs:
     region: RU
     commercial_ok: restricted
+    stale: "2026-10: the OECD has no period from 2025-06 on (checked 2026-10-08)"
 - source: bis
   id: WS_CBPOL/M.RU
   alias: e_ru_policy_rate
@@ -8934,6 +8994,7 @@
   attrs:
     region: RU
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2025-10 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.RU
   alias: e_ru_reer
@@ -9375,6 +9436,7 @@
   attrs:
     region: SE
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.SE
   alias: e_se_reer
@@ -9417,6 +9479,7 @@
   attrs:
     region: SE
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.SE
   alias: e_se_unemployment_harmonised
@@ -9673,6 +9736,7 @@
   attrs:
     region: TR
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2025-12 (checked 2026-10-08)"
 - source: imf
   id: IMF.STA,CPI/TUR.CPI._T.SRP_IX.M
   alias: e_tr_cpi
@@ -9873,6 +9937,7 @@
   attrs:
     region: TR
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-01 (checked 2026-10-08)"
 - source: worldbank
   id: SL.UEM.1524.ZS/TUR
   alias: e_tr_unemployment_youth
@@ -9932,7 +9997,7 @@
   attrs:
     region: UK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 8.6e-04)"
+    stale: "2026-10: the mirror ends 2020-11 and the IMF has no UK HICP from 2024-06 on (checked 2026-10-08); e_uk_cpi is the ONS CPI, compiled to the HICP methodology"
 - source: imf
   id: IMF.STA,CPI/GBR.CPI._T.SRP_IX.M
   alias: e_uk_cpi
@@ -10090,6 +10155,7 @@
     region: UK
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 5.1e-16, 90th percentile 4.3e-15 over 792 periods"
+    stale: "2026-10: the IMF has no period from 2024-01 on (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.GB
   alias: e_uk_reer
@@ -10115,6 +10181,7 @@
   attrs:
     region: UK
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: imf
   id: IMF.STA,IMTS/GBR.TBG_USD.G001.M
   alias: e_uk_trade_balance_goods
