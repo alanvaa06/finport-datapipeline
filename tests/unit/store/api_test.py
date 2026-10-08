@@ -339,3 +339,19 @@ def test_an_alias_the_catalog_moved_to_a_series_not_stored_yet_asks_for_a_sync(w
     (tmp_path / "moved.yaml").write_text(moved, encoding="utf-8")
     with pytest.raises(UnknownSeriesError, match=r"fred:PAYEMS.*sync"):
         Store(tmp_path / "store", tmp_path / "moved.yaml").series("usa.empleo.desempleo")
+
+
+def test_a_sync_that_crosses_midnight_dates_each_series_by_its_own_download(world, tmp_path):
+    _, server, _ = world
+    store = Store(
+        tmp_path / "store",
+        tmp_path / "catalog.yaml",
+        env_file=tmp_path / ".env",
+        clock=lambda: NOW + datetime.timedelta(hours=3 * server.requests),  # each request takes three hours
+        transport=httpx.MockTransport(server),
+        sleep=lambda _seconds: None,
+    )
+    store.sync()
+    assert not store.series("fred:UNRATE", as_of="2026-06-06").empty
+    assert store.series("fred:DGS10", as_of="2026-06-06").empty  # downloaded after midnight UTC
+    assert not store.series("fred:DGS10", as_of="2026-06-07").empty

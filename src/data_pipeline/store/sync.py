@@ -81,6 +81,7 @@ EXIT_QUOTA = 3
 FLUSH_SECONDS = 60.0  # a sync stores what it downloaded at least this often
 
 Row = dict[str, Any]
+Clock = Callable[[], datetime.datetime]  # UTC now: what stamps each batch when it arrives
 LastReal = tuple[str, datetime.date]  # (period label, last day) of a series' last real observation
 
 
@@ -363,7 +364,7 @@ def _sync_tables(
     wanted: Sequence[CatalogEntry],
     index: dict[str, Row],
     spent_today: int,
-    now: datetime.datetime,
+    clock: Clock,
     *,
     full: bool,
 ) -> SourceReport:
@@ -383,12 +384,13 @@ def _sync_tables(
     if not quota:
         try:
             for batch in source.fetch(requests):
+                received_at = clock()
                 for table in batch.tables:
                     existing = storage.read_table(name, table.entry.source_id)
                     schema = TableSchema(
                         table.key_columns, table.value_columns, table.attribute_columns, table.versioned
                     )
-                    received = table_frame(table.rows, schema, now)
+                    received = table_frame(table.rows, schema, received_at)
                     merge = append_versions if table.versioned else append_rows
                     merged, more, changed = merge(existing, received, table.key_columns, table.value_columns)
                     if merged is not existing:
@@ -397,7 +399,7 @@ def _sync_tables(
                     revised += changed
                     stored.add(table.key)
                     if table.key not in failed:
-                        index[table.key] = _table_row(table, index.get(table.key), merged, now)
+                        index[table.key] = _table_row(table, index.get(table.key), merged, received_at)
                 for failure in batch.failures:
                     key = failure.entry.key
                     reason = f"{failure.outcome.value}: {failure.reason}"
@@ -464,7 +466,7 @@ def _sync_documents(
     wanted: Sequence[CatalogEntry],
     index: dict[str, Row],
     spent_today: int,
-    now: datetime.datetime,
+    clock: Clock,
 ) -> SourceReport:
     """Sync a source of kind document. Each request carries the documents already stored; a
     stored document is never asked for again, so `full` means nothing here."""
@@ -483,6 +485,7 @@ def _sync_documents(
     if not quota:
         try:
             for batch in source.fetch(requests):
+                received_at = clock()
                 for data in batch.documents:
                     identifier = data.entry.source_id
                     listed = storage.read_documents(name, identifier)
@@ -490,14 +493,14 @@ def _sync_documents(
                         for file in document.files:
                             storage.write_document(name, identifier, document.group, file.name, file.content)
                         files = [(file.name, file.role, file.url, file.content) for file in document.files]
-                        rows = document_rows(document.group, document.date, files, document.attributes, now)
+                        rows = document_rows(document.group, document.date, files, document.attributes, received_at)
                         listed = rows if listed.empty else pd.concat([listed, rows], ignore_index=True)
                         added += len(rows)
                     if data.documents:
                         storage.write_documents(name, identifier, listed)
                     stored.add(data.key)
                     if data.key not in failed:
-                        index[data.key] = _document_row(data, index.get(data.key), listed, now)
+                        index[data.key] = _document_row(data, index.get(data.key), listed, received_at)
                 for failure in batch.failures:
                     key = failure.entry.key
                     reason = f"{failure.outcome.value}: {failure.reason}"
@@ -539,16 +542,17 @@ def _calls_today(record: Mapping[str, Any] | None, today: datetime.date) -> int:
 class _Checkpoints:
     """Series downloaded from one source wait in memory and are stored together: every
     FLUSH_SECONDS, when the source ends, and when the run is interrupted. Each checkpoint merges
-    and writes the source's file and the index once, however many batches it holds."""
+    and writes the source's file and the index once, however many batches it holds. Every series
+    is stamped with the time it arrived, not the time of the checkpoint or of the run's start."""
 
     storage: Storage
     name: str
     index: dict[str, Row]
     observations: pd.DataFrame
-    now: datetime.datetime
+    clock: Clock
     monotonic: Callable[[], float]
     rows: list[Row] = dataclasses.field(default_factory=list)
-    series: list[SeriesData] = dataclasses.field(default_factory=list)
+    series: list[tuple[SeriesData, datetime.datetime]] = dataclasses.field(default_factory=list)
     changed_index: bool = False
     added: int = 0
     revised: int = 0
@@ -559,9 +563,10 @@ class _Checkpoints:
 
     def keep(self, series: Sequence[SeriesData]) -> None:
         """Hold downloaded series until the next checkpoint."""
+        received_at = self.clock()
         for item in series:
-            self.rows.extend(observation_rows(item, self.now, self.now.date()))
-            self.series.append(item)
+            self.rows.extend(observation_rows(item, received_at, received_at.date()))
+            self.series.append((item, received_at))
 
     def failed(self, entry: CatalogEntry, reason: str) -> None:
         self.index[entry.key] = _failed_row(entry, self.index.get(entry.key), reason)
@@ -579,9 +584,9 @@ class _Checkpoints:
             self.revised += changed
             self.storage.write_observations(self.name, self.observations)
         if self.series:
-            known = last_real(self.observations, self.now.date())
-            for item in self.series:
-                self.index[item.key] = _ok_row(item, self.index.get(item.key), known.get(item.key), self.now)
+            known = last_real(self.observations, self.clock().date())
+            for item, received_at in self.series:
+                self.index[item.key] = _ok_row(item, self.index.get(item.key), known.get(item.key), received_at)
         if self.series or self.changed_index:
             self.storage.write_index(typed(list(self.index.values()), INDEX_DTYPES))
         self.rows, self.series, self.changed_index = [], [], False
@@ -595,17 +600,17 @@ def _sync_source(
     wanted: Sequence[CatalogEntry],
     index: dict[str, Row],
     spent_today: int,
-    now: datetime.datetime,
+    clock: Clock,
     *,
     full: bool,
     monotonic: Callable[[], float] = time.monotonic,
 ) -> SourceReport:
     if source.kind is Kind.TABLE:
-        return _sync_tables(storage, source, client, wanted, index, spent_today, now, full=full)
+        return _sync_tables(storage, source, client, wanted, index, spent_today, clock, full=full)
     if source.kind is Kind.DOCUMENT:
-        return _sync_documents(storage, source, client, wanted, index, spent_today, now)
+        return _sync_documents(storage, source, client, wanted, index, spent_today, clock)
     name = source.name
-    today = now.date()
+    today = clock().date()
     observations = storage.read_observations(name)
     known = last_real(observations, today)
     requests = [
@@ -617,7 +622,7 @@ def _sync_source(
     done: set[str] = set()
     failed: list[tuple[str, str]] = []
     ok = 0
-    checkpoints = _Checkpoints(storage, name, index, observations, now, monotonic)
+    checkpoints = _Checkpoints(storage, name, index, observations, clock, monotonic)
     stopped = ""
     quota = remaining is not None and remaining <= 0
     if not quota:
@@ -737,9 +742,12 @@ def sync(
     only_keys: Collection[str] = (),
     full: bool = False,
     monotonic: Callable[[], float] = time.monotonic,
+    clock: Clock | None = None,
 ) -> SyncReport:
-    """Run one sync. `now` (UTC) stamps every row fetched in this run; `monotonic` times the
-    checkpoints."""
+    """Run one sync. `now` (UTC) is the run's start, recorded in runs.json and the report;
+    `clock` stamps each batch with the time it arrived (by default, always `now`); `monotonic`
+    times the checkpoints."""
+    stamp = clock or (lambda: now)
     with lock(storage.root):
         storage.prepare()
         check_catalog(entries, sources)
@@ -761,7 +769,7 @@ def sync(
             report = None
             try:
                 report = _sync_source(
-                    storage, sources[name], client, wanted, index, spent, now, full=full, monotonic=monotonic
+                    storage, sources[name], client, wanted, index, spent, stamp, full=full, monotonic=monotonic
                 )
             except Exception as exc:  # noqa: BLE001 - one broken source must not stop the others
                 calls = client.calls.get(name, 0) - calls_before

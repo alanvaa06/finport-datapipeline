@@ -160,7 +160,7 @@ dies midway never leaves a half-written file. A missing file reads as an empty t
 | `date` | date | Last day of the period |
 | `value` | float64 | NaN when the source lists the period without a value. Never a made-up 0 |
 | `projection` | bool | True for forecasts (IMF WEO years after the latest actual year) |
-| `fetched_at` | timestamp, UTC | When this library saw the value. One timestamp per sync run |
+| `fetched_at` | timestamp, UTC | When this library saw the value: the time its batch was downloaded |
 | `published_at` | timestamp, UTC, nullable | When the source published it, when the source says so |
 
 ### Append-only rule

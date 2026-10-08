@@ -162,6 +162,7 @@ class Store:
                 only_sources=tuple(sources or ()),
                 only_keys=tuple(keys or ()),
                 full=full,
+                clock=self._clock,
             )
 
     # -- reading -----------------------------------------------------------------------------

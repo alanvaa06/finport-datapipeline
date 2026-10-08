@@ -6,6 +6,7 @@ import subprocess
 import sys
 import time
 
+import pandas as pd
 import pytest
 
 from data_pipeline.store.errors import CatalogError, LockHeldError
@@ -498,3 +499,24 @@ def test_a_version_repeated_with_a_later_date_adds_nothing(tmp_path):
     report = run(tmp_path, source, now=LATER)
     assert (report.sources[0].new, report.sources[0].revised) == (0, 0)
     assert len(Storage(tmp_path).read_observations("fake")) == 1
+
+
+def test_each_series_is_stamped_with_the_time_it_was_downloaded(tmp_path):
+    # A run that starts at 12:00 and crosses midnight UTC: DGS10 arrives on the next day.
+    source = FakeSource()
+    source.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
+    source.answers["DGS10"] = monthly(DGS10, {"2026-05": 4.4})
+
+    def clock():
+        return NOW + datetime.timedelta(hours=6 * len(source.seen))
+
+    run(tmp_path, source, entries=[UNRATE, DGS10], clock=clock)
+    stored = Storage(tmp_path).read_observations("fake")
+    stamps = dict(zip(stored["key"], stored["fetched_at"], strict=True))
+    assert stamps == {
+        "fake:UNRATE": pd.Timestamp("2026-06-06 18:00", tz="UTC"),
+        "fake:DGS10": pd.Timestamp("2026-06-07 00:00", tz="UTC"),
+    }
+    known = as_of(stored, to_moment("2026-06-06"))
+    assert list(known["key"]) == ["fake:UNRATE"]
+    assert index_row(tmp_path, "fake:DGS10")["last_fetched_at"] == pd.Timestamp("2026-06-07 00:00", tz="UTC")
