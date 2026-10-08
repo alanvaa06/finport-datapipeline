@@ -13,6 +13,8 @@ import datetime
 import json
 import os
 import pathlib
+import socket
+import sys
 import time
 from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from typing import Any
@@ -53,7 +55,13 @@ from data_pipeline.store.storage import (
     typed,
 )
 
+if sys.platform == "win32":
+    import msvcrt
+else:
+    import fcntl
+
 LOCK_FILE = "sync.lock"
+LOCKED_BYTE = 1 << 30  # Windows locks a byte range: one far past the holder's details keeps them readable
 WINDOW_DAYS: Mapping[Frequency, int] = {Frequency.DAILY: 30, Frequency.WEEKLY: 91}
 WINDOW_MONTHS: Mapping[Frequency, int] = {
     Frequency.MONTHLY: 24,
@@ -129,22 +137,73 @@ class SyncReport:
         return [line for report in self.sources for line in report.lines()]
 
 
+def _try_lock(descriptor: int) -> bool:
+    """Take the operating system's lock on an open lock file without waiting. The system releases
+    it when the process ends, however it ends, so a sync that was killed never blocks the next."""
+    try:
+        if sys.platform == "win32":
+            os.lseek(descriptor, LOCKED_BYTE, os.SEEK_SET)
+            msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
+        else:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        return False
+    return True
+
+
+def _unlock(descriptor: int) -> None:
+    with contextlib.suppress(OSError):
+        if sys.platform == "win32":
+            os.lseek(descriptor, LOCKED_BYTE, os.SEEK_SET)
+            msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
+        else:
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+    os.close(descriptor)
+
+
+def _holder(path: pathlib.Path) -> str:
+    """Who holds the lock, as its file says: ' (pid 123 on HOST since ...)', or '' when unreadable."""
+    try:
+        found = json.loads(path.read_text(encoding="utf-8"))
+        return f" (pid {found['pid']} on {found['host']} since {found['started']})"
+    except (OSError, ValueError, TypeError, KeyError):
+        return ""
+
+
 @contextlib.contextmanager
 def lock(root: pathlib.Path) -> Iterator[None]:
-    """Hold <root>/sync.lock for the duration of a sync. A second sync is refused."""
+    """Hold <root>/sync.lock for the duration of a sync. A second sync is refused while the first
+    runs. The file records the holder (pid, host, start); the lock itself is the operating
+    system's, so a file left behind by a sync that died is taken over."""
     path = root / LOCK_FILE
     root.mkdir(parents=True, exist_ok=True)
-    try:
-        handle = path.open("x", encoding="ascii")
-    except FileExistsError:
-        msg = f"another sync is running, or one died: {path} exists. Delete it by hand if no sync is running."
-        raise LockHeldError(msg) from None
-    with handle:
-        handle.write(str(os.getpid()))
+    while True:
+        descriptor = os.open(path, os.O_RDWR | os.O_CREAT, 0o644)
+        if not _try_lock(descriptor):
+            os.close(descriptor)
+            msg = f"another sync is running on this store{_holder(path)}: {path}"
+            raise LockHeldError(msg)
+        try:
+            same = os.fstat(descriptor).st_ino == path.stat().st_ino
+        except FileNotFoundError:
+            same = False
+        if same:
+            break
+        _unlock(descriptor)  # the sync that held it removed the file meanwhile: lock the new one
+    holder = {
+        "pid": os.getpid(),
+        "host": socket.gethostname(),
+        "started": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds"),
+    }
+    os.ftruncate(descriptor, 0)
+    os.lseek(descriptor, 0, os.SEEK_SET)
+    os.write(descriptor, json.dumps(holder).encode("ascii"))
     try:
         yield
     finally:
-        path.unlink(missing_ok=True)
+        _unlock(descriptor)
+        with contextlib.suppress(OSError):  # on Windows a sync that just opened it keeps the file
+            path.unlink(missing_ok=True)
 
 
 def observation_rows(series: SeriesData, fetched_at: datetime.datetime, today: datetime.date) -> list[Row]:

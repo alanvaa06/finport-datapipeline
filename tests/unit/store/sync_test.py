@@ -1,5 +1,10 @@
 import datetime
 import math
+import os
+import signal
+import subprocess
+import sys
+import time
 
 import pytest
 
@@ -7,7 +12,7 @@ from data_pipeline.store.errors import CatalogError, LockHeldError
 from data_pipeline.store.model import Failure, Frequency, Observation, Outcome, SeriesData
 from data_pipeline.store.periods import read_period
 from data_pipeline.store.storage import Storage, as_of, latest, to_moment
-from data_pipeline.store.sync import LOCK_FILE, NOT_RETURNED, SourceReport, SyncReport, sync, window_start
+from data_pipeline.store.sync import LOCK_FILE, NOT_RETURNED, SourceReport, SyncReport, lock, sync, window_start
 
 from .helpers import NOW, FakeSource, client, entry, monthly
 
@@ -188,11 +193,57 @@ def test_an_interrupted_run_keeps_what_it_stored_and_frees_the_lock(tmp_path):
     assert (report.sources[0].ok, report.sources[0].new) == (2, 1)
 
 
-def test_a_second_sync_is_refused_while_the_lock_exists(tmp_path):
-    (tmp_path / LOCK_FILE).write_text("123", encoding="ascii")
-    with pytest.raises(LockHeldError, match="Delete it by hand"):
-        run(tmp_path, FakeSource())
+def test_a_second_sync_is_refused_while_another_holds_the_lock(tmp_path):
+    source = FakeSource()
+    with lock(tmp_path), pytest.raises(LockHeldError, match=f"another sync is running .*pid {os.getpid()}"):
+        run(tmp_path, source)
+    assert source.seen == []
+
+
+def test_a_lock_left_by_a_sync_that_died_is_taken_over(tmp_path):
+    (tmp_path / LOCK_FILE).write_text("123", encoding="ascii")  # nothing holds it any more
+    source = FakeSource()
+    source.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
+    assert run(tmp_path, source).exit_code == 0
+    assert not (tmp_path / LOCK_FILE).exists()
+
+
+HOLD_THE_LOCK = """
+import os, pathlib, sys, time
+from data_pipeline.store.sync import lock
+with lock(pathlib.Path(sys.argv[1])):
+    print(os.getpid(), flush=True)
+    time.sleep(120)
+"""
+
+
+def run_once_the_lock_is_free(tmp_path, source, seconds=20.0):
+    """The system frees the lock of a process that died soon after, not at the same instant."""
+    deadline = time.monotonic() + seconds
+    while True:
+        try:
+            return run(tmp_path, source)
+        except LockHeldError:
+            if time.monotonic() > deadline:
+                raise
+            time.sleep(0.1)
+
+
+def test_a_sync_killed_without_any_cleanup_does_not_block_the_next_one(tmp_path):
+    # The way a panel's Stop button ends a run: no finally, no atexit, the lock file stays behind.
+    holder = subprocess.Popen([sys.executable, "-c", HOLD_THE_LOCK, str(tmp_path)], stdout=subprocess.PIPE, text=True)
+    try:
+        pid = int(holder.stdout.readline())
+        with pytest.raises(LockHeldError, match=rf"another sync is running on this store \(pid {pid} on "):
+            run(tmp_path, FakeSource())
+        os.kill(pid, signal.SIGTERM)  # TerminateProcess on Windows; on POSIX the default action, no finally
+    finally:
+        holder.kill()
+        holder.wait()
     assert (tmp_path / LOCK_FILE).exists()
+    source = FakeSource()
+    source.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
+    assert run_once_the_lock_is_free(tmp_path, source).exit_code == 0
 
 
 def test_an_invalid_catalog_stops_before_any_download(tmp_path):

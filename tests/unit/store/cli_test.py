@@ -8,7 +8,7 @@ import pytest
 from data_pipeline.store import cli as cli_module
 from data_pipeline.store.api import Store
 from data_pipeline.store.cli import cli
-from data_pipeline.store.sync import LOCK_FILE
+from data_pipeline.store.sync import lock
 
 from .helpers import NOT_IN_ALFRED, NOW
 
@@ -102,11 +102,10 @@ def test_configuration_errors_exit_two(workspace):
     missing = invoke("sync", "--root", str(root / "store"), "--catalog", str(root / "absent.yaml"))
     assert missing.exit_code == 2
     assert "the catalog file does not exist" in missing.output
-    (root / "store").mkdir()
-    (root / "store" / LOCK_FILE).write_text("1", encoding="ascii")
-    locked = invoke("sync", "--root", str(root / "store"))
+    with lock(root / "store"):
+        locked = invoke("sync", "--root", str(root / "store"))
     assert locked.exit_code == 2
-    assert "Delete it by hand" in locked.output
+    assert "another sync is running" in locked.output
 
 
 def test_status_lists_each_series_and_exits_by_freshness(workspace):
