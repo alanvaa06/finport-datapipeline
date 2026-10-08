@@ -75,6 +75,12 @@ can narrow them with `--source` and `--region`. It needs no store, no key and no
 configuration error and 3 when a quota stopped it (run it again tomorrow). If a source is down,
 the store keeps what it already had.
 
+`status` gives each series a state: `ok`, `stale`, `missing` or `failed`, and exits with 1
+unless every one is `ok`. A series is stale when its last period ended more than 10 days ago for
+a daily series, 28 for a weekly one, 124 monthly, 183 quarterly and 730 annual; an entry's
+`stale_after_days` sets its own limit. `catalog` marks with `[stale]` the series whose entry says
+the publisher stopped updating them (`attrs.stale`).
+
 ## Python
 
 ```python
@@ -101,12 +107,20 @@ fetched it.
   ALFRED's first vintage, years before your first sync. `store.revisions(...)` lists each one.
   FRED gives the day, not the hour, so a vintage counts as known from the end of that day (UTC):
   `as_of="2026-10-02"` sees what came out that day, `as_of="2026-10-02T12:00Z"` does not.
-- **SEC XBRL facts:** each version is dated with the day the filing was received, and also
-  counts as known from the end of that day.
+- **SEC XBRL facts and SEC filings:** each version of a fact, and each filing, is dated with the
+  day the SEC received it, and also counts as known from the end of that day.
 - **Every other source,** and FRED series that ALFRED does not keep (such as `SP500`): the
   source does not say when a value was published, so the store dates it by its own fetch. On
   those, `as_of` sees nothing before your first sync, and point-in-time history starts that day.
   Keep syncing regularly: each run records what changed.
+
+`date` is the last day of a value's period, not the day the value came out: September's CPI is
+dated 2026-09-30 and published in mid-October. Without `as_of`, `series` and `frame` also give
+each period its latest revision. Lined up on market dates as they are, or carried forward, they
+put a value on days before anyone knew it. For a backtest, read with `as_of` set to each day you
+simulate, or build the history from `store.revisions(...)`: a version is known from its
+`published_at`, or from its `fetched_at` when the source gives no publication day. `frame` never
+carries a value forward: a gap stays empty, and so do the later dates of a series that stopped.
 
 To download from Python, give the store a catalog, or add entries for the session:
 
