@@ -127,3 +127,54 @@ def test_an_excerpt_is_scrubbed_before_it_is_cut():
     assert len(excerpt) == 300
     assert key[:12] not in excerpt
     assert excerpt.endswith("api_key=***" + " and more"[: 300 - 291])
+
+
+@pytest.mark.parametrize("name", ["httpcore.http11", "httpcore.connection", "httpcore.http2", "httpcore.proxy"])
+def test_the_key_never_shows_in_the_debug_log_of_httpcore(caplog, name):
+    # httpcore logs on child loggers; a filter on "httpcore" alone does not see their records.
+    client = Client(secrets=("s3cr3t",))
+    with caplog.at_level(logging.DEBUG):
+        logging.getLogger(name).debug("receive_response_headers.complete Location=/next?api_key=%s", "s3cr3t")
+    client.close()
+    assert "api_key=***" in caplog.text
+    assert "s3cr3t" not in caplog.text
+
+
+def redirecting(location, status=302):
+    """A source at api.example.test that sends every request to `location` once; `seen` records them."""
+    seen = []
+
+    def handler(request):
+        seen.append(request)
+        if request.url.host == "api.example.test" and request.url.path == "/start":
+            return httpx.Response(status, headers={"Location": location})
+        return httpx.Response(200, text="ok")
+
+    return handler, seen
+
+
+def test_a_redirect_within_the_same_host_over_https_is_followed():
+    handler, seen = redirecting("https://api.example.test/moved?api_key=s3cr3t")
+    client = Client(transport=httpx.MockTransport(handler), sleep=lambda _seconds: None)
+    response = client.get("banxico", "https://api.example.test/start", headers={"Bmx-Token": "s3cr3t"})
+    assert response.text == "ok"
+    assert [request.url.path for request in seen] == ["/start", "/moved"]
+    assert seen[1].headers["Bmx-Token"] == "s3cr3t"
+
+
+@pytest.mark.parametrize(
+    ("location", "status"),
+    [
+        ("https://elsewhere.example/collect", 302),  # another host
+        ("http://api.example.test/moved", 301),  # the same host without TLS
+        ("https://elsewhere.example/collect", 307),  # a POST body would follow
+    ],
+)
+def test_a_redirect_to_another_host_or_to_plain_http_is_refused_without_sending_anything(location, status):
+    handler, seen = redirecting(location, status)
+    client = Client(secrets=("s3cr3t",), transport=httpx.MockTransport(handler), sleep=lambda _seconds: None)
+    with pytest.raises(NetworkError, match=r"redirect to \S+ refused") as raised:
+        client.post("bls", "https://api.example.test/start", json={"registrationkey": "s3cr3t"})
+    assert [request.url.host for request in seen] == ["api.example.test"]
+    assert "s3cr3t" not in str(raised.value)
+    assert client.calls == {"bls": 1}
