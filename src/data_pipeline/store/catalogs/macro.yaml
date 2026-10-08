@@ -266,15 +266,14 @@
   attrs:
     region: AT
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.AT.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.AT.EUR.E
   alias: e_at_fx_usd
-  name: Austria FX rate (LCU per USD)
+  name: Austria FX rate, euro per USD (LCU per USD; before 1999 the schilling rate at its euro conversion rate)
   frequency: M
   attrs:
     region: AT
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/AUT
   alias: e_at_gdp_growth
@@ -768,15 +767,14 @@
   attrs:
     region: BE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.BE.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.BE.EUR.E
   alias: e_be_fx_usd
-  name: Belgium FX rate (LCU per USD)
+  name: Belgium FX rate, euro per USD (LCU per USD; before 1999 the Belgian franc rate at its euro conversion rate)
   frequency: M
   attrs:
     region: BE
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/BEL
   alias: e_be_gdp_growth
@@ -2775,15 +2773,14 @@
   attrs:
     region: DE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.DE.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.DE.EUR.E
   alias: e_de_fx_usd
-  name: Germany FX rate (LCU per USD)
+  name: Germany FX rate, euro per USD (LCU per USD; before 1999 the Deutsche mark rate at its euro conversion rate)
   frequency: M
   attrs:
     region: DE
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/DEU
   alias: e_de_gdp_growth
@@ -3330,15 +3327,14 @@
   attrs:
     region: ES
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.ES.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.ES.EUR.E
   alias: e_es_fx_usd
-  name: Spain FX rate (LCU per USD)
+  name: Spain FX rate, euro per USD (LCU per USD; before 1999 the peseta rate at its euro conversion rate)
   frequency: M
   attrs:
     region: ES
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/ESP
   alias: e_es_gdp_growth
@@ -3562,15 +3558,14 @@
   attrs:
     region: EZ
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.U2.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.XM.EUR.E
   alias: e_ez_fx_usd
-  name: Euro area FX rate (LCU per USD)
+  name: Euro area FX rate, euro per USD (LCU per USD)
   frequency: M
   attrs:
     region: EZ
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/EMU
   alias: e_ez_gdp_growth
@@ -3787,15 +3782,14 @@
   attrs:
     region: FI
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.FI.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.FI.EUR.E
   alias: e_fi_fx_usd
-  name: Finland FX rate (LCU per USD)
+  name: Finland FX rate, euro per USD (LCU per USD; before 1999 the markka rate at its euro conversion rate)
   frequency: M
   attrs:
     region: FI
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/FIN
   alias: e_fi_gdp_growth
@@ -4044,15 +4038,14 @@
   attrs:
     region: FR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.FR.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.FR.EUR.E
   alias: e_fr_fx_usd
-  name: France FX rate (LCU per USD)
+  name: France FX rate, euro per USD (LCU per USD; before 1999 the French franc rate at its euro conversion rate)
   frequency: M
   attrs:
     region: FR
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/FRA
   alias: e_fr_gdp_growth
@@ -4318,15 +4311,14 @@
   attrs:
     region: GR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.GR.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.GR.EUR.E
   alias: e_gr_fx_usd
-  name: Greece FX rate (LCU per USD)
+  name: Greece FX rate, euro per USD (LCU per USD; before 2001 the drachma rate at its euro conversion rate)
   frequency: M
   attrs:
     region: GR
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 2000-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/GRC
   alias: e_gr_gdp_growth
@@ -5263,15 +5255,14 @@
   attrs:
     region: IE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.IE.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.IE.EUR.E
   alias: e_ie_fx_usd
-  name: Ireland FX rate (LCU per USD)
+  name: Ireland FX rate, euro per USD (LCU per USD; before 1999 the Irish pound rate at its euro conversion rate)
   frequency: M
   attrs:
     region: IE
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/IRL
   alias: e_ie_gdp_growth
@@ -5979,15 +5970,14 @@
   attrs:
     region: IT
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.IT.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.IT.EUR.E
   alias: e_it_fx_usd
-  name: Italy FX rate (LCU per USD)
+  name: Italy FX rate, euro per USD (LCU per USD; before 1999 the lira rate at its euro conversion rate)
   frequency: M
   attrs:
     region: IT
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/ITA
   alias: e_it_gdp_growth
@@ -7178,15 +7168,14 @@
   attrs:
     region: NL
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.NL.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.NL.EUR.E
   alias: e_nl_fx_usd
-  name: Netherlands FX rate (LCU per USD)
+  name: Netherlands FX rate, euro per USD (LCU per USD; before 1999 the guilder rate at its euro conversion rate)
   frequency: M
   attrs:
     region: NL
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/NLD
   alias: e_nl_gdp_growth
@@ -8592,15 +8581,14 @@
   attrs:
     region: PT
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.PT.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.PT.EUR.E
   alias: e_pt_fx_usd
-  name: Portugal FX rate (LCU per USD)
+  name: Portugal FX rate, euro per USD (LCU per USD; before 1999 the escudo rate at its euro conversion rate)
   frequency: M
   attrs:
     region: PT
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/PRT
   alias: e_pt_gdp_growth

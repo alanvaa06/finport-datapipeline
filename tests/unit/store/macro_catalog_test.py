@@ -40,7 +40,7 @@ def test_every_entry_keeps_the_column_name_as_its_alias_and_declares_a_frequency
 def test_every_series_still_on_dbnomics_says_why_it_is_stale():
     entries = load_catalog(pathlib.Path("macro"))
     on_dbnomics = [entry for entry in entries if entry.source == "dbnomics"]
-    assert len(on_dbnomics) == 148
+    assert len(on_dbnomics) == 136
     assert all(entry.attrs.get("stale", "").startswith("2026-10: ") for entry in on_dbnomics)
     assert all("stale" not in entry.attrs for entry in entries if entry.source != "dbnomics")
 
@@ -69,3 +69,18 @@ def test_the_hicp_columns_are_named_for_what_they_hold():
     assert all("HICP" in entry.name for entry in hicp)
     assert [entry.alias for entry in entries if "core_cpi" in entry.alias] == ["e_us_core_cpi"]
 
+
+
+EURO_MEMBERS = {"AT", "BE", "DE", "ES", "FI", "FR", "GR", "IE", "IT", "NL", "PT"}
+
+
+def test_the_euro_members_fx_columns_read_the_euro_against_the_dollar():
+    """The IFS mirror held the legacy currencies, which end in 1998 (Greece 2000); since then a
+    member's local currency per dollar is the euro per dollar, which the BIS publishes per member."""
+    by_alias = {entry.alias: entry for entry in load_catalog(pathlib.Path("macro"))}
+    for region in EURO_MEMBERS | {"EZ"}:
+        entry = by_alias[f"e_{region.lower()}_fx_usd"]
+        code = "XM" if region == "EZ" else region
+        assert entry.key == f"bis:WS_XRU/M.{code}.EUR.E"
+        assert "euro per USD" in entry.name
+        assert "stale" not in entry.attrs
