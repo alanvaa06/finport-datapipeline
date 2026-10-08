@@ -10,16 +10,32 @@ Credentials are personal: `repr` shows only which ones are present, never their 
 This module imports nothing from the store: the store and the command line both read it.
 """
 
+import contextlib
 import dataclasses
+import errno
 import os
 import pathlib
 import re
+import sys
+import tempfile
+import time
 import unicodedata
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 
 import dotenv
 
+if sys.platform == "win32":
+    import msvcrt
+else:
+    import fcntl
+
 ENV_FILE_NAME = ".env"
+LOCK_SUFFIX = ".lock"  # saves to `.env` take turns on `.env.lock`
+LOCK_TIMEOUT = 10.0  # seconds a save waits for another one to finish
+LOCK_POLL = 0.05  # seconds between two tries of the lock
+REPLACE_ATTEMPTS = 10
+REPLACE_WAIT = 0.5  # seconds between attempts: about five seconds in all
+FILE_MODE = 0o600  # on POSIX: readable and writable by the owner only
 ENV_FILE_ENCODING = "utf-8-sig"  # plain UTF-8, tolerating the BOM some editors add
 PROJECT_MARKERS = (".git", "pyproject.toml")  # a folder holding either is the root of a project
 LINE_BREAK = re.compile(r"\r\n|\r|\n")  # the only line breaks python-dotenv knows
@@ -197,7 +213,13 @@ def resolve(
 
 
 def save(env_file: pathlib.Path, updates: Mapping[str, str]) -> None:
-    """Write `updates` into `env_file`, replacing their lines and keeping every other line."""
+    """Write `updates` into `env_file`, replacing their lines and keeping every other line.
+
+    Saves to the same file take turns (see `locked`), and each one writes a temporary file in the
+    same folder that then replaces `env_file`: a reader sees the old file or the new one, never
+    half of one, and a save that fails leaves the old file as it was. On POSIX the file is left
+    readable and writable by its owner only (0600).
+    """
     for name, value in updates.items():
         if name not in _BY_NAME:
             msg = f"Unknown environment variable: {name}"
@@ -205,21 +227,117 @@ def save(env_file: pathlib.Path, updates: Mapping[str, str]) -> None:
         if any(unicodedata.category(char) in UNSAFE_CATEGORIES for char in value):
             msg = f"Invalid value for {name}: it holds a line break or another control character"
             raise ValueError(msg)
-    lines = _lines(env_file.read_text(encoding=ENV_FILE_ENCODING)) if env_file.is_file() else []
-    remaining = dict(updates)
-    written: set[str] = set()
-    kept: list[str] = []
-    for line in lines:
-        line_name = _line_name(line)
-        if line_name is not None and line_name in updates:
-            if line_name not in written:  # the first line of a name takes the new value, later ones are dropped
-                written.add(line_name)
-                kept.append(f"{line_name}={_encode(updates[line_name])}")
-                remaining.pop(line_name)
-            continue
-        kept.append(line)
-    kept.extend(f"{name}={_encode(value)}" for name, value in remaining.items())
-    env_file.write_text("\n".join(kept) + "\n", encoding="utf-8", newline="\n")
+    path = env_file.resolve()  # through a symbolic link, the file it points at gets the new content
+    with locked(path):
+        lines = _lines(path.read_text(encoding=ENV_FILE_ENCODING)) if path.is_file() else []
+        remaining = dict(updates)
+        written: set[str] = set()
+        kept: list[str] = []
+        for line in lines:
+            line_name = _line_name(line)
+            if line_name is not None and line_name in updates:
+                if line_name not in written:  # the first line of a name takes the new value, later ones are dropped
+                    written.add(line_name)
+                    kept.append(f"{line_name}={_encode(updates[line_name])}")
+                    remaining.pop(line_name)
+                continue
+            kept.append(line)
+        kept.extend(f"{name}={_encode(value)}" for name, value in remaining.items())
+        _write(path, "\n".join(kept) + "\n")
+
+
+def lock_file(env_file: pathlib.Path) -> pathlib.Path:
+    """The file saves to `env_file` take turns on: `.env.lock`, next to `.env`."""
+    path = env_file.resolve()
+    return path.with_name(path.name + LOCK_SUFFIX)
+
+
+@contextlib.contextmanager
+def locked(env_file: pathlib.Path) -> Iterator[None]:
+    """Hold the lock of `env_file`, waiting up to LOCK_TIMEOUT seconds for whoever holds it now.
+
+    The lock is the operating system's, taken on `lock_file(env_file)`: it ends with the process
+    that holds it, so a save that crashes leaves no stale lock (the empty file stays and is
+    reused). Raises TimeoutError when the wait runs out.
+    """
+    descriptor = os.open(lock_file(env_file), os.O_RDWR | os.O_CREAT, FILE_MODE)
+    try:
+        deadline = time.monotonic() + LOCK_TIMEOUT
+        while not _try_lock(descriptor):
+            if time.monotonic() >= deadline:
+                msg = f"{env_file} is being saved by another program; try again"
+                raise TimeoutError(msg)
+            time.sleep(LOCK_POLL)
+        try:
+            yield
+        finally:
+            _unlock(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+if sys.platform == "win32":
+
+    def _try_lock(descriptor: int) -> bool:
+        os.lseek(descriptor, 0, os.SEEK_SET)
+        try:
+            msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
+        except OSError as exc:
+            if exc.errno in (errno.EACCES, errno.EDEADLOCK):  # someone else holds it
+                return False
+            raise
+        return True
+
+    def _unlock(descriptor: int) -> None:
+        os.lseek(descriptor, 0, os.SEEK_SET)
+        msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
+
+else:
+
+    def _try_lock(descriptor: int) -> bool:
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:  # someone else holds it
+            return False
+        return True
+
+    def _unlock(descriptor: int) -> None:
+        fcntl.flock(descriptor, fcntl.LOCK_UN)
+
+
+def _write(path: pathlib.Path, text: str) -> None:
+    """Put `text` in `path` through a temporary file in the same folder that then replaces it.
+
+    `mkstemp` creates the temporary file readable and writable by its owner only, so on POSIX
+    `path` ends up 0600 whatever its mode was before.
+    """
+    descriptor, name = tempfile.mkstemp(dir=path.parent, prefix=f"{path.name}.", suffix=".tmp")
+    temporary = pathlib.Path(name)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(text.encode("utf-8"))
+            handle.flush()
+            os.fsync(handle.fileno())
+        _replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)  # still there only when the replacement failed
+
+
+def _replace(temporary: pathlib.Path, path: pathlib.Path) -> None:
+    """Put the finished temporary file in place of `path`.
+
+    On Windows the replacement is refused while another program has `path` open (something
+    reading the keys): it is given a few seconds to finish before the error is raised.
+    """
+    for attempt in range(1, REPLACE_ATTEMPTS + 1):
+        try:
+            temporary.replace(path)
+        except PermissionError:
+            if attempt == REPLACE_ATTEMPTS:
+                raise
+            time.sleep(REPLACE_WAIT)
+        else:
+            return
 
 
 def _lines(text: str) -> list[str]:

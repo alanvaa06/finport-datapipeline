@@ -40,7 +40,9 @@ data-pipeline setup
 
 `setup` asks for each key, hidden as you type it, and checks it with one request to its source
 before saving. It shows the file it writes to, and asks first when that file is in a parent
-folder; with no `.env` in the project yet, it creates one in the current folder. To see which keys
+folder; with no `.env` in the project yet, it creates one in the current folder. Each save
+replaces the whole file at once, so it is never left half-written, and two saves take turns on a
+`.env.lock` next to it. On Linux and macOS the file is readable by you only. To see which keys
 are set and where each one comes from, run `data-pipeline keys`. It never shows the values.
 
 | Variable | Source | Needed for |

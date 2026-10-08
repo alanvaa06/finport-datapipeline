@@ -1,5 +1,9 @@
 import os
 import pathlib
+import stat
+import sys
+import threading
+import time
 
 import pytest
 
@@ -183,6 +187,86 @@ def test_save_reads_every_kind_of_line_ending(tmp_path):
     env_file.write_bytes(b"A=1\r\nBLS_API_KEY=old\rB=2\n")
     save(env_file, {"BLS_API_KEY": "new"})
     assert env_file.read_bytes() == b"A=1\nBLS_API_KEY=new\nB=2\n"
+
+
+def test_two_saves_at_once_keep_both_keys(tmp_path, monkeypatch):
+    env_file = tmp_path / ".env"
+    env_file.write_text("# keep me\nOTHER_VAR=keep\n", encoding="utf-8")
+    read_text = pathlib.Path.read_text
+
+    def slow_read_text(self, *args, **kwargs):  # widens each save's read-modify-write window
+        text = read_text(self, *args, **kwargs)
+        time.sleep(0.3)
+        return text
+
+    monkeypatch.setattr(pathlib.Path, "read_text", slow_read_text)
+    errors: list[BaseException] = []
+
+    def writer(name):
+        try:
+            save(env_file, {name: "v"})
+        except BaseException as exc:  # noqa: BLE001  # reported by the assertion below
+            errors.append(exc)
+
+    threads = [threading.Thread(target=writer, args=(name,)) for name in ("FRED_API_KEY", "BLS_API_KEY")]
+    for thread in threads:
+        thread.start()
+        time.sleep(0.05)
+    for thread in threads:
+        thread.join()
+    monkeypatch.undo()
+    assert errors == []
+    assert resolve(environ={}, env_file=env_file).values == {"FRED_API_KEY": "v", "BLS_API_KEY": "v"}
+    assert env_file.read_text(encoding="utf-8").startswith("# keep me\nOTHER_VAR=keep\n")
+
+
+def test_a_save_that_fails_leaves_the_file_as_it_was(tmp_path, monkeypatch):
+    env_file = tmp_path / ".env"
+    env_file.write_text("# mine\nFRED_API_KEY=old\n", encoding="utf-8")
+
+    def full_disk(*_args, **_kwargs):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(os, "replace", full_disk)
+    with pytest.raises(OSError, match="No space left on device"):
+        save(env_file, {"FRED_API_KEY": "new"})
+    monkeypatch.undo()
+    assert env_file.read_text(encoding="utf-8") == "# mine\nFRED_API_KEY=old\n"
+    assert not [path.name for path in tmp_path.iterdir() if path.name.endswith(".tmp")]
+
+
+def test_a_save_gives_up_when_another_one_holds_the_file(tmp_path, monkeypatch):
+    env_file = tmp_path / ".env"
+    monkeypatch.setattr(credentials, "LOCK_TIMEOUT", 0.2)
+    with credentials.locked(env_file), pytest.raises(TimeoutError, match="being saved by another program"):
+        save(env_file, {"FRED_API_KEY": "x"})
+    save(env_file, {"FRED_API_KEY": "x"})  # once released, the next save goes through
+    assert env_file.read_text(encoding="utf-8") == "FRED_API_KEY=x\n"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX permissions")
+def test_the_saved_file_is_readable_by_its_owner_only(tmp_path):
+    env_file = tmp_path / ".env"
+    env_file.write_text("OTHER_VAR=keep\n", encoding="utf-8")
+    env_file.chmod(0o644)
+    save(env_file, {"FRED_API_KEY": "x"})
+    assert stat.S_IMODE(env_file.stat().st_mode) == 0o600
+    save(tmp_path / "new.env", {"FRED_API_KEY": "x"})
+    assert stat.S_IMODE((tmp_path / "new.env").stat().st_mode) == 0o600
+
+
+def test_a_save_through_a_symbolic_link_writes_the_file_it_points_at(tmp_path):
+    real = tmp_path / "keys" / "project.env"
+    real.parent.mkdir()
+    real.write_text("OTHER_VAR=keep\n", encoding="utf-8")
+    link = tmp_path / ".env"
+    try:
+        link.symlink_to(real)
+    except OSError:
+        pytest.skip("this system does not let the user create symbolic links")
+    save(link, {"FRED_API_KEY": "x"})
+    assert link.is_symlink()
+    assert real.read_text(encoding="utf-8") == "OTHER_VAR=keep\nFRED_API_KEY=x\n"
 
 
 def test_the_missing_message_names_the_key_where_to_get_it_and_the_command():
