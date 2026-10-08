@@ -268,12 +268,48 @@ def test_an_unknown_ticker_fails_alone():
     assert groups(batches) == [ANNUAL, EVENT, AMENDED]
 
 
-def test_a_failed_download_ends_the_company_after_what_already_arrived():
+def failures(batches):
+    return [(failure.outcome, failure.reason) for batch in batches for failure in batch.failures]
+
+
+def test_a_filing_that_fails_is_recorded_and_the_later_ones_still_arrive():
     sec = Sec()
     sec.fail = "a8-kex991q1.htm"
     batches = fetch(sec, [Request(company())])
-    assert groups(batches) == [ANNUAL]
-    assert batches[-1].failures[0].outcome is Outcome.NETWORK_ERROR
+    assert groups(batches) == [ANNUAL, AMENDED]
+    ((outcome, reason),) = failures(batches)
+    assert outcome is Outcome.NETWORK_ERROR
+    assert reason.startswith(f"{EVENT}: ")
+
+
+def test_an_exhibit_the_sec_lists_but_does_not_have_no_longer_blocks_the_later_filings():
+    sec = Sec()
+    del sec.files["/Archives/edgar/data/320193/000032019326000005/a8-kex991q1.htm"]
+    batches = fetch(sec, [Request(company())])
+    assert groups(batches) == [ANNUAL, AMENDED]
+    assert failures(batches) == [(Outcome.SOURCE_ERROR, f"{EVENT}: the SEC lists a8-kex991q1.htm but does not have it")]
+
+
+def test_a_name_the_store_refuses_fails_only_its_filing():
+    sec = Sec()
+    odd = "0000320193-25-000050"
+    quarter = (odd, "10-Q", "2025-08-01", "2025-06-28", "quarterly report.htm")
+    sec.recent = page(quarter, *zip(*RECENT.values(), strict=True))
+    sec.files["/Archives/edgar/data/320193/000032019325000050/quarterly report.htm"] = b"<html>q</html>"
+    batches = fetch(sec, [Request(company())])
+    assert groups(batches) == [ANNUAL, EVENT, AMENDED]
+    ((outcome, reason),) = failures(batches)
+    assert outcome is Outcome.SOURCE_ERROR
+    assert reason.startswith(f"{odd}: unexpected answer (ValueError: unsafe file name")
+
+
+def test_three_network_failures_end_the_company_for_this_run():
+    sec = Sec()
+    sec.fail = "/Archives/"
+    chosen = company(start=datetime.date(2015, 1, 1), params={"forms": ["10-K", "8-K"]})
+    batches = fetch(sec, [Request(chosen)])
+    assert [outcome for outcome, _ in failures(batches)] == [Outcome.NETWORK_ERROR] * 3
+    assert "aapl-10ka.htm" not in sec.paths()  # the fourth filing waits for the next run
 
 
 def test_a_document_the_sec_lists_but_does_not_have_is_a_source_error():
@@ -415,7 +451,7 @@ def test_a_new_filing_is_added_and_the_old_files_stay(store, sec, clock, tmp_pat
     assert store.info("sec_filings:AAPL").last_period == "2026-05-01"
 
 
-def test_a_run_that_fails_in_the_middle_keeps_what_arrived_and_the_next_resumes(tmp_path, sec, clock, monkeypatch):
+def test_a_run_with_a_failed_filing_keeps_the_others_and_the_next_run_brings_it(tmp_path, sec, clock, monkeypatch):
     def filings(http, credentials):
         return SecFilings(http, credentials, today=TODAY.replace)
 
@@ -432,13 +468,14 @@ def test_a_run_that_fails_in_the_middle_keeps_what_arrived_and_the_next_resumes(
     sec.fail = "a8-kex991q1.htm"
     report = store.sync()
     assert report.exit_code == 1
-    assert report.sources[0].new == 1
-    assert list(store.documents("sec_filings", "AAPL")["group"]) == [ANNUAL]
+    assert report.sources[0].new == 2
+    assert list(store.documents("sec_filings", "AAPL")["group"]) == [ANNUAL, AMENDED]
     info = store.info("sec_filings:AAPL")
     assert (info.status, info.kind) == ("failed", "document")
+    assert info.reason.startswith(f"network_error: {EVENT}: ")
     sec.fail = None
     report = store.sync()
-    assert (report.exit_code, report.sources[0].new) == (0, 3)
+    assert (report.exit_code, report.sources[0].new) == (0, 2)
     assert len(store.documents("sec_filings", "AAPL")) == 4
 
 

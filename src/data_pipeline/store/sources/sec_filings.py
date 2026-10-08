@@ -6,8 +6,11 @@ document: its primary file and, for an 8-K, its exhibits (the earnings release i
 
 A filing never changes at the SEC. Each request carries the accession numbers already stored;
 the source lists the company's filings and downloads the ones that are missing, oldest first,
-one filing a batch, so a run that stops resumes by itself. A filing that fails ends that
-company's run; the next run asks for it again.
+one filing a batch, so a run that stops resumes by itself. A filing that fails (a file the SEC
+lists but does not have, an answer that cannot be read, a name the store refuses, a network
+failure) is recorded as the company's failure and skipped, so it never holds back the filings
+after it; the next run asks for it again. After MAX_NETWORK_FAILURES network failures the SEC
+is taken to be unreachable and the rest of the company waits for the next run.
 """
 
 import dataclasses
@@ -54,6 +57,7 @@ VIEWER_PAGE = re.compile(r"r\d+\.html?")  # a page of the SEC's XBRL viewer, not
 PRIMARY = "primary"
 EXHIBIT = "exhibit"
 STALE_AFTER_DAYS = 140  # a quarter and slack
+MAX_NETWORK_FAILURES = 3  # in one company's run
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -213,8 +217,24 @@ class SecFilings:
             return FetchBatch(documents=(data,))
 
         yield batch()
+        network_failures = 0
         for filing in missing(filings, chosen, request.groups):
-            yield batch(self._document(edgar, cik, filing))
+            try:
+                document = self._document(edgar, cik, filing)
+            except NetworkError as exc:
+                network_failures += 1
+                yield FetchBatch(failures=(Failure(entry, Outcome.NETWORK_ERROR, f"{filing.accession}: {exc}"),))
+                if network_failures >= MAX_NETWORK_FAILURES:
+                    return
+                continue
+            except AnswerError as exc:
+                yield FetchBatch(failures=(Failure(entry, Outcome.SOURCE_ERROR, f"{filing.accession}: {exc}"),))
+                continue
+            except (KeyError, IndexError, TypeError, ValueError, AttributeError) as exc:
+                reason = f"{filing.accession}: unexpected answer ({type(exc).__name__}: {exc})"
+                yield FetchBatch(failures=(Failure(entry, Outcome.SOURCE_ERROR, reason),))
+                continue
+            yield batch(document)
 
     def _filings(self, edgar: Edgar, cik: str, start: datetime.date) -> tuple[str, list[Filing]]:
         """(company name, its filings). Older pages are asked for only when they reach `start`."""
@@ -246,7 +266,7 @@ class SecFilings:
             url = ARCHIVE_URL.format(cik=int(cik), folder=folder, file=name)
             response = edgar.get(url)
             if response is None:
-                msg = f"{filing.accession}: the SEC lists {name} but does not have it"
+                msg = f"the SEC lists {name} but does not have it"
                 raise AnswerError(msg)
             files.append(DocumentFile(pathlib.PurePosixPath(name).name, response.content, url, role))
         return Document(

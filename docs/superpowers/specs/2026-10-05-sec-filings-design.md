@@ -20,7 +20,7 @@ publishes, downloaded once and never changed, with a list that says what each fi
 | Wider scope | Catalog fields `forms`, `amendments` and `start` |
 | One catalog id | One company, written as its ticker in upper case, as for `sec_xbrl` |
 | Versions | None. A filing never changes at the SEC: a file is downloaded once and never rewritten |
-| A filing that fails | Ends that company's run; the next run asks for it again |
+| A filing that fails | Is recorded as the company's failure and skipped; the later filings still download, and the next run asks for it again |
 
 ## Catalog
 
@@ -80,7 +80,13 @@ For each company the source receives the groups already in the list and:
    is not the primary document, an index page or a page of the XBRL viewer (`R<n>.htm`).
 
 One filing is one batch, stored as soon as it arrives, so a run that stops resumes by itself. A
-company with nothing new costs one call. `sync(full=True)` changes nothing for documents: a
+company with nothing new costs one call.
+
+A filing that fails (a file the SEC lists but does not have, an answer that cannot be read, a
+file name the store refuses, a network failure) fails the company for this run with the
+filing's accession number in the reason, and the source goes on with the next filing: one
+filing that always fails never holds back the ones filed after it. The third network failure in
+one company's run ends that company's run, since the SEC is then likely unreachable. `sync(full=True)` changes nothing for documents: a
 stored filing is never asked for again.
 
 `requests_per_minute = 300`, no daily budget. HTTP 403 and a persistent 429 stop the source, as
