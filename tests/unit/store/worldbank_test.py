@@ -184,3 +184,11 @@ def test_rows_without_an_economy_code_match_no_request():
     handler = lambda _request: httpx.Response(200, text=json.dumps([{"pages": 1}, [{"date": "2025"}]]))  # noqa: E731
     failure = fetch(handler, [Request(wb(f"{GDP}/CHL"))])[0].failures[0]
     assert failure.outcome is Outcome.NOT_FOUND
+
+
+def test_a_period_that_comes_twice_fails_only_that_economy():
+    rows = [row("CHL", "2024", 1.0), row("CHL", "2024", 2.0), row("ARG", "2024", 3.0)]
+    batch = fetch(lambda _request: answer(rows), [Request(wb(f"{GDP}/CHL")), Request(wb(f"{GDP}/ARG"))])[0]
+    assert [series.key for series in batch.series] == [f"worldbank:{GDP}/ARG"]
+    assert batch.failures[0].outcome is Outcome.SOURCE_ERROR
+    assert batch.failures[0].reason.startswith("period 2024 comes more than once")

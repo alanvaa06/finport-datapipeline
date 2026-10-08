@@ -110,3 +110,11 @@ def test_an_id_with_a_colon_keeps_its_source_as_the_part_before_the_first_colon(
         documents({"@frequency": "annual", "period": ["2025"], "value": [1.0]}), [Request(entry(series_id, "dbnomics"))]
     )
     assert series[0].series[0].key == f"dbnomics:{series_id}"
+
+
+def test_a_period_that_comes_twice_fails_the_series():
+    failure = fetch(documents({"@frequency": "monthly", "period": ["2026-05", "2026-05"], "value": [1.0, 2.0]}), [
+        Request(hicp())
+    ])[0].failures[0]
+    assert failure.outcome is Outcome.SOURCE_ERROR
+    assert failure.reason.startswith("period 2026-05 comes more than once")

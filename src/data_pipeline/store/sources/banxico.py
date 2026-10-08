@@ -3,6 +3,10 @@
 Dates are dd/mm/yyyy; "N/E" is missing; thousands separators are stripped. The frequency is the
 catalog's when declared. Otherwise one more call asks for the series' metadata, which also
 brings its unit.
+
+A declared frequency is checked against the dates of the data, since Banxico dates a month, a
+quarter or a year by its first day: a series declared monthly whose data is daily fails, rather
+than keeping one value a month. A period that comes twice fails the series too.
 """
 
 import datetime
@@ -33,6 +37,7 @@ from data_pipeline.store.sources.base import (
     reject_params,
     utc_today,
 )
+from data_pipeline.store.sources.repeats import repeated_period
 
 URL = "https://www.banxico.org.mx/SieAPIRest/service/v1/series"
 OK = 200
@@ -45,6 +50,37 @@ PERIODICITY: Mapping[str, Frequency] = {
     "anual": Frequency.ANNUAL,
 }
 NO_DATA = "Banxico returned no data for this series"
+# frequency -> (its period, the months a period starts in): Banxico dates a period by its first day
+STARTS: Mapping[Frequency, tuple[str, frozenset[int]]] = {
+    Frequency.MONTHLY: ("month", frozenset(range(1, 13))),
+    Frequency.QUARTERLY: ("quarter", frozenset({1, 4, 7, 10})),
+    Frequency.ANNUAL: ("year", frozenset({1})),
+}
+OWN_FREQUENCY = "declare the series' own frequency, or leave `frequency` out"
+
+
+def _day(text: str) -> datetime.date:
+    day, month, year = (int(part) for part in text.strip().split("/"))
+    return datetime.date(year, month, day)
+
+
+def misfit(series: Mapping[str, Any], declared: Frequency) -> str | None:
+    """Why the dates of the data do not fit the frequency the catalog declares, or None."""
+    days = [_day(str(row["fecha"])) for row in series["datos"]]
+    if declared in STARTS:
+        name, months = STARTS[declared]
+        odd = next((day for day in days if day.day != 1 or day.month not in months), None)
+        if odd is not None:
+            return (
+                f"the catalog declares frequency {declared.value}, but the data is dated {odd:%d/%m/%Y}, "
+                f"which does not start a {name}: {OWN_FREQUENCY}"
+            )
+    elif len(days) > 1 and all(day.day == 1 for day in days):
+        return (
+            f"the catalog declares frequency {declared.value}, but every date of the data is the first of a "
+            f"month: {OWN_FREQUENCY}"
+        )
+    return None
 
 
 def read_data(series: Mapping[str, Any], frequency: Frequency) -> tuple[Observation, ...]:
@@ -101,13 +137,18 @@ class Banxico:
             return series
         if "datos" not in series:
             return Failure(entry, Outcome.NOT_FOUND, NO_DATA)
+        wrong = None if entry.frequency is None else misfit(series, entry.frequency)
+        observations = read_data(series, frequency)
+        wrong = wrong or repeated_period(observations, frequency)
+        if wrong:
+            return Failure(entry, Outcome.SOURCE_ERROR, wrong)
         return SeriesData(
             entry=entry,
             key=entry.key,
             name=" ".join(str(series.get("titulo") or entry.source_id).split()),
             frequency=frequency,
             units=units,
-            observations=read_data(series, frequency),
+            observations=observations,
         )
 
     def _get(self, url: str, entry: CatalogEntry) -> Mapping[str, Any] | Failure:

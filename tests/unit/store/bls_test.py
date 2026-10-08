@@ -254,3 +254,17 @@ def test_an_unusual_status_that_still_brings_data_is_read():
     server.statuses[1] = "REQUEST_PARTIALLY_PROCESSED"
     series = fetch(server, [Request(bls("A"), datetime.date(2026, 1, 1))])[0].series[0]
     assert [item.period for item in series.observations] == ["2026-05"]
+
+
+def test_a_period_that_comes_twice_fails_only_that_series():
+    def handler(_request):
+        twice = [{"year": "2026", "period": "M05", "value": value} for value in ("1.0", "2.0")]
+        series = [{"seriesID": "X", "data": twice}, {"seriesID": "Y", "data": twice[:1]}]
+        return httpx.Response(200, json={"status": "REQUEST_SUCCEEDED", "message": [], "Results": {"series": series}})
+
+    batch = fetch(
+        handler, [Request(bls("X"), datetime.date(2026, 1, 1)), Request(bls("Y"), datetime.date(2026, 1, 1))]
+    )[0]
+    assert [series.key for series in batch.series] == ["bls:Y"]
+    assert batch.failures[0].outcome is Outcome.SOURCE_ERROR
+    assert batch.failures[0].reason.startswith("period 2026-05 comes more than once")

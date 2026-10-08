@@ -44,6 +44,7 @@ from data_pipeline.store.sources.base import (
     reject_params,
     utc_today,
 )
+from data_pipeline.store.sources.repeats import repeated_period
 
 URL = "https://api.bls.gov/publicAPI/v2/timeseries/data/"
 MAX_SERIES = 50
@@ -227,12 +228,15 @@ class Bls:
             codes = ", ".join(sorted(letters))
             return Failure(entry, Outcome.SOURCE_ERROR, f"{UNSUPPORTED_FREQUENCY} (period codes {codes})")
         frequency, spelling = KINDS[letter]
-        observations: dict[str, Observation] = {}
+        observations: list[Observation] = []
         for kind, year, order, value in raw:
             if kind != letter or order > LAST_REAL_NUMBER[letter]:
                 continue
             period, day = read_period(spelling.format(year=year, number=order), frequency)
-            observations[period] = Observation(period, day, value)
+            observations.append(Observation(period, day, value))
+        repeated = repeated_period(observations, frequency)
+        if repeated:
+            return Failure(entry, Outcome.SOURCE_ERROR, repeated)
         catalog = titles.get(entry.source_id, {})
         return SeriesData(
             entry=entry,
@@ -240,5 +244,5 @@ class Bls:
             name=str(catalog.get("series_title") or entry.source_id),
             frequency=frequency,
             seasonal_adjustment=SEASONALITY.get(str(catalog.get("seasonality") or "").strip().lower(), ""),
-            observations=tuple(sorted(observations.values(), key=lambda observation: observation.date)),
+            observations=tuple(sorted(observations, key=lambda observation: observation.date)),
         )

@@ -120,3 +120,50 @@ def test_without_a_token_nothing_is_requested():
         "BANXICO_TOKEN is missing. Get one at https://www.banxico.org.mx/SieAPIRest/service/v1/token "
         "and run: data-pipeline setup"
     )
+
+
+def daily(*days):
+    """A Banxico data answer with one value on each dd/mm/yyyy."""
+    data = [{"fecha": day, "dato": "18.5"} for day in days]
+    return {"bmx": {"series": [{"idSerie": "SF43718", "titulo": "FIX", "datos": data}]}}
+
+
+def test_a_declared_frequency_coarser_than_the_data_fails_instead_of_keeping_one_value():
+    answer = daily("03/08/2026", "04/08/2026", "31/08/2026")
+    failure = fetch(lambda _request: httpx.Response(200, json=answer), [Request(fix(frequency=Frequency.MONTHLY))])[
+        0
+    ].failures[0]
+    assert failure.outcome is Outcome.SOURCE_ERROR
+    assert failure.reason == (
+        "the catalog declares frequency M, but the data is dated 03/08/2026, which does not start a month: "
+        "declare the series' own frequency, or leave `frequency` out"
+    )
+
+
+def test_a_declared_frequency_finer_than_the_data_fails():
+    answer = daily("01/07/2026", "01/08/2026")
+    failure = fetch(lambda _request: httpx.Response(200, json=answer), [Request(fix(frequency=Frequency.DAILY))])[
+        0
+    ].failures[0]
+    assert failure.outcome is Outcome.SOURCE_ERROR
+    assert "declares frequency D, but every date of the data is the first of a month" in failure.reason
+
+
+def test_dates_that_start_their_period_fit_a_declared_frequency():
+    quarterly = daily("01/04/2026", "01/07/2026")
+    series = fetch(lambda _request: httpx.Response(200, json=quarterly), [Request(fix(frequency=Frequency.QUARTERLY))])[
+        0
+    ].series[0]
+    assert [item.period for item in series.observations] == ["2026Q2", "2026Q3"]
+
+
+def test_a_period_that_comes_twice_fails_the_series():
+    # the metadata says monthly, the data is daily: three days of September are one month
+    def handler(request):
+        if "/datos" in request.url.path:
+            return serve()(request)
+        return httpx.Response(200, json={"bmx": {"series": [{"idSerie": "SF43718", "periodicidad": "Mensual"}]}})
+
+    failure = fetch(handler, [Request(fix())])[0].failures[0]
+    assert failure.outcome is Outcome.SOURCE_ERROR
+    assert failure.reason.startswith("period 2026-09 comes more than once")

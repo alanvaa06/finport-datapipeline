@@ -31,6 +31,7 @@ from data_pipeline.store.sources.base import (
     per_request,
     reject_params,
 )
+from data_pipeline.store.sources.repeats import repeated_period
 
 URL = "https://www.inegi.org.mx/app/api/indicadores/desarrolladores/jsonxml/INDICATOR"
 DEFAULT_BANK = "BIE-BISE"
@@ -98,6 +99,9 @@ class Inegi:
         if frequency is None:
             return Failure(entry, Outcome.SOURCE_ERROR, f"{DECLARE_FREQUENCY} (INEGI FREQ {code!r})")
         observations = read_observations(series, frequency)
+        repeated = repeated_period(observations, frequency)
+        if repeated:
+            return Failure(entry, Outcome.SOURCE_ERROR, repeated)
         if request.since is not None:
             observations = tuple(item for item in observations if item.date >= request.since)
         return SeriesData(
