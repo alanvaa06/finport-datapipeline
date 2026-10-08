@@ -173,16 +173,22 @@ def test_the_daily_budget_persists_between_runs_of_the_same_day(tmp_path):
     assert Storage(tmp_path).read_runs()["fake"]["budget"] == {"day": "2026-06-07", "calls": 1}
 
 
-def test_an_interrupted_run_keeps_what_it_stored_and_frees_the_lock(tmp_path):
-    class Dies(FakeSource):
-        def fetch(self, requests):
-            yield from super().fetch(requests[:1])
-            msg = "power cut"
-            raise RuntimeError(msg)
+class Breaks(FakeSource):
+    """Answers the first request, then fails with `error` as a bug or a stopped process would."""
 
-    source = Dies()
+    def __init__(self, error, name="fake", **options):
+        super().__init__(name, **options)
+        self.error = error
+
+    def fetch(self, requests):
+        yield from super().fetch(requests[:1])
+        raise self.error
+
+
+def test_an_interrupted_run_keeps_what_it_stored_and_frees_the_lock(tmp_path):
+    source = Breaks(KeyboardInterrupt())
     source.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
-    with pytest.raises(RuntimeError, match="power cut"):
+    with pytest.raises(KeyboardInterrupt):
         run(tmp_path, source, entries=[UNRATE, DGS10])
     assert stored_values(tmp_path) == {"2026-05": 4.1}
     assert not (tmp_path / LOCK_FILE).exists()
@@ -191,6 +197,49 @@ def test_an_interrupted_run_keeps_what_it_stored_and_frees_the_lock(tmp_path):
     healthy.answers["DGS10"] = monthly(DGS10, {"2026-05": 4.4})
     report = run(tmp_path, healthy, entries=[UNRATE, DGS10], now=LATER)
     assert (report.sources[0].ok, report.sources[0].new) == (2, 1)
+
+
+def test_the_calls_of_an_interrupted_run_count_against_the_daily_budget(tmp_path):
+    http = client()
+    source = Breaks(KeyboardInterrupt(), daily_budget=3, client=http)
+    source.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
+    with pytest.raises(KeyboardInterrupt):
+        run(tmp_path, source, entries=[UNRATE, DGS10], http=http)
+    assert Storage(tmp_path).read_runs()["fake"]["budget"] == {"day": "2026-06-06", "calls": 1}
+
+
+def test_a_source_that_breaks_fails_its_own_series_and_the_next_source_still_runs(tmp_path):
+    broken = Breaks(RuntimeError("a bug in the parser"))
+    broken.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
+    other = FakeSource("other")
+    wanted = entry("X", source="other")
+    other.answers["X"] = monthly(wanted, {"2026-05": 1.0})
+    report = sync(Storage(tmp_path), [UNRATE, DGS10, wanted], {"fake": broken, "other": other}, client(), NOW)
+    fake, healthy = report.sources
+    assert fake.ok == 1
+    reason = "source_error: the sync of this source stopped: RuntimeError: a bug in the parser"
+    assert fake.failed == (("fake:DGS10", reason),)
+    assert (healthy.source, healthy.ok) == ("other", 1)
+    assert report.exit_code == 1
+    assert index_row(tmp_path, "fake:DGS10")["status"] == "failed"
+    assert Storage(tmp_path).read_runs()["fake"]["failed"] == 1
+    assert not (tmp_path / LOCK_FILE).exists()
+
+
+def test_a_damaged_file_of_one_source_fails_that_source_only(tmp_path):
+    fake, other = FakeSource(), FakeSource("other")
+    wanted = entry("X", source="other")
+    fake.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
+    other.answers["X"] = monthly(wanted, {"2026-05": 1.0})
+    sources = {"fake": fake, "other": other}
+    sync(Storage(tmp_path), [UNRATE, wanted], sources, client(), NOW)
+    Storage(tmp_path).series_path("fake").write_bytes(b"\x00" * 4096)  # torn by a power cut
+    report = sync(Storage(tmp_path), [UNRATE, wanted], sources, client(), LATER)
+    (key, reason), = report.sources[0].failed
+    assert key == "fake:UNRATE"
+    assert "fake.parquet: cannot be read" in reason
+    assert (report.sources[1].ok, len(other.seen)) == (1, 2)
+    assert report.exit_code == 1
 
 
 def test_a_second_sync_is_refused_while_another_holds_the_lock(tmp_path):

@@ -220,3 +220,38 @@ def test_latest_prefers_the_newest_publication_among_rows_of_one_fetch():
         ignore_index=True,
     )
     assert values_of(latest(newest_first)) == {"2026-04": 4.1}
+
+
+@pytest.mark.parametrize(
+    ("name", "read"),
+    [
+        ("series/fred.parquet", lambda storage: storage.read_observations("fred")),
+        ("index.parquet", lambda storage: storage.read_index()),
+        ("runs.json", lambda storage: storage.read_runs()),
+        ("store.json", lambda storage: storage.prepare()),
+        ("tables/comtrade/MEX.parquet", lambda storage: storage.read_table("comtrade", "MEX")),
+        ("tables/comtrade/schema.json", lambda storage: storage.table_schema("comtrade")),
+        ("documents/sec_filings/AAPL.parquet", lambda storage: storage.read_documents("sec_filings", "AAPL")),
+    ],
+)
+def test_a_damaged_file_is_a_store_error_that_names_it(tmp_path, name, read):
+    path = tmp_path / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"\x00" * 64)  # what a power cut can leave behind
+    with pytest.raises(StoreError, match=r"cannot be read .*restore it from a backup or move it aside") as raised:
+        read(Storage(tmp_path))
+    assert str(path) in str(raised.value)
+
+
+def test_every_write_reaches_the_disk_before_it_replaces_the_file(tmp_path, monkeypatch):
+    events = []
+    real_fsync, real_replace = storage_module.os.fsync, storage_module._replace
+    monkeypatch.setattr(storage_module.os, "fsync", lambda descriptor: events.append("fsync") or real_fsync(descriptor))
+    monkeypatch.setattr(
+        storage_module, "_replace", lambda temporary, path: events.append("replace") or real_replace(temporary, path)
+    )
+    storage = Storage(tmp_path)
+    storage.write_observations("fred", rows({"2026-05": 4.1}, JUNE_6))
+    storage.write_runs({"fred": {"ok": 1}})
+    storage.write_document("sec_filings", "AAPL", "0001", "a.htm", b"<html></html>")
+    assert events == ["fsync", "replace"] * 3

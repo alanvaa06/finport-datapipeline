@@ -4,7 +4,9 @@ An entry never downloaded is asked for its full history (or from its `start`). A
 stored is asked from its last real period minus a revision window. What a source of series
 yields is stored at checkpoints (every FLUSH_SECONDS, at the end of the source, and when the run
 is interrupted), so an interrupted run keeps what it already downloaded. A series that fails
-keeps its previous data; the failure is recorded in the index.
+keeps its previous data; the failure is recorded in the index. A source that breaks (a bug, a
+damaged file) fails its own unfinished entries and the run goes on with the next source; its
+calls are recorded in runs.json even when the run is interrupted.
 """
 
 import contextlib
@@ -69,6 +71,7 @@ WINDOW_MONTHS: Mapping[Frequency, int] = {
     Frequency.ANNUAL: 60,
 }
 NOT_RETURNED = "the source did not return this series in this run"
+STOPPED = "the sync of this source stopped"
 STATUS_OK = "ok"
 STATUS_FAILED = "failed"
 EXIT_OK = 0
@@ -88,6 +91,11 @@ def window_start(last: datetime.date, frequency: Frequency) -> datetime.date:
         return last - datetime.timedelta(days=WINDOW_DAYS[frequency])
     months = last.year * 12 + last.month - 1 - WINDOW_MONTHS[frequency]
     return datetime.date(months // 12, months % 12 + 1, 1)
+
+
+def _stopped(error: Exception, client: Client) -> str:
+    """The reason recorded for every entry a broken source did not finish."""
+    return client.scrub(f"{Outcome.SOURCE_ERROR.value}: {STOPPED}: {type(error).__name__}: {error}")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -370,6 +378,7 @@ def _sync_tables(
     stored: set[str] = set()
     failed: dict[str, str] = {}
     added = revised = 0
+    stopped = ""
     quota = remaining is not None and remaining <= 0
     if not quota:
         try:
@@ -400,10 +409,12 @@ def _sync_tables(
                     break
         except QuotaExhaustedError:
             quota = True
+        except Exception as exc:  # noqa: BLE001 - a broken source fails its own entries, not the run
+            stopped = _stopped(exc, client)
     untouched = [request.entry for request in requests if request.entry.key not in stored | set(failed)]
     if not quota:
         for entry in untouched:
-            failed[entry.key] = f"{Outcome.NOT_FOUND.value}: {NOT_RETURNED}"
+            failed[entry.key] = stopped or f"{Outcome.NOT_FOUND.value}: {NOT_RETURNED}"
             index[entry.key] = _failed_row(entry, index.get(entry.key), failed[entry.key], KIND_TABLE)
         if untouched:
             storage.write_index(typed(list(index.values()), INDEX_DTYPES))
@@ -467,6 +478,7 @@ def _sync_documents(
     stored: set[str] = set()
     failed: dict[str, str] = {}
     added = 0
+    stopped = ""
     quota = remaining is not None and remaining <= 0
     if not quota:
         try:
@@ -497,10 +509,12 @@ def _sync_documents(
                     break
         except QuotaExhaustedError:
             quota = True
+        except Exception as exc:  # noqa: BLE001 - a broken source fails its own entries, not the run
+            stopped = _stopped(exc, client)
     untouched = [request.entry for request in requests if request.entry.key not in stored | set(failed)]
     if not quota:
         for entry in untouched:
-            failed[entry.key] = f"{Outcome.NOT_FOUND.value}: {NOT_RETURNED}"
+            failed[entry.key] = stopped or f"{Outcome.NOT_FOUND.value}: {NOT_RETURNED}"
             index[entry.key] = _failed_row(entry, index.get(entry.key), failed[entry.key], KIND_DOCUMENT)
         if untouched:
             storage.write_index(typed(list(index.values()), INDEX_DTYPES))
@@ -604,6 +618,7 @@ def _sync_source(
     failed: list[tuple[str, str]] = []
     ok = 0
     checkpoints = _Checkpoints(storage, name, index, observations, now, monotonic)
+    stopped = ""
     quota = remaining is not None and remaining <= 0
     if not quota:
         try:
@@ -627,12 +642,14 @@ def _sync_source(
                     break
         except QuotaExhaustedError:
             quota = True
+        except Exception as exc:  # noqa: BLE001 - a broken source fails its own series, not the run
+            stopped = _stopped(exc, client)
         finally:
             checkpoints.flush()  # also when the run is interrupted: keep what was downloaded
     missing = [request.entry for request in requests if request.entry.key not in done]
     if not quota:
         for entry in missing:
-            reason = f"{Outcome.NOT_FOUND.value}: {NOT_RETURNED}"
+            reason = stopped or f"{Outcome.NOT_FOUND.value}: {NOT_RETURNED}"
             failed.append((entry.key, reason))
             index[entry.key] = _failed_row(entry, index.get(entry.key), reason)
         if missing:
@@ -647,6 +664,54 @@ def _sync_source(
         quota_exhausted=quota,
         pending=len(missing) if quota else 0,
     )
+
+
+def _broken_source(
+    source: Source,
+    wanted: Sequence[CatalogEntry],
+    index: dict[str, Row],
+    before: Mapping[str, Row | None],
+    reason: str,
+    calls: int,
+) -> SourceReport:
+    """The report of a source that broke outside its downloads (say its file is damaged): every
+    entry it did not finish in this run fails with `reason`; what it finished stays as recorded."""
+    ok = 0
+    failed: list[tuple[str, str]] = []
+    for entry in wanted:
+        row = index.get(entry.key)
+        if row is not None and row is not before[entry.key]:  # finished in this run
+            if row["status"] == STATUS_OK:
+                ok += 1
+            else:
+                failed.append((entry.key, str(row["reason"])))
+            continue
+        index[entry.key] = _failed_row(entry, row, reason, source.kind.value)
+        failed.append((entry.key, reason))
+    return SourceReport(source.name, ok, tuple(failed), 0, 0, calls, False, 0)
+
+
+def _run_record(
+    previous: Mapping[str, Any] | None,
+    report: SourceReport | None,
+    now: datetime.datetime,
+    budget: Mapping[str, Any],
+) -> dict[str, Any]:
+    """A source's entry in runs.json. Without a report (the run was interrupted), the previous
+    entry is kept with the calls spent today, so the daily budget is never lost."""
+    if report is None:
+        return {**(previous or {}), "budget": dict(budget)}
+    return {
+        "last_run": now.isoformat(),
+        "ok": report.ok,
+        "failed": len(report.failed),
+        "new": report.new,
+        "revised": report.revised,
+        "calls": report.calls,
+        "quota_exhausted": report.quota_exhausted,
+        "pending": report.pending,
+        "budget": dict(budget),
+    }
 
 
 def _release_moved_aliases(index: dict[str, Row], entries: Sequence[CatalogEntry]) -> bool:
@@ -691,20 +756,20 @@ def sync(
             if not wanted:
                 continue
             spent = _calls_today(runs.get(name), today)
-            report = _sync_source(
-                storage, sources[name], client, wanted, index, spent, now, full=full, monotonic=monotonic
-            )
+            calls_before = client.calls.get(name, 0)
+            before = {entry.key: index.get(entry.key) for entry in wanted}
+            report = None
+            try:
+                report = _sync_source(
+                    storage, sources[name], client, wanted, index, spent, now, full=full, monotonic=monotonic
+                )
+            except Exception as exc:  # noqa: BLE001 - one broken source must not stop the others
+                calls = client.calls.get(name, 0) - calls_before
+                report = _broken_source(sources[name], wanted, index, before, _stopped(exc, client), calls)
+                storage.write_index(typed(list(index.values()), INDEX_DTYPES))
+            finally:  # also when the run is interrupted: the calls spent today are never forgotten
+                budget = {"day": today.isoformat(), "calls": spent + client.calls.get(name, 0) - calls_before}
+                runs[name] = _run_record(runs.get(name), report, now, budget)
+                storage.write_runs(runs)
             reports.append(report)
-            runs[name] = {
-                "last_run": now.isoformat(),
-                "ok": report.ok,
-                "failed": len(report.failed),
-                "new": report.new,
-                "revised": report.revised,
-                "calls": report.calls,
-                "quota_exhausted": report.quota_exhausted,
-                "pending": report.pending,
-                "budget": {"day": today.isoformat(), "calls": spent + report.calls},
-            }
-            storage.write_runs(runs)
         return SyncReport(now, tuple(reports))

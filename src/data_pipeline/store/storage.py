@@ -6,14 +6,16 @@
   runs.json                per source: last run and its counts
 
 Observations are append-only: a changed value adds a row, nothing is rewritten or deleted.
-Every write goes to a temporary file first and then replaces the target, so a run that dies
-halfway never leaves a half-written file. Missing files read as empty frames.
+Every write goes to a temporary file, is flushed to the disk, and then replaces the target, so a
+run that dies halfway (or a power cut) never leaves a half-written file. Missing files read as
+empty frames; a file that cannot be read is a StoreError that names it.
 """
 
 import dataclasses
 import datetime
 import hashlib
 import json
+import os
 import pathlib
 import time
 from collections.abc import Mapping, Sequence
@@ -346,10 +348,31 @@ def document_rows(
     return frame
 
 
+def _unreadable(path: pathlib.Path, error: Exception) -> StoreError:
+    return StoreError(
+        f"{path}: cannot be read ({type(error).__name__}: {error}). "
+        "If the file is damaged, restore it from a backup or move it aside"
+    )
+
+
+def _read_parquet(path: pathlib.Path) -> pd.DataFrame:
+    try:
+        return pd.read_parquet(path)
+    except (OSError, ValueError) as exc:  # a torn file: ArrowInvalid (a ValueError) or OSError
+        raise _unreadable(path, exc) from exc
+
+
+def _read_json(path: pathlib.Path) -> Any:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except ValueError as exc:  # JSONDecodeError, UnicodeDecodeError
+        raise _unreadable(path, exc) from exc
+
+
 def _read(path: pathlib.Path, dtypes: Mapping[str, str]) -> pd.DataFrame:
     if not path.exists():
         return typed([], dtypes)
-    return pd.read_parquet(path)
+    return _read_parquet(path)
 
 
 REPLACE_ATTEMPTS = 10
@@ -377,18 +400,25 @@ def _replace(temporary: pathlib.Path, path: pathlib.Path) -> None:
             return
 
 
-def _write(frame: pd.DataFrame, path: pathlib.Path) -> None:
+def _write_bytes(content: bytes, path: pathlib.Path, temporary: pathlib.Path) -> None:
+    """Write `content` to `temporary`, flush it to the disk, then put it in place of `path`.
+    Without the flush, a power cut after the replacement can leave a target that is torn."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    frame.to_parquet(temporary, index=False)
+    with temporary.open("wb") as handle:
+        handle.write(content)
+        handle.flush()
+        os.fsync(handle.fileno())
     _replace(temporary, path)
+
+
+def _write(frame: pd.DataFrame, path: pathlib.Path) -> None:
+    content = frame.to_parquet(index=False)
+    _write_bytes(content, path, path.with_suffix(path.suffix + ".tmp"))
 
 
 def _write_json(data: Mapping[str, Any], path: pathlib.Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(data, ensure_ascii=True, indent=2), encoding="utf-8")
-    _replace(temporary, path)
+    content = json.dumps(data, ensure_ascii=True, indent=2).encode("utf-8")
+    _write_bytes(content, path, path.with_suffix(path.suffix + ".tmp"))
 
 
 @dataclasses.dataclass(frozen=True)
@@ -404,7 +434,7 @@ class Storage:
         if not path.exists():
             _write_json({"schema_version": SCHEMA_VERSION}, path)
             return
-        found = json.loads(path.read_text(encoding="utf-8")).get("schema_version")
+        found = _read_json(path).get("schema_version")
         if found != SCHEMA_VERSION:
             msg = f"{path}: schema_version {found!r}, this library reads version {SCHEMA_VERSION}"
             raise StoreError(msg)
@@ -433,7 +463,7 @@ class Storage:
     def read_table(self, source: str, name: str) -> pd.DataFrame:
         """One stored table with every version of every row; an empty frame when there is none."""
         path = self.table_path(source, name)
-        return pd.read_parquet(path) if path.exists() else pd.DataFrame()
+        return _read_parquet(path) if path.exists() else pd.DataFrame()
 
     def write_table(self, source: str, name: str, frame: pd.DataFrame, schema: TableSchema) -> None:
         """Write one table and, beside it, the schema of the source's tables."""
@@ -444,7 +474,7 @@ class Storage:
             "versioned": schema.versioned,
         }
         path = self.root / TABLES_DIR / source / TABLE_SCHEMA_FILE
-        if not path.exists() or json.loads(path.read_text(encoding="utf-8")) != described:
+        if not path.exists() or _read_json(path) != described:
             _write_json(described, path)
         _write(frame, self.table_path(source, name))
 
@@ -454,7 +484,7 @@ class Storage:
         if not path.exists():
             msg = f"no table is stored for source {source!r}"
             raise StoreError(msg)
-        described = json.loads(path.read_text(encoding="utf-8"))
+        described = _read_json(path)
         return TableSchema(
             key_columns=tuple(described["key_columns"]),
             value_columns=tuple(described["value_columns"]),
@@ -475,15 +505,12 @@ class Storage:
         path = self.document_path(source, name, group, file)
         if path.exists():
             return
-        path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = path.with_name(path.name + ".tmp")
-        temporary.write_bytes(content)
-        _replace(temporary, path)
+        _write_bytes(content, path, path.with_name(path.name + ".tmp"))
 
     def read_documents(self, source: str, name: str) -> pd.DataFrame:
         """The list of an id's documents, one row per file; an empty frame when there is none."""
         path = self.root / DOCUMENTS_DIR / source / f"{name}.parquet"
-        return pd.read_parquet(path) if path.exists() else pd.DataFrame(columns=DOCUMENT_COLUMNS)
+        return _read_parquet(path) if path.exists() else pd.DataFrame(columns=DOCUMENT_COLUMNS)
 
     def write_documents(self, source: str, name: str, frame: pd.DataFrame) -> None:
         _write(frame, self.root / DOCUMENTS_DIR / source / f"{name}.parquet")
@@ -495,7 +522,7 @@ class Storage:
         path = self.root / RUNS_FILE
         if not path.exists():
             return {}
-        data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+        data: dict[str, Any] = _read_json(path)
         return data
 
     def write_runs(self, data: Mapping[str, Any]) -> None:
