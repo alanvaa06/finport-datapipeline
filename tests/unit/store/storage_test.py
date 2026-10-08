@@ -210,3 +210,13 @@ def test_a_file_that_stays_open_is_a_clear_error_and_the_old_data_survives(tmp_p
         storage.write_observations("fred", more)
     monkeypatch.undo()
     assert len(storage.read_observations("fred")) == 1
+
+
+def test_latest_prefers_the_newest_publication_among_rows_of_one_fetch():
+    may = datetime.datetime(2026, 5, 8, tzinfo=datetime.UTC)
+    june = datetime.datetime(2026, 6, 5, tzinfo=datetime.UTC)
+    newest_first = pd.concat(
+        [rows({"2026-04": 4.1}, JUNE_6, published_at=june), rows({"2026-04": 4.0}, JUNE_6, published_at=may)],
+        ignore_index=True,
+    )
+    assert values_of(latest(newest_first)) == {"2026-04": 4.1}

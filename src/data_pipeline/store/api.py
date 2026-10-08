@@ -321,9 +321,10 @@ class Store:
         return found.sort_values(["date", "id", "group", "role", "file"], kind="stable").reset_index(drop=True)
 
     def revisions(self, key: str) -> pd.DataFrame:
-        """Every stored version of every period, oldest fetch first within a period."""
+        """Every stored version of every period: within a period, oldest fetch first and, among
+        the versions of one fetch, oldest publication first."""
         stored = self._observations(key)
-        ordered = stored.sort_values(["date", "fetched_at"], kind="stable")
+        ordered = stored.sort_values(["date", "fetched_at", "published_at"], kind="stable", na_position="first")
         return ordered.drop(columns="key").reset_index(drop=True)
 
     def info(self, key: str) -> SeriesInfo:

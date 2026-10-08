@@ -34,15 +34,15 @@
   attrs:
     region: AR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.AR.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/ARG.XG.FOB_USD.A
   alias: e_ar_exports_goods
   name: Argentina goods exports, FOB (USD)
   frequency: A
   attrs:
     region: AR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 5.5e-04, 90th percentile 1.9e-02 over 74 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/ARG
   alias: e_ar_exports_gs
@@ -91,15 +91,15 @@
   attrs:
     region: AR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.AR.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/ARG.MG.CIF_USD.A
   alias: e_ar_imports_goods
   name: Argentina goods imports, CIF (USD)
   frequency: A
   attrs:
     region: AR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.8e-03, 90th percentile 2.8e-02 over 74 periods"
 - source: worldbank
   id: NE.IMP.GNFS.CD/ARG
   alias: e_ar_imports_gs
@@ -132,24 +132,24 @@
   attrs:
     region: AR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.AR.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/ARG.IRFCLDT4_IRFCL11_DIC_GROUP_USD.S1X.M
   alias: e_ar_reserves
   name: Argentina FX reserves (USD)
   frequency: M
   attrs:
     region: AR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
-- source: dbnomics
-  id: IMF/IFS/M.AR.FIMM_PA
+    close_match: "2026-10: other units; relative gap to the mirror: median 7.1e-04, 90th percentile 3.5e-03 over 252 periods"
+- source: imf
+  id: IMF.STA,MFS_IR/ARG.MMRT_RT_PT_A_PT.M
   alias: e_ar_short_rate
   name: Argentina short-term interest rate
   frequency: M
   attrs:
     region: AR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 3.3e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 186 periods"
 - source: dbnomics
   id: IMF/DOT/M.AR.TBG_USD.W00
   alias: e_ar_trade_balance_goods
@@ -200,15 +200,15 @@
   attrs:
     region: AT
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/AUT.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/AUT.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_at_consumer_confidence
   name: Austria consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: AT
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 3.9e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 8.9e-04, 90th percentile 1.9e-03 over 408 periods"
 - source: imf
   id: IMF.STA,CPI/AUT.HICP._T.SRP_IX.M
   alias: e_at_hicp
@@ -249,15 +249,15 @@
   attrs:
     region: AT
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.AT.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/AUT.XG.FOB_USD.A
   alias: e_at_exports_goods
   name: Austria goods exports, FOB (USD)
   frequency: A
   attrs:
     region: AT
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.5e-03, 90th percentile 1.7e-02 over 76 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/AUT
   alias: e_at_exports_gs
@@ -315,15 +315,15 @@
   attrs:
     region: AT
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.AT.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/AUT.MG.CIF_USD.A
   alias: e_at_imports_goods
   name: Austria goods imports, CIF (USD)
   frequency: A
   attrs:
     region: AT
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 8.9e-04, 90th percentile 9.3e-03 over 74 periods"
 - source: worldbank
   id: NE.IMP.GNFS.CD/AUT
   alias: e_at_imports_gs
@@ -332,15 +332,15 @@
   attrs:
     region: AT
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.AT.AIP_IX
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_INDSERV/AUT.M.PRVM.IX.BTE.N._Z._Z.N
   alias: e_at_ind_prod
   name: Austria industrial production (index)
   frequency: M
   attrs:
     region: AT
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 5.9e-08, 90th percentile 3.7e-07 over 351 periods"
 - source: bis
   id: WS_EER/M.N.B.AT
   alias: e_at_neer
@@ -365,15 +365,15 @@
   attrs:
     region: AT
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.AT.PPPI_IX
+- source: imf
+  id: IMF.STA,PPI/AUT.PPI.IX.M
   alias: e_at_ppi
   name: Austria producer price index
   frequency: M
   attrs:
     region: AT
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 8.5e-04)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 4.6e-16, 90th percentile 3.4e-15 over 459 periods"
 - source: bis
   id: WS_EER/M.R.B.AT
   alias: e_at_reer
@@ -382,15 +382,15 @@
   attrs:
     region: AT
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.AT.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/AUT.IRFCLDT1_IRFCL65_USD.S1XS1311.M
   alias: e_at_reserves
   name: Austria FX reserves (USD)
   frequency: M
   attrs:
     region: AT
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 8.9e-04, 90th percentile 5.9e-03 over 307 periods"
 - source: eurostat
   id: sts_trtu_m/M.VOL_SLS.G47.SCA.I21.AT
   alias: e_at_retail_sales
@@ -399,24 +399,24 @@
   attrs:
     region: AT
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/M.AT.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/AUT.TBG_USD.G001.M
   alias: e_at_trade_balance_goods
   name: Austria goods trade balance (USD)
   frequency: M
   attrs:
     region: AT
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
-- source: dbnomics
-  id: IMF/IFS/M.AT.LUR_PT
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.4e-16, 90th percentile 4.4e-09 over 781 periods"
+- source: imf
+  id: IMF.STA,LS/AUT.U.PT.M
   alias: e_at_unemployment
   name: Austria unemployment rate (%)
   frequency: M
   attrs:
     region: AT
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.7e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 375 periods"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.AT
   alias: e_at_unemployment_harmonised
@@ -441,15 +441,15 @@
   attrs:
     region: AT
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/AUS.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/AUS.M.MABM.IX._Z.Y._Z._Z.N
   alias: e_au_broad_money
   name: Australia broad money M3 (index, SA)
   frequency: M
   attrs:
     region: AU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 7.9e-04)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 3.2e-05, 90th percentile 1.6e-04 over 405 periods"
 - source: imf
   id: IMF.RES,WEO/AUS.GGXCNL_NGDP.A
   alias: e_au_budget_balance_gdp
@@ -466,24 +466,24 @@
   attrs:
     region: AU
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/AUS.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/AUS.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_au_consumer_confidence
   name: Australia consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: AU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.8e-03)"
-- source: dbnomics
-  id: IMF/IFS/Q.AU.PCPI_IX
+    close_match: "2026-10: same units; relative gap to the mirror: median 6.2e-04, 90th percentile 1.2e-03 over 408 periods"
+- source: imf
+  id: IMF.STA,CPI/AUS.CPI._T.SRP_IX.Q
   alias: e_au_cpi
   name: Australia CPI (all items, index)
   frequency: Q
   attrs:
     region: AU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 5.5e-04)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 4.8e-08, 90th percentile 1.4e-07 over 308 periods"
 - source: bis
   id: WS_TC/Q.AU.P.A.M.770.A
   alias: e_au_credit_private
@@ -500,15 +500,15 @@
   attrs:
     region: AU
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.AU.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/AUS.XG.FOB_USD.A
   alias: e_au_exports_goods
   name: Australia goods exports, FOB (USD)
   frequency: A
   attrs:
     region: AU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 4.6e-03, 90th percentile 2.8e-02 over 77 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/AUS
   alias: e_au_exports_gs
@@ -591,15 +591,15 @@
     region: AU
     commercial_ok: restricted
     stale: "2026-10: no candidate"
-- source: dbnomics
-  id: OECD/MEI/AUS.MANMM101.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/AUS.M.MANM.IX._Z.Y._Z._Z.N
   alias: e_au_m1
   name: Australia narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: AU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 3.9e-03)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 7.8e-05, 90th percentile 4.0e-04 over 405 periods"
 - source: bis
   id: WS_EER/M.N.B.AU
   alias: e_au_neer
@@ -633,15 +633,15 @@
   attrs:
     region: AU
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.AU.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/AUS.IRFCLDT1_IRFCL65_USD.S1XS1311.M
   alias: e_au_reserves
   name: Australia FX reserves (USD)
   frequency: M
   attrs:
     region: AU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 9.9e-01)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 3.9e-04, 90th percentile 3.6e-02 over 305 periods"
 - source: dbnomics
   id: IMF/IFS/M.AU.FITB_PA
   alias: e_au_short_rate
@@ -651,24 +651,24 @@
     region: AU
     commercial_ok: restricted
     stale: "2026-10: publisher has nothing newer (last 2013-05)"
-- source: dbnomics
-  id: IMF/DOT/M.AU.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/AUS.TBG_USD.G001.M
   alias: e_au_trade_balance_goods
   name: Australia goods trade balance (USD)
   frequency: M
   attrs:
     region: AU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
-- source: dbnomics
-  id: IMF/IFS/M.AU.LUR_PT
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.8e-16, 90th percentile 1.2e-09 over 698 periods"
+- source: imf
+  id: IMF.STA,LS/AUS.U.PT.M
   alias: e_au_unemployment
   name: Australia unemployment rate (%)
   frequency: M
   attrs:
     region: AU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.1e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 565 periods"
 - source: worldbank
   id: SL.UEM.1524.ZS/AUS
   alias: e_au_unemployment_youth
@@ -701,15 +701,15 @@
   attrs:
     region: BE
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/BEL.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/BEL.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_be_consumer_confidence
   name: Belgium consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: BE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 3.6e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 2.4e-04, 90th percentile 7.0e-04 over 408 periods"
 - source: imf
   id: IMF.STA,CPI/BEL.HICP._T.SRP_IX.M
   alias: e_be_hicp
@@ -718,15 +718,15 @@
   attrs:
     region: BE
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.BE.PCPI_IX
+- source: imf
+  id: IMF.STA,CPI/BEL.CPI._T.SRP_IX.M
   alias: e_be_cpi
   name: Belgium CPI (all items, index)
   frequency: M
   attrs:
     region: BE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.4e-04)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 1.6e-07, 90th percentile 7.0e-05 over 847 periods"
 - source: bis
   id: WS_TC/Q.BE.P.A.M.770.A
   alias: e_be_credit_private
@@ -751,15 +751,15 @@
   attrs:
     region: BE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.BE.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/BEL.XG.FOB_USD.A
   alias: e_be_exports_goods
   name: Belgium goods exports, FOB (USD)
   frequency: A
   attrs:
     region: BE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 9.9e-03, 90th percentile 2.6e-02 over 26 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/BEL
   alias: e_be_exports_gs
@@ -817,15 +817,15 @@
   attrs:
     region: BE
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.BE.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/BEL.MG.CIF_USD.A
   alias: e_be_imports_goods
   name: Belgium goods imports, CIF (USD)
   frequency: A
   attrs:
     region: BE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.6e-03, 90th percentile 1.9e-02 over 26 periods"
 - source: worldbank
   id: NE.IMP.GNFS.CD/BEL
   alias: e_be_imports_gs
@@ -834,15 +834,15 @@
   attrs:
     region: BE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.BE.AIP_IX
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_INDSERV/BEL.M.PRVM.IX.BTE.N._Z._Z.N
   alias: e_be_ind_prod
   name: Belgium industrial production (index)
   frequency: M
   attrs:
     region: BE
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 1.2e-03, 90th percentile 4.9e-02 over 423 periods"
 - source: bis
   id: WS_EER/M.N.B.BE
   alias: e_be_neer
@@ -883,15 +883,15 @@
   attrs:
     region: BE
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.BE.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/BEL.IRFCLDT1_IRFCL65_USD.S1X.M
   alias: e_be_reserves
   name: Belgium FX reserves (USD)
   frequency: M
   attrs:
     region: BE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 9.4e-01)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 5.3e-04, 90th percentile 1.7e-02 over 300 periods"
 - source: eurostat
   id: sts_trtu_m/M.VOL_SLS.G47.SCA.I21.BE
   alias: e_be_retail_sales
@@ -909,15 +909,15 @@
     region: BE
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
-- source: dbnomics
-  id: IMF/IFS/M.BE.LUR_PT
+- source: imf
+  id: IMF.STA,LS/BEL.U.PT.M
   alias: e_be_unemployment
   name: Belgium unemployment rate (%)
   frequency: M
   attrs:
     region: BE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 6.3e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 468 periods"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.BE
   alias: e_be_unemployment_harmonised
@@ -942,15 +942,15 @@
   attrs:
     region: BE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/BRA.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/BRA.M.MABM.IX._Z.N._Z._Z.N
   alias: e_br_broad_money
   name: Brazil broad money M3 (index, SA)
   frequency: M
   attrs:
     region: BR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.7e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 3.2e-03, 90th percentile 9.1e-03 over 293 periods"
 - source: imf
   id: IMF.RES,WEO/BRA.GGXCNL_NGDP.A
   alias: e_br_budget_balance_gdp
@@ -967,15 +967,15 @@
   attrs:
     region: BR
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/BRA.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/BRA.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_br_consumer_confidence
   name: Brazil consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: BR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 3.9e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 5.5e-04, 90th percentile 2.7e-03 over 355 periods"
 - source: imf
   id: IMF.STA,CPI/BRA.CPI._T.SRP_IX.M
   alias: e_br_cpi
@@ -1000,15 +1000,15 @@
   attrs:
     region: BR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.BR.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/BRA.XG.FOB_USD.A
   alias: e_br_exports_goods
   name: Brazil goods exports, FOB (USD)
   frequency: A
   attrs:
     region: BR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.5e-03, 90th percentile 2.0e-02 over 77 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/BRA
   alias: e_br_exports_gs
@@ -1082,24 +1082,24 @@
   attrs:
     region: BR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.BR.AIP_IX
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_INDSERV/BRA.M.PRVM.IX.BTE.N._Z._Z.N
   alias: e_br_ind_prod
   name: Brazil industrial production (index)
   frequency: M
   attrs:
     region: BR
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
-- source: dbnomics
-  id: OECD/MEI/BRA.MANMM101.IXOBSA.M
+    close_match: "2026-10: rebased; relative gap to the mirror: median 2.7e-07, 90th percentile 1.2e-03 over 407 periods"
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/BRA.M.MANM.IX._Z.Y._Z._Z.N
   alias: e_br_m1
   name: Brazil narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: BR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 3.5e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 1.3e-03, 90th percentile 8.2e-03 over 350 periods"
 - source: bis
   id: WS_EER/M.N.B.BR
   alias: e_br_neer
@@ -1141,15 +1141,15 @@
   attrs:
     region: BR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.BR.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/BRA.IRFCLDT1_IRFCL65_USD.S1XS1311.M
   alias: e_br_reserves
   name: Brazil FX reserves (USD)
   frequency: M
   attrs:
     region: BR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 9.8e-01)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 7.6e-07, 90th percentile 1.3e-05 over 296 periods"
 - source: imf
   id: IMF.STA,MFS_IR/BRA.GSTBILY_RT_PT_A_PT.M
   alias: e_br_short_rate
@@ -1158,15 +1158,15 @@
   attrs:
     region: BR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/M.BR.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/BRA.TBG_USD.G001.M
   alias: e_br_trade_balance_goods
   name: Brazil goods trade balance (USD)
   frequency: M
   attrs:
     region: BR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 3.0e-15, 90th percentile 3.0e-04 over 769 periods"
 - source: dbnomics
   id: IMF/IFS/M.BR.LUR_PT
   alias: e_br_unemployment
@@ -1184,15 +1184,15 @@
   attrs:
     region: BR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/CAN.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CAN.M.MABM.XDC._Z.Y._Z._Z.N
   alias: e_ca_broad_money
   name: Canada broad money M3 (index, SA)
   frequency: M
   attrs:
     region: CA
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 7.7e-03)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 2.1e-03, 90th percentile 3.8e-03 over 404 periods"
 - source: imf
   id: IMF.RES,WEO/CAN.GGXCNL_NGDP.A
   alias: e_ca_budget_balance_gdp
@@ -1233,15 +1233,15 @@
   attrs:
     region: CA
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.CA.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/CAN.XG.FOB_USD.A
   alias: e_ca_exports_goods
   name: Canada goods exports, FOB (USD)
   frequency: A
   attrs:
     region: CA
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.4e-03, 90th percentile 1.0e-02 over 77 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/CAN
   alias: e_ca_exports_gs
@@ -1250,15 +1250,15 @@
   attrs:
     region: CA
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.CA.ENDE_XDC_USD_RATE
+- source: imf
+  id: IMF.STA,ER/CAN.XDC_USD.EOP_RT.M
   alias: e_ca_fx_usd
   name: Canada FX rate (LCU per USD)
   frequency: M
   attrs:
     region: CA
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 4.9e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 823 periods"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/CAN
   alias: e_ca_gdp_growth
@@ -1316,24 +1316,24 @@
   attrs:
     region: CA
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.CA.AIP_IX
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_INDSERV/CAN.M.PRVM.IX.BTE.N._Z._Z.N
   alias: e_ca_ind_prod
   name: Canada industrial production (index)
   frequency: M
   attrs:
     region: CA
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
-- source: dbnomics
-  id: OECD/MEI/CAN.MANMM101.IXOBSA.M
+    close_match: "2026-10: rebased; relative gap to the mirror: median 1.9e-03, 90th percentile 1.9e-02 over 406 periods"
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CAN.M.MANM.XDC._Z.Y._Z._Z.N
   alias: e_ca_m1
   name: Canada narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: CA
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.7e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 9.3e-16, 90th percentile 1.8e-03 over 404 periods"
 - source: bis
   id: WS_EER/M.N.B.CA
   alias: e_ca_neer
@@ -1367,15 +1367,15 @@
   attrs:
     region: CA
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.CA.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/CAN.IRFCLDT4_IRFCL11_DIC_XDRB_USD.S1XS1311.M
   alias: e_ca_reserves
   name: Canada FX reserves (USD)
   frequency: M
   attrs:
     region: CA
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 8.9e-06, 90th percentile 2.9e-03 over 295 periods"
 - source: dbnomics
   id: IMF/IFS/M.CA.FITB_PA
   alias: e_ca_short_rate
@@ -1385,24 +1385,24 @@
     region: CA
     commercial_ok: restricted
     stale: "2026-10: publisher has nothing newer (last 2017-04)"
-- source: dbnomics
-  id: IMF/DOT/M.CA.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/CAN.TBG_USD.G001.M
   alias: e_ca_trade_balance_goods
   name: Canada goods trade balance (USD)
   frequency: M
   attrs:
     region: CA
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
-- source: dbnomics
-  id: IMF/IFS/M.CA.LUR_PT
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.5e-16, 90th percentile 8.7e-10 over 785 periods"
+- source: imf
+  id: IMF.STA,LS/CAN.U.PT.M
   alias: e_ca_unemployment
   name: Canada unemployment rate (%)
   frequency: M
   attrs:
     region: CA
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 4.2e-03 over 591 periods"
 - source: worldbank
   id: SL.UEM.1524.ZS/CAN
   alias: e_ca_unemployment_youth
@@ -1411,15 +1411,15 @@
   attrs:
     region: CA
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/CHE.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CHE.M.MABM.IX._Z.N._Z._Z.N
   alias: e_ch_broad_money
   name: Switzerland broad money M3 (index, SA)
   frequency: M
   attrs:
     region: CH
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.3e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 3.3e-03, 90th percentile 9.0e-03 over 348 periods"
 - source: imf
   id: IMF.RES,WEO/CHE.GGXCNL_NGDP.A
   alias: e_ch_budget_balance_gdp
@@ -1436,24 +1436,24 @@
   attrs:
     region: CH
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/CHE.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/CHE.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_ch_consumer_confidence
   name: Switzerland consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: CH
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 7.5e-03)"
-- source: dbnomics
-  id: IMF/IFS/M.CH.PCPIHA_IX
+    close_match: "2026-10: same units; relative gap to the mirror: median 1.4e-03, 90th percentile 3.6e-03 over 407 periods"
+- source: imf
+  id: IMF.STA,CPI/CHE.HICP._T.SRP_IX.M
   alias: e_ch_hicp
   name: Switzerland HICP (all items, index)
   frequency: M
   attrs:
     region: CH
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 5.7e-04)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 4.1e-15, 90th percentile 4.0e-04 over 248 periods"
 - source: imf
   id: IMF.STA,CPI/CHE.CPI._T.SRP_IX.M
   alias: e_ch_cpi
@@ -1478,15 +1478,15 @@
   attrs:
     region: CH
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.CH.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/CHE.XG.FOB_USD.A
   alias: e_ch_exports_goods
   name: Switzerland goods exports, FOB (USD)
   frequency: A
   attrs:
     region: CH
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.8e-03, 90th percentile 1.3e-02 over 77 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/CHE
   alias: e_ch_exports_gs
@@ -1495,15 +1495,15 @@
   attrs:
     region: CH
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.CH.ENDE_XDC_USD_RATE
+- source: imf
+  id: IMF.STA,ER/CHE.XDC_USD.EOP_RT.M
   alias: e_ch_fx_usd
   name: Switzerland FX rate (LCU per USD)
   frequency: M
   attrs:
     region: CH
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.5e-04)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 823 periods"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/CHE
   alias: e_ch_gdp_growth
@@ -1544,15 +1544,15 @@
   attrs:
     region: CH
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.CH.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/CHE.MG.CIF_USD.A
   alias: e_ch_imports_goods
   name: Switzerland goods imports, CIF (USD)
   frequency: A
   attrs:
     region: CH
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.1e-03, 90th percentile 1.5e-02 over 77 periods"
 - source: worldbank
   id: NE.IMP.GNFS.CD/CHE
   alias: e_ch_imports_gs
@@ -1561,15 +1561,15 @@
   attrs:
     region: CH
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/CHE.MANMM101.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CHE.M.MANM.IX._Z.N._Z._Z.N
   alias: e_ch_m1
   name: Switzerland narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: CH
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 3.2e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 4.6e-03, 90th percentile 1.6e-02 over 348 periods"
 - source: bis
   id: WS_EER/M.N.B.CH
   alias: e_ch_neer
@@ -1610,15 +1610,15 @@
   attrs:
     region: CH
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.CH.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/CHE.IRFCLDT1_IRFCL65_USD.S1XS1311.M
   alias: e_ch_reserves
   name: Switzerland FX reserves (USD)
   frequency: M
   attrs:
     region: CH
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.9e-04, 90th percentile 1.3e-02 over 298 periods"
 - source: eurostat
   id: sts_trtu_m/M.VOL_SLS.G47.SCA.I21.CH
   alias: e_ch_retail_sales
@@ -1676,15 +1676,15 @@
   attrs:
     region: CH
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/CHL.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CHL.M.MABM.IX._Z.N._Z._Z.N
   alias: e_cl_broad_money
   name: Chile broad money M3 (index, SA)
   frequency: M
   attrs:
     region: CL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.2e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 2.4e-03, 90th percentile 6.8e-03 over 348 periods"
 - source: imf
   id: IMF.RES,WEO/CHL.GGXCNL_NGDP.A
   alias: e_cl_budget_balance_gdp
@@ -1701,15 +1701,15 @@
   attrs:
     region: CL
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/CHL.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/CHL.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_cl_consumer_confidence
   name: Chile consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: CL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 9.4e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 2.2e-03, 90th percentile 6.6e-03 over 262 periods"
 - source: imf
   id: IMF.STA,CPI/CHL.CPI._T.SRP_IX.M
   alias: e_cl_cpi
@@ -1734,15 +1734,15 @@
   attrs:
     region: CL
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.CL.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/CHL.XG.FOB_USD.A
   alias: e_cl_exports_goods
   name: Chile goods exports, FOB (USD)
   frequency: A
   attrs:
     region: CL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 5.8e-03, 90th percentile 3.8e-02 over 77 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/CHL
   alias: e_cl_exports_gs
@@ -1824,7 +1824,7 @@
   attrs:
     region: CL
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    stale: "2026-10: values differ (max relative gap 2.5e-01)"
 - source: dbnomics
   id: OECD/MEI/CHL.MANMM101.IXOBSA.M
   alias: e_cl_m1
@@ -1875,15 +1875,15 @@
   attrs:
     region: CL
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.CL.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/CHL.IRFCLDT1_IRFCL65_USD.S1XS1311.M
   alias: e_cl_reserves
   name: Chile FX reserves (USD)
   frequency: M
   attrs:
     region: CL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 3.7e-04, 90th percentile 4.0e-03 over 299 periods"
 - source: dbnomics
   id: IMF/IFS/M.CL.FIMM_PA
   alias: e_cl_short_rate
@@ -1893,24 +1893,24 @@
     region: CL
     commercial_ok: restricted
     stale: "2026-10: publisher has nothing newer (last 2025-05)"
-- source: dbnomics
-  id: IMF/DOT/M.CL.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/CHL.TBG_USD.G001.M
   alias: e_cl_trade_balance_goods
   name: Chile goods trade balance (USD)
   frequency: M
   attrs:
     region: CL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
-- source: dbnomics
-  id: IMF/IFS/M.CL.LUR_PT
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.4e-16, 90th percentile 7.6e-09 over 618 periods"
+- source: imf
+  id: IMF.STA,LS/CHL.U.PT.M
   alias: e_cl_unemployment
   name: Chile unemployment rate (%)
   frequency: M
   attrs:
     region: CL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 4.0e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 1.1e-02 over 252 periods"
 - source: worldbank
   id: SL.UEM.1524.ZS/CHL
   alias: e_cl_unemployment_youth
@@ -1919,15 +1919,15 @@
   attrs:
     region: CL
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/CHN.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CHN.M.MABM.IX._Z.N._Z._Z.N
   alias: e_cn_broad_money
   name: China broad money M3 (index, SA)
   frequency: M
   attrs:
     region: CN
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.7e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 4.0e-03, 90th percentile 1.1e-02 over 347 periods"
 - source: imf
   id: IMF.RES,WEO/CHN.GGXCNL_NGDP.A
   alias: e_cn_budget_balance_gdp
@@ -1944,15 +1944,15 @@
   attrs:
     region: CN
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/CHN.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/CHN.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_cn_consumer_confidence
   name: China consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: CN
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.8e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 4.0e-03, 90th percentile 8.9e-03 over 407 periods"
 - source: imf
   id: IMF.STA,CPI/CHN.CPI._T.SRP_IX.M
   alias: e_cn_cpi
@@ -1977,15 +1977,15 @@
   attrs:
     region: CN
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.CN.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/CHN.XG.FOB_USD.A
   alias: e_cn_exports_goods
   name: China goods exports, FOB (USD)
   frequency: A
   attrs:
     region: CN
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.9e-03, 90th percentile 2.1e-02 over 48 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/CHN
   alias: e_cn_exports_gs
@@ -2042,15 +2042,15 @@
   attrs:
     region: CN
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.CN.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/CHN.MG.CIF_USD.A
   alias: e_cn_imports_goods
   name: China goods imports, CIF (USD)
   frequency: A
   attrs:
     region: CN
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.5e-03, 90th percentile 2.2e-02 over 48 periods"
 - source: worldbank
   id: NE.IMP.GNFS.CD/CHN
   alias: e_cn_imports_gs
@@ -2068,15 +2068,15 @@
     region: CN
     commercial_ok: restricted
     stale: "2026-10: no candidate"
-- source: dbnomics
-  id: OECD/MEI/CHN.MANMM101.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CHN.M.MANM.IX._Z.N._Z._Z.N
   alias: e_cn_m1
   name: China narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: CN
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 4.0e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 8.9e-03, 90th percentile 2.4e-02 over 347 periods"
 - source: bis
   id: WS_EER/M.N.B.CN
   alias: e_cn_neer
@@ -2118,15 +2118,15 @@
   attrs:
     region: CN
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.CN.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/CHN.IRFCLDT1_IRFCL65_USD.S1XS1311.M
   alias: e_cn_reserves
   name: China FX reserves (USD)
   frequency: M
   attrs:
     region: CN
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 9.5e-01)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 9.8e-05, 90th percentile 1.9e-04 over 121 periods"
 - source: dbnomics
   id: IMF/IFS/M.CN.FIDR_PA
   alias: e_cn_short_rate
@@ -2136,15 +2136,15 @@
     region: CN
     commercial_ok: restricted
     stale: "2026-10: no candidate"
-- source: dbnomics
-  id: IMF/DOT/M.CN.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/CHN.TBG_USD.G001.M
   alias: e_cn_trade_balance_goods
   name: China goods trade balance (USD)
   frequency: M
   attrs:
     region: CN
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 0.0e+00, 90th percentile 2.0e-15 over 545 periods"
 - source: dbnomics
   id: IMF/IFS/M.CN.LUR_PT
   alias: e_cn_unemployment
@@ -2162,15 +2162,15 @@
   attrs:
     region: CN
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/COL.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/COL.M.MABM.IX._Z.Y._Z._Z.N
   alias: e_co_broad_money
   name: Colombia broad money M3 (index, SA)
   frequency: M
   attrs:
     region: CO
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.0e-03)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 2.7e-06, 90th percentile 9.5e-05 over 405 periods"
 - source: imf
   id: IMF.RES,WEO/COL.GGXCNL_NGDP.A
   alias: e_co_budget_balance_gdp
@@ -2187,15 +2187,15 @@
   attrs:
     region: CO
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/COL.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/COL.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_co_consumer_confidence
   name: Colombia consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: CO
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 5.9e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 5.9e-04, 90th percentile 1.4e-03 over 266 periods"
 - source: imf
   id: IMF.STA,CPI/COL.CPI._T.SRP_IX.M
   alias: e_co_cpi
@@ -2285,15 +2285,15 @@
   attrs:
     region: CO
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.CO.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/COL.MG.CIF_USD.A
   alias: e_co_imports_goods
   name: Colombia goods imports, CIF (USD)
   frequency: A
   attrs:
     region: CO
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 5.5e-03, 90th percentile 4.4e-02 over 77 periods"
 - source: worldbank
   id: NE.IMP.GNFS.CD/COL
   alias: e_co_imports_gs
@@ -2310,16 +2310,16 @@
   attrs:
     region: CO
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
-- source: dbnomics
-  id: OECD/MEI/COL.MANMM101.IXOBSA.M
+    stale: "2026-10: values differ (max relative gap 1.6e-01)"
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/COL.M.MANM.IX._Z.Y._Z._Z.N
   alias: e_co_m1
   name: Colombia narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: CO
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 4.4e-03)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 1.2e-04, 90th percentile 7.5e-04 over 405 periods"
 - source: bis
   id: WS_EER/M.N.B.CO
   alias: e_co_neer
@@ -2361,15 +2361,15 @@
   attrs:
     region: CO
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.CO.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/COL.IRFCLDT4_IRFCL11_DIC_GROUP_USD.S1XS1311.M
   alias: e_co_reserves
   name: Colombia FX reserves (USD)
   frequency: M
   attrs:
     region: CO
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.7e-05, 90th percentile 3.5e-04 over 192 periods"
 - source: imf
   id: IMF.STA,MFS_IR/COL.MMRT_RT_PT_A_PT.M
   alias: e_co_short_rate
@@ -2411,15 +2411,15 @@
   attrs:
     region: CZ
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/CZE.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CZE.M.MABM.IX._Z.Y._Z._Z.N
   alias: e_cz_broad_money
   name: Czechia broad money M3 (index, SA)
   frequency: M
   attrs:
     region: CZ
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 5.2e-04)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 4.9e-03, 90th percentile 2.9e-02 over 405 periods"
 - source: imf
   id: IMF.RES,WEO/CZE.GGXCNL_NGDP.A
   alias: e_cz_budget_balance_gdp
@@ -2436,24 +2436,24 @@
   attrs:
     region: CZ
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/CZE.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/CZE.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_cz_consumer_confidence
   name: Czechia consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: CZ
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 6.9e-03)"
-- source: dbnomics
-  id: IMF/IFS/M.CZ.PCPIHA_IX
+    close_match: "2026-10: same units; relative gap to the mirror: median 6.3e-04, 90th percentile 1.1e-03 over 348 periods"
+- source: imf
+  id: IMF.STA,CPI/CZE.HICP._T.SRP_IX.M
   alias: e_cz_hicp
   name: Czechia HICP (all items, index)
   frequency: M
   attrs:
     region: CZ
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.2e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 3.6e-04, 90th percentile 1.0e-03 over 355 periods"
 - source: imf
   id: IMF.STA,CPI/CZE.CPI._T.SRP_IX.M
   alias: e_cz_cpi
@@ -2486,15 +2486,15 @@
   attrs:
     region: CZ
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.CZ.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/CZE.XG.FOB_USD.A
   alias: e_cz_exports_goods
   name: Czechia goods exports, FOB (USD)
   frequency: A
   attrs:
     region: CZ
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 8.6e-04, 90th percentile 2.2e-02 over 32 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/CZE
   alias: e_cz_exports_gs
@@ -2568,24 +2568,24 @@
   attrs:
     region: CZ
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.CZ.AIP_IX
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_INDSERV/CZE.M.PRVM.IX.BTE.N._Z._Z.N
   alias: e_cz_ind_prod
   name: Czechia industrial production (index)
   frequency: M
   attrs:
     region: CZ
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
-- source: dbnomics
-  id: OECD/MEI/CZE.MANMM101.IXOBSA.M
+    close_match: "2026-10: rebased; relative gap to the mirror: median 9.4e-08, 90th percentile 6.2e-03 over 387 periods"
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CZE.M.MANM.IX._Z.N._Z._Z.N
   alias: e_cz_m1
   name: Czechia narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: CZ
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.5e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 3.5e-03, 90th percentile 1.6e-02 over 324 periods"
 - source: bis
   id: WS_EER/M.N.B.CZ
   alias: e_cz_neer
@@ -2626,15 +2626,15 @@
   attrs:
     region: CZ
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.CZ.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/CZE.IRFCLDT4_IRFCL11_DIC_GROUP_USD.S1XS1311.M
   alias: e_cz_reserves
   name: Czechia FX reserves (USD)
   frequency: M
   attrs:
     region: CZ
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 9.7e-01)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 9.7e-06, 90th percentile 9.3e-05 over 305 periods"
 - source: eurostat
   id: sts_trtu_m/M.VOL_SLS.G47.SCA.I21.CZ
   alias: e_cz_retail_sales
@@ -2643,15 +2643,15 @@
   attrs:
     region: CZ
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/M.CZ.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/CZE.TBG_USD.G001.M
   alias: e_cz_trade_balance_goods
   name: Czechia goods trade balance (USD)
   frequency: M
   attrs:
     region: CZ
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 4.8e-10, 90th percentile 1.1e-08 over 389 periods"
 - source: imf
   id: IMF.STA,LS/CZE.U.PT.M
   alias: e_cz_unemployment
@@ -2708,24 +2708,24 @@
   attrs:
     region: DE
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/DEU.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/DEU.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_de_consumer_confidence
   name: Germany consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: DE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 3.1e-03)"
-- source: dbnomics
-  id: IMF/IFS/M.DE.PCPIHA_IX
+    close_match: "2026-10: same units; relative gap to the mirror: median 6.5e-04, 90th percentile 1.7e-03 over 408 periods"
+- source: imf
+  id: IMF.STA,CPI/DEU.HICP._T.IX.M
   alias: e_de_hicp
   name: Germany HICP (all items, index)
   frequency: M
   attrs:
     region: DE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 8.5e-04)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 2.7e-04, 90th percentile 5.0e-04 over 355 periods"
 - source: imf
   id: IMF.STA,CPI/DEU.CPI._T.SRP_IX.M
   alias: e_de_cpi
@@ -2758,15 +2758,15 @@
   attrs:
     region: DE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.DE.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/DEU.XG.FOB_USD.A
   alias: e_de_exports_goods
   name: Germany goods exports, FOB (USD)
   frequency: A
   attrs:
     region: DE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.8e-03, 90th percentile 1.4e-02 over 77 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/DEU
   alias: e_de_exports_gs
@@ -2832,15 +2832,15 @@
   attrs:
     region: DE
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.DE.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/DEU.MG.CIF_USD.A
   alias: e_de_imports_goods
   name: Germany goods imports, CIF (USD)
   frequency: A
   attrs:
     region: DE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 9.3e-04, 90th percentile 3.2e-02 over 77 periods"
 - source: worldbank
   id: NE.IMP.GNFS.CD/DEU
   alias: e_de_imports_gs
@@ -2849,15 +2849,15 @@
   attrs:
     region: DE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.DE.AIP_IX
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_INDSERV/DEU.M.PRVM.IX.BTE.N._Z._Z.N
   alias: e_de_ind_prod
   name: Germany industrial production (index)
   frequency: M
   attrs:
     region: DE
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 8.9e-08, 90th percentile 3.3e-02 over 423 periods"
 - source: bis
   id: WS_EER/M.N.B.DE
   alias: e_de_neer
@@ -2898,15 +2898,15 @@
   attrs:
     region: DE
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.DE.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/DEU.IRFCLDT1_IRFCL65_USD.S1X.M
   alias: e_de_reserves
   name: Germany FX reserves (USD)
   frequency: M
   attrs:
     region: DE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 6.6e-04, 90th percentile 4.8e-03 over 307 periods"
 - source: eurostat
   id: sts_trtu_m/M.VOL_SLS.G47.SCA.I21.DE
   alias: e_de_retail_sales
@@ -2915,24 +2915,24 @@
   attrs:
     region: DE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/M.DE.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/DEU.TBG_USD.G001.M
   alias: e_de_trade_balance_goods
   name: Germany goods trade balance (USD)
   frequency: M
   attrs:
     region: DE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
-- source: dbnomics
-  id: IMF/IFS/M.DE.LUR_PT
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.2e-16, 90th percentile 1.2e-10 over 782 periods"
+- source: imf
+  id: IMF.STA,LS/DEU.U.PT.M
   alias: e_de_unemployment
   name: Germany unemployment rate (%)
   frequency: M
   attrs:
     region: DE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e-01)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 3.1e-02 over 219 periods"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.DE
   alias: e_de_unemployment_harmonised
@@ -2965,15 +2965,15 @@
   attrs:
     region: DK
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/DNK.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/DNK.M.MABM.IX._Z.N._Z._Z.N
   alias: e_dk_broad_money
   name: Denmark broad money M3 (index, SA)
   frequency: M
   attrs:
     region: DK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.6e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 8.1e-03, 90th percentile 1.8e-02 over 348 periods"
 - source: imf
   id: IMF.RES,WEO/DNK.GGXCNL_NGDP.A
   alias: e_dk_budget_balance_gdp
@@ -2990,33 +2990,33 @@
   attrs:
     region: DK
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/DNK.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/DNK.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_dk_consumer_confidence
   name: Denmark consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: DK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 3.7e-03)"
-- source: dbnomics
-  id: IMF/IFS/M.DK.PCPIHA_IX
+    close_match: "2026-10: same units; relative gap to the mirror: median 4.3e-04, 90th percentile 1.4e-03 over 408 periods"
+- source: imf
+  id: IMF.STA,CPI/DNK.HICP._T.SRP_IX.M
   alias: e_dk_hicp
   name: Denmark HICP (all items, index)
   frequency: M
   attrs:
     region: DK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 7.6e-04)"
-- source: dbnomics
-  id: IMF/IFS/M.DK.PCPI_IX
+    close_match: "2026-10: rebased; relative gap to the mirror: median 2.5e-04, 90th percentile 5.0e-04 over 355 periods"
+- source: imf
+  id: IMF.STA,CPI/DNK.CPI._T.IX.M
   alias: e_dk_cpi
   name: Denmark CPI (all items, index)
   frequency: M
   attrs:
     region: DK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 6.2e-04)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 2.8e-07, 90th percentile 7.8e-04 over 703 periods"
 - source: bis
   id: WS_TC/Q.DK.P.A.M.770.A
   alias: e_dk_credit_private
@@ -3041,15 +3041,15 @@
   attrs:
     region: DK
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.DK.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/DNK.XG.FOB_USD.A
   alias: e_dk_exports_goods
   name: Denmark goods exports, FOB (USD)
   frequency: A
   attrs:
     region: DK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 6.1e-03, 90th percentile 3.8e-02 over 77 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/DNK
   alias: e_dk_exports_gs
@@ -3106,15 +3106,15 @@
   attrs:
     region: DK
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.DK.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/DNK.MG.CIF_USD.A
   alias: e_dk_imports_goods
   name: Denmark goods imports, CIF (USD)
   frequency: A
   attrs:
     region: DK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.5e-03, 90th percentile 3.8e-02 over 77 periods"
 - source: worldbank
   id: NE.IMP.GNFS.CD/DNK
   alias: e_dk_imports_gs
@@ -3123,24 +3123,24 @@
   attrs:
     region: DK
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.DK.AIP_IX
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_INDSERV/DNK.M.PRVM.IX.BTE.N._Z._Z.N
   alias: e_dk_ind_prod
   name: Denmark industrial production (index)
   frequency: M
   attrs:
     region: DK
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
-- source: dbnomics
-  id: OECD/MEI/DNK.MANMM101.IXOBSA.M
+    close_match: "2026-10: rebased; relative gap to the mirror: median 1.4e-07, 90th percentile 3.8e-07 over 303 periods"
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/DNK.M.MANM.IX._Z.N._Z._Z.N
   alias: e_dk_m1
   name: Denmark narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: DK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 3.0e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 7.9e-03, 90th percentile 1.9e-02 over 405 periods"
 - source: bis
   id: WS_EER/M.N.B.DK
   alias: e_dk_neer
@@ -3198,24 +3198,24 @@
   attrs:
     region: DK
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/M.DK.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/DNK.TBG_USD.G001.M
   alias: e_dk_trade_balance_goods
   name: Denmark goods trade balance (USD)
   frequency: M
   attrs:
     region: DK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
-- source: dbnomics
-  id: IMF/IFS/M.DK.LUR_PT
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.7e-16, 90th percentile 1.7e-08 over 785 periods"
+- source: imf
+  id: IMF.STA,LS/DNK.U.PT.M
   alias: e_dk_unemployment
   name: Denmark unemployment rate (%)
   frequency: M
   attrs:
     region: DK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 3.4e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 507 periods"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.DK
   alias: e_dk_unemployment_harmonised
@@ -3264,15 +3264,15 @@
   attrs:
     region: ES
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/ESP.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/ESP.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_es_consumer_confidence
   name: Spain consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: ES
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.7e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 4.8e-04, 90th percentile 1.1e-03 over 408 periods"
 - source: imf
   id: IMF.STA,CPI/ESP.HICP._T.SRP_IX.M
   alias: e_es_hicp
@@ -3387,15 +3387,15 @@
   attrs:
     region: ES
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.ES.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/ESP.MG.CIF_USD.A
   alias: e_es_imports_goods
   name: Spain goods imports, CIF (USD)
   frequency: A
   attrs:
     region: ES
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.1e-03, 90th percentile 3.0e-02 over 77 periods"
 - source: worldbank
   id: NE.IMP.GNFS.CD/ESP
   alias: e_es_imports_gs
@@ -3404,15 +3404,15 @@
   attrs:
     region: ES
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.ES.AIP_IX
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_INDSERV/ESP.M.PRVM.IX.BTE.N._Z._Z.N
   alias: e_es_ind_prod
   name: Spain industrial production (index)
   frequency: M
   attrs:
     region: ES
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 1.6e-07, 90th percentile 4.0e-07 over 424 periods"
 - source: bis
   id: WS_EER/M.N.B.ES
   alias: e_es_neer
@@ -3437,15 +3437,15 @@
   attrs:
     region: ES
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.ES.PPPI_IX
+- source: imf
+  id: IMF.STA,PPI/ESP.PPI.IX.M
   alias: e_es_ppi
   name: Spain producer price index
   frequency: M
   attrs:
     region: ES
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.5e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 5.7e-16, 90th percentile 2.9e-15 over 616 periods"
 - source: bis
   id: WS_EER/M.R.B.ES
   alias: e_es_reer
@@ -3454,15 +3454,15 @@
   attrs:
     region: ES
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.ES.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/ESP.IRFCLDT4_IRFCL11_DIC_GROUP_USD.S1X.M
   alias: e_es_reserves
   name: Spain FX reserves (USD)
   frequency: M
   attrs:
     region: ES
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.8e-04, 90th percentile 1.5e-03 over 237 periods"
 - source: eurostat
   id: sts_trtu_m/M.VOL_SLS.G47.SCA.I21.ES
   alias: e_es_retail_sales
@@ -3471,24 +3471,24 @@
   attrs:
     region: ES
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/M.ES.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/ESP.TBG_USD.G001.M
   alias: e_es_trade_balance_goods
   name: Spain goods trade balance (USD)
   frequency: M
   attrs:
     region: ES
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
-- source: dbnomics
-  id: IMF/IFS/M.ES.LUR_PT
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.5e-16, 90th percentile 4.0e-10 over 779 periods"
+- source: imf
+  id: IMF.STA,LS/ESP.U.PT.M
   alias: e_es_unemployment
   name: Spain unemployment rate (%)
   frequency: M
   attrs:
     region: ES
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.8e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 469 periods"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.ES
   alias: e_es_unemployment_harmonised
@@ -3720,15 +3720,15 @@
   attrs:
     region: FI
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/FIN.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/FIN.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_fi_consumer_confidence
   name: Finland consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: FI
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 7.3e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 1.5e-03, 90th percentile 2.7e-03 over 408 periods"
 - source: imf
   id: IMF.STA,CPI/FIN.HICP._T.SRP_IX.M
   alias: e_fi_hicp
@@ -3737,15 +3737,15 @@
   attrs:
     region: FI
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.FI.PCPI_IX
+- source: imf
+  id: IMF.STA,CPI/FIN.CPI._T.SRP_IX.M
   alias: e_fi_cpi
   name: Finland CPI (all items, index)
   frequency: M
   attrs:
     region: FI
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.3e-03)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 7.4e-08, 90th percentile 2.1e-04 over 847 periods"
 - source: bis
   id: WS_TC/Q.FI.P.A.M.770.A
   alias: e_fi_credit_private
@@ -3770,15 +3770,15 @@
   attrs:
     region: FI
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.FI.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/FIN.XG.FOB_USD.A
   alias: e_fi_exports_goods
   name: Finland goods exports, FOB (USD)
   frequency: A
   attrs:
     region: FI
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.3e-03, 90th percentile 1.6e-02 over 77 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/FIN
   alias: e_fi_exports_gs
@@ -3836,15 +3836,15 @@
   attrs:
     region: FI
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.FI.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/FIN.MG.CIF_USD.A
   alias: e_fi_imports_goods
   name: Finland goods imports, CIF (USD)
   frequency: A
   attrs:
     region: FI
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 3.5e-03, 90th percentile 1.7e-02 over 77 periods"
 - source: worldbank
   id: NE.IMP.GNFS.CD/FIN
   alias: e_fi_imports_gs
@@ -3853,15 +3853,15 @@
   attrs:
     region: FI
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.FI.AIP_IX
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_INDSERV/FIN.M.PRVM.IX.BTE.N._Z._Z.N
   alias: e_fi_ind_prod
   name: Finland industrial production (index)
   frequency: M
   attrs:
     region: FI
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 3.1e-07, 90th percentile 1.2e-02 over 423 periods"
 - source: bis
   id: WS_EER/M.N.B.FI
   alias: e_fi_neer
@@ -3895,15 +3895,15 @@
   attrs:
     region: FI
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.FI.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/FIN.IRFCLDT1_IRFCL65_USD.S1XS1311.M
   alias: e_fi_reserves
   name: Finland FX reserves (USD)
   frequency: M
   attrs:
     region: FI
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 9.9e-01)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 4.6e-04, 90th percentile 2.1e-03 over 306 periods"
 - source: eurostat
   id: sts_trtu_m/M.VOL_SLS.G47.SCA.I21.FI
   alias: e_fi_retail_sales
@@ -3912,15 +3912,15 @@
   attrs:
     region: FI
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/M.FI.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/FIN.TBG_USD.G001.M
   alias: e_fi_trade_balance_goods
   name: Finland goods trade balance (USD)
   frequency: M
   attrs:
     region: FI
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.4e-16, 90th percentile 5.2e-09 over 779 periods"
 - source: imf
   id: IMF.STA,LS/FIN.U.PT.M
   alias: e_fi_unemployment
@@ -3977,15 +3977,15 @@
   attrs:
     region: FR
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/FRA.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/FRA.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_fr_consumer_confidence
   name: France consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: FR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.7e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 1.0e-03, 90th percentile 1.9e-03 over 408 periods"
 - source: imf
   id: IMF.STA,CPI/FRA.HICP._T.SRP_IX.M
   alias: e_fr_hicp
@@ -3994,15 +3994,15 @@
   attrs:
     region: FR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.FR.PCPI_IX
+- source: imf
+  id: IMF.STA,CPI/FRA.CPI._T.IX.M
   alias: e_fr_cpi
   name: France CPI (all items, index)
   frequency: M
   attrs:
     region: FR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.4e-04)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 2.9e-07, 90th percentile 6.5e-05 over 847 periods"
 - source: bis
   id: WS_TC/Q.FR.P.A.M.770.A
   alias: e_fr_credit_private
@@ -4118,15 +4118,15 @@
   attrs:
     region: FR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.FR.AIP_IX
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_INDSERV/FRA.M.PRVM.IX.BTE.N._Z._Z.N
   alias: e_fr_ind_prod
   name: France industrial production (index)
   frequency: M
   attrs:
     region: FR
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 4.4e-03, 90th percentile 1.4e-02 over 423 periods"
 - source: bis
   id: WS_EER/M.N.B.FR
   alias: e_fr_neer
@@ -4168,15 +4168,15 @@
   attrs:
     region: FR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.FR.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/FRA.IRFCLDT1_IRFCL65_USD.S1XS1311.M
   alias: e_fr_reserves
   name: France FX reserves (USD)
   frequency: M
   attrs:
     region: FR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.0e-03, 90th percentile 3.5e-03 over 299 periods"
 - source: eurostat
   id: sts_trtu_m/M.VOL_SLS.G47.SCA.I21.FR
   alias: e_fr_retail_sales
@@ -4185,24 +4185,24 @@
   attrs:
     region: FR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/M.FR.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/FRA.TBG_USD.G001.M
   alias: e_fr_trade_balance_goods
   name: France goods trade balance (USD)
   frequency: M
   attrs:
     region: FR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
-- source: dbnomics
-  id: IMF/IFS/M.FR.LUR_PT
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.5e-16, 90th percentile 3.4e-10 over 785 periods"
+- source: imf
+  id: IMF.STA,LS/FRA.U.PT.M
   alias: e_fr_unemployment
   name: France unemployment rate (%)
   frequency: M
   attrs:
     region: FR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 4.0e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 267 periods"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.FR
   alias: e_fr_unemployment_harmonised
@@ -4251,15 +4251,15 @@
   attrs:
     region: GR
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/GRC.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/GRC.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_gr_consumer_confidence
   name: Greece consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: GR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 5.0e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 1.0e-03, 90th percentile 3.7e-03 over 408 periods"
 - source: imf
   id: IMF.STA,CPI/GRC.HICP._T.SRP_IX.M
   alias: e_gr_hicp
@@ -4268,15 +4268,15 @@
   attrs:
     region: GR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.GR.PCPI_IX
+- source: imf
+  id: IMF.STA,CPI/GRC.CPI._T.SRP_IX.M
   alias: e_gr_cpi
   name: Greece CPI (all items, index)
   frequency: M
   attrs:
     region: GR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.3e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 8.6e-16, 90th percentile 3.8e-06 over 847 periods"
 - source: bis
   id: WS_TC/Q.GR.P.A.M.770.A
   alias: e_gr_credit_private
@@ -4384,15 +4384,15 @@
   attrs:
     region: GR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.GR.AIP_IX
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_INDSERV/GRC.M.PRVM.IX.BTE.N._Z._Z.N
   alias: e_gr_ind_prod
   name: Greece industrial production (index)
   frequency: M
   attrs:
     region: GR
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 2.5e-07, 90th percentile 1.2e-02 over 363 periods"
 - source: bis
   id: WS_EER/M.N.B.GR
   alias: e_gr_neer
@@ -4433,15 +4433,15 @@
   attrs:
     region: GR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.GR.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/GRC.IRFCLDT4_IRFCL11_DIC_GROUP_USD.S1XS1311.M
   alias: e_gr_reserves
   name: Greece FX reserves (USD)
   frequency: M
   attrs:
     region: GR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.3e-03, 90th percentile 4.6e-02 over 263 periods"
 - source: eurostat
   id: sts_trtu_m/M.VOL_SLS.G47.SCA.I21.EL
   alias: e_gr_retail_sales
@@ -4450,24 +4450,24 @@
   attrs:
     region: GR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/M.GR.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/GRC.TBG_USD.G001.M
   alias: e_gr_trade_balance_goods
   name: Greece goods trade balance (USD)
   frequency: M
   attrs:
     region: GR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
-- source: dbnomics
-  id: IMF/IFS/M.GR.LUR_PT
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.2e-16, 90th percentile 6.3e-10 over 779 periods"
+- source: imf
+  id: IMF.STA,LS/GRC.U.PT.M
   alias: e_gr_unemployment
   name: Greece unemployment rate (%)
   frequency: M
   attrs:
     region: GR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 8.6e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 324 periods"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.EL
   alias: e_gr_unemployment_harmonised
@@ -4630,15 +4630,15 @@
   attrs:
     region: HK
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.HK.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/HKG.IRFCLDT1_IRFCL65_USD.S1XS1311.M
   alias: e_hk_reserves
   name: Hong Kong FX reserves (USD)
   frequency: M
   attrs:
     region: HK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.0e-06, 90th percentile 2.0e-05 over 271 periods"
 - source: imf
   id: IMF.STA,MFS_IR/HKG.GSTBILY_RT_PT_A_PT.M
   alias: e_hk_short_rate
@@ -4681,15 +4681,15 @@
   attrs:
     region: HU
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/HUN.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/HUN.M.MABM.IX._Z.Y._Z._Z.N
   alias: e_hu_broad_money
   name: Hungary broad money M3 (index, SA)
   frequency: M
   attrs:
     region: HU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.6e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 7.5e-05, 90th percentile 1.2e-03 over 405 periods"
 - source: imf
   id: IMF.RES,WEO/HUN.GGXCNL_NGDP.A
   alias: e_hu_budget_balance_gdp
@@ -4706,15 +4706,15 @@
   attrs:
     region: HU
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/HUN.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/HUN.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_hu_consumer_confidence
   name: Hungary consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: HU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.9e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 4.5e-04, 90th percentile 8.9e-04 over 371 periods"
 - source: imf
   id: IMF.STA,CPI/HUN.HICP._T.SRP_IX.M
   alias: e_hu_hicp
@@ -4723,15 +4723,15 @@
   attrs:
     region: HU
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.HU.PCPI_IX
+- source: imf
+  id: IMF.STA,CPI/HUN.CPI._T.IX.M
   alias: e_hu_cpi
   name: Hungary CPI (all items, index)
   frequency: M
   attrs:
     region: HU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.3e-03)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 5.6e-15, 90th percentile 3.3e-04 over 547 periods"
 - source: bis
   id: WS_TC/Q.HU.P.A.M.770.A
   alias: e_hu_credit_private
@@ -4846,16 +4846,16 @@
   attrs:
     region: HU
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
-- source: dbnomics
-  id: OECD/MEI/HUN.MANMM101.IXOBSA.M
+    stale: "2026-10: values differ (max relative gap 2.3e-01)"
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/HUN.M.MANM.IX._Z.Y._Z._Z.N
   alias: e_hu_m1
   name: Hungary narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: HU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.6e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 4.1e-05, 90th percentile 5.6e-04 over 405 periods"
 - source: bis
   id: WS_EER/M.N.B.HU
   alias: e_hu_neer
@@ -4896,15 +4896,15 @@
   attrs:
     region: HU
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.HU.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/HUN.IRFCLDT1_IRFCL65_USD.S1XS1311.M
   alias: e_hu_reserves
   name: Hungary FX reserves (USD)
   frequency: M
   attrs:
     region: HU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.3e-03, 90th percentile 4.1e-03 over 304 periods"
 - source: eurostat
   id: sts_trtu_m/M.VOL_SLS.G47.SCA.I21.HU
   alias: e_hu_retail_sales
@@ -4913,15 +4913,15 @@
   attrs:
     region: HU
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/M.HU.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/HUN.TBG_USD.G001.M
   alias: e_hu_trade_balance_goods
   name: Hungary goods trade balance (USD)
   frequency: M
   attrs:
     region: HU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 4.0e-15, 90th percentile 1.4e-08 over 557 periods"
 - source: imf
   id: IMF.STA,LS/HUN.U.PT.M
   alias: e_hu_unemployment
@@ -4954,15 +4954,15 @@
   attrs:
     region: HU
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/IDN.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/IDN.M.MABM.IX._Z.N._Z._Z.N
   alias: e_id_broad_money
   name: Indonesia broad money M3 (index, SA)
   frequency: M
   attrs:
     region: ID
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.0e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 5.2e-03, 90th percentile 1.4e-02 over 347 periods"
 - source: imf
   id: IMF.RES,WEO/IDN.GGXCNL_NGDP.A
   alias: e_id_budget_balance_gdp
@@ -4979,15 +4979,15 @@
   attrs:
     region: ID
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/IDN.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/IDN.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_id_consumer_confidence
   name: Indonesia consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: ID
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.2e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 1.5e-03, 90th percentile 2.1e-03 over 272 periods"
 - source: imf
   id: IMF.STA,CPI/IDN.CPI._T.SRP_IX.M
   alias: e_id_cpi
@@ -5136,15 +5136,15 @@
   attrs:
     region: ID
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.ID.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/IDN.IRFCLDT1_IRFCL54_USD.S1XS1311.M
   alias: e_id_reserves
   name: Indonesia FX reserves (USD)
   frequency: M
   attrs:
     region: ID
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 9.9e-01)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 4.5e-05, 90th percentile 1.5e-04 over 224 periods"
 - source: dbnomics
   id: IMF/IFS/M.ID.FIMM_PA
   alias: e_id_short_rate
@@ -5154,15 +5154,15 @@
     region: ID
     commercial_ok: restricted
     stale: "2026-10: publisher has nothing newer (last 2017-02)"
-- source: dbnomics
-  id: IMF/DOT/M.ID.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/IDN.TBG_USD.G001.M
   alias: e_id_trade_balance_goods
   name: Indonesia goods trade balance (USD)
   frequency: M
   attrs:
     region: ID
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.0e-15, 90th percentile 3.7e-02 over 695 periods"
 - source: worldbank
   id: SL.UEM.1524.ZS/IDN
   alias: e_id_unemployment_youth
@@ -5195,33 +5195,33 @@
   attrs:
     region: IE
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/IRL.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/IRL.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_ie_consumer_confidence
   name: Ireland consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: IE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 7.1e-03)"
-- source: dbnomics
-  id: IMF/IFS/M.IE.PCPIHA_IX
+    close_match: "2026-10: same units; relative gap to the mirror: median 3.7e-03, 90th percentile 6.0e-03 over 397 periods"
+- source: imf
+  id: IMF.STA,CPI/IRL.HICP._T.SRP_IX.M
   alias: e_ie_hicp
   name: Ireland HICP (all items, index)
   frequency: M
   attrs:
     region: IE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 6.6e-04)"
-- source: dbnomics
-  id: IMF/IFS/M.IE.PCPI_IX
+    close_match: "2026-10: rebased; relative gap to the mirror: median 9.9e-05, 90th percentile 4.0e-04 over 355 periods"
+- source: imf
+  id: IMF.STA,CPI/IRL.CPI._T.SRP_IX.M
   alias: e_ie_cpi
   name: Ireland CPI (all items, index)
   frequency: M
   attrs:
     region: IE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.6e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 4.8e-15, 90th percentile 2.4e-04 over 680 periods"
 - source: bis
   id: WS_TC/Q.IE.P.A.M.770.A
   alias: e_ie_credit_private
@@ -5246,15 +5246,15 @@
   attrs:
     region: IE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.IE.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/IRL.XG.FOB_USD.A
   alias: e_ie_exports_goods
   name: Ireland goods exports, FOB (USD)
   frequency: A
   attrs:
     region: IE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 5.0e-03, 90th percentile 2.1e-02 over 77 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/IRL
   alias: e_ie_exports_gs
@@ -5312,15 +5312,15 @@
   attrs:
     region: IE
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.IE.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/IRL.MG.CIF_USD.A
   alias: e_ie_imports_goods
   name: Ireland goods imports, CIF (USD)
   frequency: A
   attrs:
     region: IE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 6.4e-03, 90th percentile 2.7e-02 over 77 periods"
 - source: worldbank
   id: NE.IMP.GNFS.CD/IRL
   alias: e_ie_imports_gs
@@ -5329,15 +5329,15 @@
   attrs:
     region: IE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.IE.AIP_IX
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_INDSERV/IRL.M.PRVM.IX.BTE.N._Z._Z.N
   alias: e_ie_ind_prod
   name: Ireland industrial production (index)
   frequency: M
   attrs:
     region: IE
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 1.8e-03, 90th percentile 4.6e-02 over 407 periods"
 - source: bis
   id: WS_EER/M.N.B.IE
   alias: e_ie_neer
@@ -5370,15 +5370,15 @@
   attrs:
     region: IE
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.IE.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/IRL.IRFCLDT4_IRFCL11_DIC_GROUP_USD.S1XS1311.M
   alias: e_ie_reserves
   name: Ireland FX reserves (USD)
   frequency: M
   attrs:
     region: IE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.2e-03, 90th percentile 1.1e-02 over 185 periods"
 - source: eurostat
   id: sts_trtu_m/M.VOL_SLS.G47.SCA.I21.IE
   alias: e_ie_retail_sales
@@ -5387,24 +5387,24 @@
   attrs:
     region: IE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/M.IE.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/IRL.TBG_USD.G001.M
   alias: e_ie_trade_balance_goods
   name: Ireland goods trade balance (USD)
   frequency: M
   attrs:
     region: IE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
-- source: dbnomics
-  id: IMF/IFS/M.IE.LUR_PT
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.4e-16, 90th percentile 3.9e-10 over 779 periods"
+- source: imf
+  id: IMF.STA,LS/IRL.U.PT.M
   alias: e_ie_unemployment
   name: Ireland unemployment rate (%)
   frequency: M
   attrs:
     region: IE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.1e-01)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 509 periods"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.IE
   alias: e_ie_unemployment_harmonised
@@ -5429,15 +5429,15 @@
   attrs:
     region: IE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/ISR.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/ISR.M.MABM.IX._Z.Y._Z._Z.N
   alias: e_il_broad_money
   name: Israel broad money M3 (index, SA)
   frequency: M
   attrs:
     region: IL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.9e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 4.8e-04, 90th percentile 2.8e-03 over 405 periods"
 - source: imf
   id: IMF.RES,WEO/ISR.GGXCNL_NGDP.A
   alias: e_il_budget_balance_gdp
@@ -5454,15 +5454,15 @@
   attrs:
     region: IL
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/ISR.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/ISR.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_il_consumer_confidence
   name: Israel consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: IL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.6e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 4.9e-03, 90th percentile 8.1e-03 over 153 periods"
 - source: imf
   id: IMF.STA,CPI/ISR.CPI._T.SRP_IX.M
   alias: e_il_cpi
@@ -5487,15 +5487,15 @@
   attrs:
     region: IL
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.IL.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/ISR.XG.FOB_USD.A
   alias: e_il_exports_goods
   name: Israel goods exports, FOB (USD)
   frequency: A
   attrs:
     region: IL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 6.1e-03, 90th percentile 3.1e-02 over 76 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/ISR
   alias: e_il_exports_gs
@@ -5578,15 +5578,15 @@
     region: IL
     commercial_ok: restricted
     stale: "2026-10: no candidate"
-- source: dbnomics
-  id: OECD/MEI/ISR.MANMM101.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/ISR.M.MANM.IX._Z.Y._Z._Z.N
   alias: e_il_m1
   name: Israel narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: IL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.1e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 1.1e-03, 90th percentile 3.7e-03 over 405 periods"
 - source: bis
   id: WS_EER/M.N.B.IL
   alias: e_il_neer
@@ -5628,15 +5628,15 @@
   attrs:
     region: IL
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.IL.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/ISR.IRFCLDT4_IRFCL11_DIC_GROUP_USD.S1XS1311.M
   alias: e_il_reserves
   name: Israel FX reserves (USD)
   frequency: M
   attrs:
     region: IL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 6.5e-04, 90th percentile 4.7e-03 over 227 periods"
 - source: dbnomics
   id: IMF/IFS/M.IL.FITB_PA
   alias: e_il_short_rate
@@ -5646,15 +5646,15 @@
     region: IL
     commercial_ok: restricted
     stale: "2026-10: publisher has nothing newer (last 2024-12)"
-- source: dbnomics
-  id: IMF/DOT/M.IL.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/ISR.TBG_USD.G001.M
   alias: e_il_trade_balance_goods
   name: Israel goods trade balance (USD)
   frequency: M
   attrs:
     region: IL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 0.0e+00, 90th percentile 1.7e-16 over 779 periods"
 - source: imf
   id: IMF.STA,LS/ISR.U.PT.M
   alias: e_il_unemployment
@@ -5671,15 +5671,15 @@
   attrs:
     region: IL
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/IND.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/IND.M.MABM.IX._Z.N._Z._Z.N
   alias: e_in_broad_money
   name: India broad money M3 (index, SA)
   frequency: M
   attrs:
     region: IN
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.9e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 3.9e-03, 90th percentile 1.2e-02 over 348 periods"
 - source: imf
   id: IMF.RES,WEO/IND.GGXCNL_NGDP.A
   alias: e_in_budget_balance_gdp
@@ -5696,15 +5696,15 @@
   attrs:
     region: IN
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.IN.PCPI_IX
+- source: imf
+  id: IMF.STA,CPI/IND.CPI._T.SRP_IX.M
   alias: e_in_cpi
   name: India CPI (all items, index)
   frequency: M
   attrs:
     region: IN
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 4.5e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 6.6e-16, 90th percentile 2.3e-15 over 822 periods"
 - source: bis
   id: WS_TC/Q.IN.P.A.M.770.A
   alias: e_in_credit_private
@@ -5811,16 +5811,16 @@
   attrs:
     region: IN
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
-- source: dbnomics
-  id: OECD/MEI/IND.MANMM101.IXOBSA.M
+    stale: "2026-10: values differ (max relative gap 9.0e-01)"
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/IND.M.MANM.IX._Z.N._Z._Z.N
   alias: e_in_m1
   name: India narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: IN
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 3.6e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 8.9e-03, 90th percentile 3.3e-02 over 404 periods"
 - source: bis
   id: WS_EER/M.N.B.IN
   alias: e_in_neer
@@ -5854,15 +5854,15 @@
   attrs:
     region: IN
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.IN.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/IND.IRFCLDT4_IRFCL11_DIC_GROUP_USD.S1XS1311.M
   alias: e_in_reserves
   name: India FX reserves (USD)
   frequency: M
   attrs:
     region: IN
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 9.9e-01)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 9.4e-04, 90th percentile 3.3e-02 over 39 periods"
 - source: dbnomics
   id: IMF/IFS/M.IN.FIMM_PA
   alias: e_in_short_rate
@@ -5872,15 +5872,15 @@
     region: IN
     commercial_ok: restricted
     stale: "2026-10: no candidate"
-- source: dbnomics
-  id: IMF/DOT/M.IN.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/IND.TBG_USD.G001.M
   alias: e_in_trade_balance_goods
   name: India goods trade balance (USD)
   frequency: M
   attrs:
     region: IN
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.8e-15, 90th percentile 8.7e-03 over 779 periods"
 - source: worldbank
   id: SL.UEM.1524.ZS/IND
   alias: e_in_unemployment_youth
@@ -5913,15 +5913,15 @@
   attrs:
     region: IT
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/ITA.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/ITA.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_it_consumer_confidence
   name: Italy consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: IT
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.3e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 4.1e-04, 90th percentile 7.2e-04 over 408 periods"
 - source: imf
   id: IMF.STA,CPI/ITA.HICP._T.SRP_IX.M
   alias: e_it_hicp
@@ -5962,15 +5962,15 @@
   attrs:
     region: IT
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.IT.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/ITA.XG.FOB_USD.A
   alias: e_it_exports_goods
   name: Italy goods exports, FOB (USD)
   frequency: A
   attrs:
     region: IT
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 6.5e-03, 90th percentile 1.8e-02 over 77 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/ITA
   alias: e_it_exports_gs
@@ -6036,15 +6036,15 @@
   attrs:
     region: IT
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.IT.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/ITA.MG.CIF_USD.A
   alias: e_it_imports_goods
   name: Italy goods imports, CIF (USD)
   frequency: A
   attrs:
     region: IT
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 4.8e-03, 90th percentile 2.2e-02 over 77 periods"
 - source: worldbank
   id: NE.IMP.GNFS.CD/ITA
   alias: e_it_imports_gs
@@ -6053,15 +6053,15 @@
   attrs:
     region: IT
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.IT.AIP_IX
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_INDSERV/ITA.M.PRVM.IX.BTE.N._Z._Z.N
   alias: e_it_ind_prod
   name: Italy industrial production (index)
   frequency: M
   attrs:
     region: IT
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 2.4e-07, 90th percentile 7.1e-04 over 424 periods"
 - source: bis
   id: WS_EER/M.N.B.IT
   alias: e_it_neer
@@ -6102,15 +6102,15 @@
   attrs:
     region: IT
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.IT.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/ITA.IRFCLDT4_IRFCL11_DIC_GROUP_USD.S1X.M
   alias: e_it_reserves
   name: Italy FX reserves (USD)
   frequency: M
   attrs:
     region: IT
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 4.8e-06, 90th percentile 4.7e-04 over 185 periods"
 - source: eurostat
   id: sts_trtu_m/M.VOL_SLS.G47.SCA.I21.IT
   alias: e_it_retail_sales
@@ -6127,15 +6127,15 @@
   attrs:
     region: IT
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/M.IT.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/ITA.TBG_USD.G001.M
   alias: e_it_trade_balance_goods
   name: Italy goods trade balance (USD)
   frequency: M
   attrs:
     region: IT
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.4e-16, 90th percentile 9.6e-10 over 785 periods"
 - source: imf
   id: IMF.STA,LS/ITA.U.PT.M
   alias: e_it_unemployment
@@ -6168,15 +6168,15 @@
   attrs:
     region: IT
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/JPN.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/JPN.M.MABM.XDC._Z.Y._Z._Z.N
   alias: e_jp_broad_money
   name: Japan broad money M3 (index, SA)
   frequency: M
   attrs:
     region: JP
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.4e-03)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 6.6e-16, 90th percentile 8.3e-05 over 405 periods"
 - source: imf
   id: IMF.RES,WEO/JPN.GGXCNL_NGDP.A
   alias: e_jp_budget_balance_gdp
@@ -6193,15 +6193,15 @@
   attrs:
     region: JP
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/JPN.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/JPN.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_jp_consumer_confidence
   name: Japan consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: JP
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.4e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 1.0e-03, 90th percentile 1.6e-03 over 408 periods"
 - source: imf
   id: IMF.STA,CPI/JPN.CPI._T.SRP_IX.M
   alias: e_jp_cpi
@@ -6226,15 +6226,15 @@
   attrs:
     region: JP
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.JP.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/JPN.XG.FOB_USD.A
   alias: e_jp_exports_goods
   name: Japan goods exports, FOB (USD)
   frequency: A
   attrs:
     region: JP
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 5.8e-04, 90th percentile 3.9e-02 over 77 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/JPN
   alias: e_jp_exports_gs
@@ -6308,24 +6308,24 @@
   attrs:
     region: JP
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.JP.AIP_IX
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_INDSERV/JPN.M.PRVM.IX.BTE.N._Z._Z.N
   alias: e_jp_ind_prod
   name: Japan industrial production (index)
   frequency: M
   attrs:
     region: JP
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
-- source: dbnomics
-  id: OECD/MEI/JPN.MANMM101.IXOBSA.M
+    close_match: "2026-10: rebased; relative gap to the mirror: median 1.9e-07, 90th percentile 2.0e-04 over 407 periods"
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/JPN.M.MANM.XDC._Z.Y._Z._Z.N
   alias: e_jp_m1
   name: Japan narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: JP
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.0e-03)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 3.9e-08, 90th percentile 1.3e-04 over 405 periods"
 - source: bis
   id: WS_EER/M.N.B.JP
   alias: e_jp_neer
@@ -6359,15 +6359,15 @@
   attrs:
     region: JP
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.JP.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/JPN.IRFCLDT4_IRFCL11_DIC_GROUP_USD.S1XS1311.M
   alias: e_jp_reserves
   name: Japan FX reserves (USD)
   frequency: M
   attrs:
     region: JP
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 9.9e-01)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.3e-06, 90th percentile 9.8e-04 over 26 periods"
 - source: dbnomics
   id: IMF/IFS/M.JP.FITB_PA
   alias: e_jp_short_rate
@@ -6377,24 +6377,24 @@
     region: JP
     commercial_ok: restricted
     stale: "2026-10: publisher has nothing newer (last 2017-06)"
-- source: dbnomics
-  id: IMF/DOT/M.JP.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/JPN.TBG_USD.G001.M
   alias: e_jp_trade_balance_goods
   name: Japan goods trade balance (USD)
   frequency: M
   attrs:
     region: JP
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
-- source: dbnomics
-  id: IMF/IFS/M.JP.LUR_PT
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.2e-16, 90th percentile 3.3e-10 over 785 periods"
+- source: imf
+  id: IMF.STA,LS/JPN.U.PT.M
   alias: e_jp_unemployment
   name: Japan unemployment rate (%)
   frequency: M
   attrs:
     region: JP
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 4.0e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 688 periods"
 - source: worldbank
   id: SL.UEM.1524.ZS/JPN
   alias: e_jp_unemployment_youth
@@ -6428,15 +6428,15 @@
   attrs:
     region: KR
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/KOR.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/KOR.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_kr_consumer_confidence
   name: South Korea consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: KR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.7e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 3.0e-04, 90th percentile 7.3e-04 over 301 periods"
 - source: imf
   id: IMF.STA,CPI/KOR.CPI._T.SRP_IX.M
   alias: e_kr_cpi
@@ -6461,15 +6461,15 @@
   attrs:
     region: KR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.KR.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/KOR.XG.FOB_USD.A
   alias: e_kr_exports_goods
   name: South Korea goods exports, FOB (USD)
   frequency: A
   attrs:
     region: KR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.1e-03, 90th percentile 4.4e-02 over 71 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/KOR
   alias: e_kr_exports_gs
@@ -6526,15 +6526,15 @@
   attrs:
     region: KR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.KR.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/KOR.MG.CIF_USD.A
   alias: e_kr_imports_goods
   name: South Korea goods imports, CIF (USD)
   frequency: A
   attrs:
     region: KR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 4.8e-04, 90th percentile 1.9e-02 over 71 periods"
 - source: worldbank
   id: NE.IMP.GNFS.CD/KOR
   alias: e_kr_imports_gs
@@ -6543,15 +6543,15 @@
   attrs:
     region: KR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.KR.AIP_IX
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_INDSERV/KOR.M.PRVM.IX.BTE.N._Z._Z.N
   alias: e_kr_ind_prod
   name: South Korea industrial production (index)
   frequency: M
   attrs:
     region: KR
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 7.9e-08, 90th percentile 9.6e-04 over 407 periods"
 - source: dbnomics
   id: OECD/MEI/KOR.MANMM101.IXOBSA.M
   alias: e_kr_m1
@@ -6602,15 +6602,15 @@
   attrs:
     region: KR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.KR.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/KOR.IRFCLDT1_IRFCL65_USD.S1XS1311.M
   alias: e_kr_reserves
   name: South Korea FX reserves (USD)
   frequency: M
   attrs:
     region: KR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 9.0e-01)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 4.9e-05, 90th percentile 3.1e-03 over 246 periods"
 - source: imf
   id: IMF.STA,MFS_IR/KOR.MMRT_RT_PT_A_PT.M
   alias: e_kr_short_rate
@@ -6628,15 +6628,15 @@
     region: KR
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
-- source: dbnomics
-  id: IMF/IFS/M.KR.LUR_PT
+- source: imf
+  id: IMF.STA,LS/KOR.U.PT.M
   alias: e_kr_unemployment
   name: South Korea unemployment rate (%)
   frequency: M
   attrs:
     region: KR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.5e-01)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 505 periods"
 - source: worldbank
   id: SL.UEM.1524.ZS/KOR
   alias: e_kr_unemployment_youth
@@ -6645,15 +6645,15 @@
   attrs:
     region: KR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/MEX.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/MEX.M.MABM.IX._Z.N._Z._Z.N
   alias: e_mx_broad_money
   name: Mexico broad money M3 (index, SA)
   frequency: M
   attrs:
     region: MX
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.9e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 4.7e-03, 90th percentile 1.3e-02 over 348 periods"
 - source: imf
   id: IMF.RES,WEO/MEX.GGXCNL_NGDP.A
   alias: e_mx_budget_balance_gdp
@@ -6678,15 +6678,15 @@
   attrs:
     region: MX
     commercial_ok: unverified
-- source: dbnomics
-  id: OECD/MEI/MEX.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/MEX.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_mx_consumer_confidence
   name: Mexico consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: MX
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.2e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 4.1e-03, 90th percentile 8.5e-03 over 273 periods"
 - source: bis
   id: WS_TC/Q.MX.P.A.M.770.A
   alias: e_mx_credit_private
@@ -6918,15 +6918,15 @@
   attrs:
     region: MY
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.MY.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/MYS.XG.FOB_USD.A
   alias: e_my_exports_goods
   name: Malaysia goods exports, FOB (USD)
   frequency: A
   attrs:
     region: MY
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.3e-03, 90th percentile 4.6e-03 over 58 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/MYS
   alias: e_my_exports_gs
@@ -6983,15 +6983,15 @@
   attrs:
     region: MY
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.MY.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/MYS.MG.CIF_USD.A
   alias: e_my_imports_goods
   name: Malaysia goods imports, CIF (USD)
   frequency: A
   attrs:
     region: MY
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.8e-03, 90th percentile 7.7e-03 over 58 periods"
 - source: worldbank
   id: NE.IMP.GNFS.CD/MYS
   alias: e_my_imports_gs
@@ -7042,15 +7042,15 @@
   attrs:
     region: MY
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.MY.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/MYS.IRFCLDT1_IRFCL65_USD.S1XS1311.M
   alias: e_my_reserves
   name: Malaysia FX reserves (USD)
   frequency: M
   attrs:
     region: MY
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 9.0e-01)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.7e-04, 90th percentile 2.4e-03 over 304 periods"
 - source: dbnomics
   id: IMF/IFS/M.MY.FITB_PA
   alias: e_my_short_rate
@@ -7060,15 +7060,15 @@
     region: MY
     commercial_ok: restricted
     stale: "2026-10: publisher has nothing newer (last 2016-12)"
-- source: dbnomics
-  id: IMF/DOT/M.MY.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/MYS.TBG_USD.G001.M
   alias: e_my_trade_balance_goods
   name: Malaysia goods trade balance (USD)
   frequency: M
   attrs:
     region: MY
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.3e-16, 90th percentile 3.8e-10 over 593 periods"
 - source: dbnomics
   id: IMF/IFS/M.MY.LUR_PT
   alias: e_my_unemployment
@@ -7110,33 +7110,33 @@
   attrs:
     region: NL
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/NLD.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/NLD.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_nl_consumer_confidence
   name: Netherlands consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: NL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.1e-03)"
-- source: dbnomics
-  id: IMF/IFS/M.NL.PCPIHA_IX
+    close_match: "2026-10: same units; relative gap to the mirror: median 7.3e-04, 90th percentile 1.1e-03 over 408 periods"
+- source: imf
+  id: IMF.STA,CPI/NLD.HICP._T.SRP_IX.M
   alias: e_nl_hicp
   name: Netherlands HICP (all items, index)
   frequency: M
   attrs:
     region: NL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 8.8e-04)"
-- source: dbnomics
-  id: IMF/IFS/M.NL.PCPI_IX
+    close_match: "2026-10: same units; relative gap to the mirror: median 5.5e-16, 90th percentile 3.7e-15 over 355 periods"
+- source: imf
+  id: IMF.STA,CPI/NLD.CPI._T.IX.M
   alias: e_nl_cpi
   name: Netherlands CPI (all items, index)
   frequency: M
   attrs:
     region: NL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.2e-03)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 1.1e-07, 90th percentile 4.2e-05 over 784 periods"
 - source: bis
   id: WS_TC/Q.NL.P.A.M.770.A
   alias: e_nl_credit_private
@@ -7260,7 +7260,7 @@
   attrs:
     region: NL
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    stale: "2026-10: values differ (max relative gap 1.4e-01)"
 - source: bis
   id: WS_EER/M.N.B.NL
   alias: e_nl_neer
@@ -7285,15 +7285,15 @@
   attrs:
     region: NL
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.NL.PPPI_IX
+- source: imf
+  id: IMF.STA,PPI/NLD.PPI.IX.M
   alias: e_nl_ppi
   name: Netherlands producer price index
   frequency: M
   attrs:
     region: NL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.7e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 4.2e-16, 90th percentile 2.7e-15 over 820 periods"
 - source: bis
   id: WS_EER/M.R.B.NL
   alias: e_nl_reer
@@ -7302,15 +7302,15 @@
   attrs:
     region: NL
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.NL.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/NLD.IRFCLDT1_IRFCL65_USD.S1X.M
   alias: e_nl_reserves
   name: Netherlands FX reserves (USD)
   frequency: M
   attrs:
     region: NL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.6e-03, 90th percentile 4.6e-03 over 114 periods"
 - source: eurostat
   id: sts_trtu_m/M.VOL_SLS.G47.SCA.I21.NL
   alias: e_nl_retail_sales
@@ -7319,15 +7319,15 @@
   attrs:
     region: NL
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/M.NL.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/NLD.TBG_USD.G001.M
   alias: e_nl_trade_balance_goods
   name: Netherlands goods trade balance (USD)
   frequency: M
   attrs:
     region: NL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.5e-16, 90th percentile 5.0e-10 over 785 periods"
 - source: imf
   id: IMF.STA,LS/NLD.U.PT.M
   alias: e_nl_unemployment
@@ -7360,15 +7360,15 @@
   attrs:
     region: NL
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/NOR.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/NOR.M.MABM.IX._Z.Y._Z._Z.N
   alias: e_no_broad_money
   name: Norway broad money M3 (index, SA)
   frequency: M
   attrs:
     region: 'NO'
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 5.9e-03)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 6.5e-08, 90th percentile 3.0e-07 over 405 periods"
 - source: imf
   id: IMF.RES,WEO/NOR.GGXCNL_NGDP.A
   alias: e_no_budget_balance_gdp
@@ -7385,24 +7385,24 @@
   attrs:
     region: 'NO'
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.NO.PCPIHA_IX
+- source: imf
+  id: IMF.STA,CPI/NOR.HICP._T.IX.M
   alias: e_no_hicp
   name: Norway HICP (all items, index)
   frequency: M
   attrs:
     region: 'NO'
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 6.7e-04)"
-- source: dbnomics
-  id: IMF/IFS/M.NO.PCPI_IX
+    close_match: "2026-10: rebased; relative gap to the mirror: median 2.5e-04, 90th percentile 5.0e-04 over 307 periods"
+- source: imf
+  id: IMF.STA,CPI/NOR.CPI._T.SRP_IX.M
   alias: e_no_cpi
   name: Norway CPI (all items, index)
   frequency: M
   attrs:
     region: 'NO'
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.5e-03)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 1.5e-07, 90th percentile 6.0e-04 over 907 periods"
 - source: bis
   id: WS_TC/Q.NO.P.A.M.770.A
   alias: e_no_credit_private
@@ -7419,15 +7419,15 @@
   attrs:
     region: 'NO'
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.NO.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/NOR.XG.FOB_USD.A
   alias: e_no_exports_goods
   name: Norway goods exports, FOB (USD)
   frequency: A
   attrs:
     region: 'NO'
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 4.1e-03, 90th percentile 2.2e-02 over 77 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/NOR
   alias: e_no_exports_gs
@@ -7484,15 +7484,15 @@
   attrs:
     region: 'NO'
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.NO.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/NOR.MG.CIF_USD.A
   alias: e_no_imports_goods
   name: Norway goods imports, CIF (USD)
   frequency: A
   attrs:
     region: 'NO'
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 5.9e-03, 90th percentile 2.9e-02 over 77 periods"
 - source: worldbank
   id: NE.IMP.GNFS.CD/NOR
   alias: e_no_imports_gs
@@ -7501,24 +7501,24 @@
   attrs:
     region: 'NO'
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.NO.AIP_IX
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_INDSERV/NOR.M.PRVM.IX.BTE.N._Z._Z.N
   alias: e_no_ind_prod
   name: Norway industrial production (index)
   frequency: M
   attrs:
     region: 'NO'
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
-- source: dbnomics
-  id: OECD/MEI/NOR.MANMM101.IXOBSA.M
+    close_match: "2026-10: rebased; relative gap to the mirror: median 1.8e-07, 90th percentile 1.3e-02 over 424 periods"
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/NOR.M.MANM.IX._Z.N._Z._Z.N
   alias: e_no_m1
   name: Norway narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: 'NO'
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 3.6e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 7.1e-03, 90th percentile 2.2e-02 over 348 periods"
 - source: bis
   id: WS_EER/M.N.B.NO
   alias: e_no_neer
@@ -7535,15 +7535,15 @@
   attrs:
     region: 'NO'
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.NO.PPPI_IX
+- source: imf
+  id: IMF.STA,PPI/NOR.PPI.IX.M
   alias: e_no_ppi
   name: Norway producer price index
   frequency: M
   attrs:
     region: 'NO'
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.9e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 7.7e-16, 90th percentile 2.6e-15 over 581 periods"
 - source: bis
   id: WS_EER/M.R.B.NO
   alias: e_no_reer
@@ -7552,15 +7552,15 @@
   attrs:
     region: 'NO'
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.NO.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/NOR.IRFCLDT1_IRFCL65_USD.S1XS1311.M
   alias: e_no_reserves
   name: Norway FX reserves (USD)
   frequency: M
   attrs:
     region: 'NO'
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.1e-04, 90th percentile 2.4e-03 over 304 periods"
 - source: eurostat
   id: sts_trtu_m/M.VOL_SLS.G47.SCA.I21.NO
   alias: e_no_retail_sales
@@ -7569,33 +7569,33 @@
   attrs:
     region: 'NO'
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.NO.FIMM_PA
+- source: imf
+  id: IMF.STA,MFS_IR/NOR.MMRT_RT_PT_A_PT.M
   alias: e_no_short_rate
   name: Norway short-term interest rate
   frequency: M
   attrs:
     region: 'NO'
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.1e-01)"
-- source: dbnomics
-  id: IMF/DOT/M.NO.TBG_USD.W00
+    close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 521 periods"
+- source: imf
+  id: IMF.STA,IMTS/NOR.TBG_USD.G001.M
   alias: e_no_trade_balance_goods
   name: Norway goods trade balance (USD)
   frequency: M
   attrs:
     region: 'NO'
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
-- source: dbnomics
-  id: IMF/IFS/M.NO.LUR_PT
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.2e-16, 90th percentile 3.4e-10 over 782 periods"
+- source: imf
+  id: IMF.STA,LS/NOR.U.PT.M
   alias: e_no_unemployment
   name: Norway unemployment rate (%)
   frequency: M
   attrs:
     region: 'NO'
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.2e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 436 periods"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.NO
   alias: e_no_unemployment_harmonised
@@ -7620,15 +7620,15 @@
   attrs:
     region: 'NO'
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/NZL.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/NZL.M.MABM.IX._Z.N._Z._Z.N
   alias: e_nz_broad_money
   name: New Zealand broad money M3 (index, SA)
   frequency: M
   attrs:
     region: NZ
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 9.9e-03)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 2.7e-03, 90th percentile 6.4e-03 over 348 periods"
 - source: imf
   id: IMF.RES,WEO/NZL.GGXCNL_NGDP.A
   alias: e_nz_budget_balance_gdp
@@ -7645,15 +7645,15 @@
   attrs:
     region: NZ
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/NZL.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/NZL.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_nz_consumer_confidence
   name: New Zealand consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: NZ
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 4.4e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 1.4e-03, 90th percentile 2.2e-03 over 405 periods"
 - source: imf
   id: IMF.STA,CPI/NZL.CPI._T.SRP_IX.Q
   alias: e_nz_cpi
@@ -7678,15 +7678,15 @@
   attrs:
     region: NZ
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.NZ.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/NZL.XG.FOB_USD.A
   alias: e_nz_exports_goods
   name: New Zealand goods exports, FOB (USD)
   frequency: A
   attrs:
     region: NZ
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 5.1e-03, 90th percentile 2.3e-02 over 77 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/NZL
   alias: e_nz_exports_gs
@@ -7760,15 +7760,15 @@
   attrs:
     region: NZ
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/NZL.MANMM101.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/NZL.M.MANM.IX._Z.N._Z._Z.N
   alias: e_nz_m1
   name: New Zealand narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: NZ
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 3.6e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 9.4e-03, 90th percentile 2.2e-02 over 405 periods"
 - source: bis
   id: WS_EER/M.N.B.NZ
   alias: e_nz_neer
@@ -7793,15 +7793,15 @@
   attrs:
     region: NZ
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.NZ.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/NZL.IRFCLDT1_IRFCL65_USD.S1XS1311.M
   alias: e_nz_reserves
   name: New Zealand FX reserves (USD)
   frequency: M
   attrs:
     region: NZ
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.5e-04, 90th percentile 1.5e-03 over 305 periods"
 - source: imf
   id: IMF.STA,MFS_IR/NZL.GSTBILY_RT_PT_A_PT.M
   alias: e_nz_short_rate
@@ -7810,15 +7810,15 @@
   attrs:
     region: NZ
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/M.NZ.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/NZL.TBG_USD.G001.M
   alias: e_nz_trade_balance_goods
   name: New Zealand goods trade balance (USD)
   frequency: M
   attrs:
     region: NZ
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.8e-15, 90th percentile 8.1e-09 over 548 periods"
 - source: imf
   id: IMF.STA,LS/NZL.U.PT.M
   alias: e_nz_unemployment
@@ -7982,7 +7982,7 @@
   attrs:
     region: PE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 9.9e-01)"
+    stale: "2026-10: values differ (max relative gap 1.0e+00)"
 - source: dbnomics
   id: IMF/IFS/M.PE.FIMM_PA
   alias: e_pe_short_rate
@@ -8166,15 +8166,15 @@
   attrs:
     region: PH
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.PH.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/PHL.IRFCLDT1_IRFCL65_USD.S1XS1311.M
   alias: e_ph_reserves
   name: Philippines FX reserves (USD)
   frequency: M
   attrs:
     region: PH
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.4e-07, 90th percentile 5.5e-05 over 297 periods"
 - source: imf
   id: IMF.STA,MFS_IR/PHL.GSTBILY_RT_PT_A_PT.M
   alias: e_ph_short_rate
@@ -8183,15 +8183,15 @@
   attrs:
     region: PH
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/M.PH.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/PHL.TBG_USD.G001.M
   alias: e_ph_trade_balance_goods
   name: Philippines goods trade balance (USD)
   frequency: M
   attrs:
     region: PH
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.4e-16, 90th percentile 3.8e-06 over 718 periods"
 - source: dbnomics
   id: IMF/IFS/M.PH.LUR_PT
   alias: e_ph_unemployment
@@ -8217,15 +8217,15 @@
   attrs:
     region: PL
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/POL.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/POL.M.MABM.IX._Z.N._Z._Z.N
   alias: e_pl_broad_money
   name: Poland broad money M3 (index, SA)
   frequency: M
   attrs:
     region: PL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.3e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 2.2e-03, 90th percentile 8.8e-03 over 348 periods"
 - source: imf
   id: IMF.RES,WEO/POL.GGXCNL_NGDP.A
   alias: e_pl_budget_balance_gdp
@@ -8242,33 +8242,33 @@
   attrs:
     region: PL
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/POL.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/POL.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_pl_consumer_confidence
   name: Poland consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: PL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.5e-02)"
-- source: dbnomics
-  id: IMF/IFS/M.PL.PCPIHA_IX
+    close_match: "2026-10: same units; relative gap to the mirror: median 2.0e-03, 90th percentile 7.6e-03 over 272 periods"
+- source: imf
+  id: IMF.STA,CPI/POL.HICP._T.IX.M
   alias: e_pl_hicp
   name: Poland HICP (all items, index)
   frequency: M
   attrs:
     region: PL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e-03)"
-- source: dbnomics
-  id: IMF/IFS/M.PL.PCPI_IX
+    close_match: "2026-10: rebased; relative gap to the mirror: median 2.7e-04, 90th percentile 5.3e-04 over 355 periods"
+- source: imf
+  id: IMF.STA,CPI/POL.CPI._T.IX.M
   alias: e_pl_cpi
   name: Poland CPI (all items, index)
   frequency: M
   attrs:
     region: PL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 4.3e-03)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 5.7e-16, 90th percentile 3.4e-15 over 435 periods"
 - source: bis
   id: WS_TC/Q.PL.P.A.M.770.A
   alias: e_pl_credit_private
@@ -8383,16 +8383,16 @@
   attrs:
     region: PL
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
-- source: dbnomics
-  id: OECD/MEI/POL.MANMM101.IXOBSA.M
+    stale: "2026-10: values differ (max relative gap 1.3e+00)"
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/POL.M.MANM.IX._Z.N._Z._Z.N
   alias: e_pl_m1
   name: Poland narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: PL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.6e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 7.3e-03, 90th percentile 1.7e-02 over 405 periods"
 - source: bis
   id: WS_EER/M.N.B.PL
   alias: e_pl_neer
@@ -8417,15 +8417,15 @@
   attrs:
     region: PL
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.PL.PPPI_IX
+- source: imf
+  id: IMF.STA,PPI/POL.PPI.IX.M
   alias: e_pl_ppi
   name: Poland producer price index
   frequency: M
   attrs:
     region: PL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 8.6e-04)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 5.4e-16, 90th percentile 2.7e-15 over 479 periods"
 - source: bis
   id: WS_EER/M.R.B.PL
   alias: e_pl_reer
@@ -8434,15 +8434,15 @@
   attrs:
     region: PL
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.PL.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/POL.IRFCLDT4_IRFCL11_DIC_GROUP_USD.S1XS1311.M
   alias: e_pl_reserves
   name: Poland FX reserves (USD)
   frequency: M
   attrs:
     region: PL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 9.9e-01)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.1e-04, 90th percentile 2.3e-04 over 234 periods"
 - source: eurostat
   id: sts_trtu_m/M.VOL_SLS.G47.SCA.I21.PL
   alias: e_pl_retail_sales
@@ -8460,24 +8460,24 @@
     region: PL
     commercial_ok: restricted
     stale: "2026-10: publisher has nothing newer (last 2017-02)"
-- source: dbnomics
-  id: IMF/DOT/M.PL.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/POL.TBG_USD.G001.M
   alias: e_pl_trade_balance_goods
   name: Poland goods trade balance (USD)
   frequency: M
   attrs:
     region: PL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
-- source: dbnomics
-  id: IMF/IFS/M.PL.LUR_PT
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.2e-14, 90th percentile 8.1e-09 over 560 periods"
+- source: imf
+  id: IMF.STA,LS/POL.U.PT.M
   alias: e_pl_unemployment
   name: Poland unemployment rate (%)
   frequency: M
   attrs:
     region: PL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e-01)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 359 periods"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.PL
   alias: e_pl_unemployment_harmonised
@@ -8526,15 +8526,15 @@
   attrs:
     region: PT
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/PRT.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/PRT.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_pt_consumer_confidence
   name: Portugal consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: PT
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.9e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 4.3e-04, 90th percentile 1.0e-03 over 408 periods"
 - source: imf
   id: IMF.STA,CPI/PRT.HICP._T.SRP_IX.M
   alias: e_pt_hicp
@@ -8641,15 +8641,15 @@
   attrs:
     region: PT
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.PT.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/PRT.MG.CIF_USD.A
   alias: e_pt_imports_goods
   name: Portugal goods imports, CIF (USD)
   frequency: A
   attrs:
     region: PT
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 5.4e-03, 90th percentile 3.0e-02 over 77 periods"
 - source: worldbank
   id: NE.IMP.GNFS.CD/PRT
   alias: e_pt_imports_gs
@@ -8666,7 +8666,7 @@
   attrs:
     region: PT
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    stale: "2026-10: values differ (max relative gap 1.9e-01)"
 - source: bis
   id: WS_EER/M.N.B.PT
   alias: e_pt_neer
@@ -8691,15 +8691,15 @@
   attrs:
     region: PT
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.PT.PPPI_IX
+- source: imf
+  id: IMF.STA,PPI/PRT.PPI.IX.M
   alias: e_pt_ppi
   name: Portugal producer price index
   frequency: M
   attrs:
     region: PT
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 8.7e-04)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 2.9e-16, 90th percentile 2.1e-15 over 305 periods"
 - source: bis
   id: WS_EER/M.R.B.PT
   alias: e_pt_reer
@@ -8708,15 +8708,15 @@
   attrs:
     region: PT
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.PT.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/PRT.IRFCLDT4_IRFCL11_DIC_GROUP_USD.S1X.M
   alias: e_pt_reserves
   name: Portugal FX reserves (USD)
   frequency: M
   attrs:
     region: PT
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 8.9e-01)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.8e-04, 90th percentile 1.0e-03 over 65 periods"
 - source: eurostat
   id: sts_trtu_m/M.VOL_SLS.G47.SCA.I21.PT
   alias: e_pt_retail_sales
@@ -8725,15 +8725,15 @@
   attrs:
     region: PT
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/M.PT.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/PRT.TBG_USD.G001.M
   alias: e_pt_trade_balance_goods
   name: Portugal goods trade balance (USD)
   frequency: M
   attrs:
     region: PT
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.2e-16, 90th percentile 9.3e-10 over 779 periods"
 - source: imf
   id: IMF.STA,LS/PRT.U.PT.M
   alias: e_pt_unemployment
@@ -8800,15 +8800,15 @@
     region: RU
     commercial_ok: restricted
     stale: "2026-10: publisher has nothing newer (last 2023-05)"
-- source: dbnomics
-  id: IMF/IFS/M.RU.PCPI_IX
+- source: imf
+  id: IMF.STA,CPI/RUS.CPI._T.IX.M
   alias: e_ru_cpi
   name: Russia CPI (all items, index)
   frequency: M
   attrs:
     region: RU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 7.2e-04)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 7.5e-16, 90th percentile 2.1e-05 over 368 periods"
 - source: bis
   id: WS_TC/Q.RU.P.A.M.770.A
   alias: e_ru_credit_private
@@ -8915,7 +8915,7 @@
   attrs:
     region: RU
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    stale: "2026-10: values differ (max relative gap 2.0e-01)"
 - source: dbnomics
   id: OECD/MEI/RUS.MANMM101.IXOBSA.M
   alias: e_ru_m1
@@ -8965,15 +8965,15 @@
   attrs:
     region: RU
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.RU.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/RUS.IRFCLDT1_IRFCL65_USD.S1XS1311.M
   alias: e_ru_reserves
   name: Russia FX reserves (USD)
   frequency: M
   attrs:
     region: RU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 9.9e-01)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 5.7e-06, 90th percentile 2.6e-04 over 235 periods"
 - source: dbnomics
   id: IMF/IFS/M.RU.FIMM_PA
   alias: e_ru_short_rate
@@ -9016,15 +9016,15 @@
   attrs:
     region: SA
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.SA.PCPI_IX
+- source: imf
+  id: IMF.STA,CPI/SAU.CPI._T.SRP_IX.M
   alias: e_sa_cpi
   name: Saudi Arabia CPI (all items, index)
   frequency: M
   attrs:
     region: SA
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 9.7e-03)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 6.3e-08, 90th percentile 2.5e-03 over 545 periods"
 - source: bis
   id: WS_TC/Q.SA.P.A.M.770.A
   alias: e_sa_credit_private
@@ -9139,15 +9139,15 @@
   attrs:
     region: SA
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.SA.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/SAU.IRFCLDT1_IRFCL54_USD.S1XS1311.M
   alias: e_sa_reserves
   name: Saudi Arabia FX reserves (USD)
   frequency: M
   attrs:
     region: SA
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 9.6e-01)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.9e-07, 90th percentile 1.4e-04 over 137 periods"
 - source: dbnomics
   id: IMF/IFS/M.SA.FITB_PA
   alias: e_sa_short_rate
@@ -9191,15 +9191,15 @@
   attrs:
     region: SE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/SWE.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/SWE.M.MABM.IX._Z.N._Z._Z.N
   alias: e_se_broad_money
   name: Sweden broad money M3 (index, SA)
   frequency: M
   attrs:
     region: SE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 3.9e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 5.8e-03, 90th percentile 1.8e-02 over 348 periods"
 - source: imf
   id: IMF.RES,WEO/SWE.GGXCNL_NGDP.A
   alias: e_se_budget_balance_gdp
@@ -9216,15 +9216,15 @@
   attrs:
     region: SE
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/SWE.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/SWE.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_se_consumer_confidence
   name: Sweden consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: SE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 5.1e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 5.1e-04, 90th percentile 1.7e-03 over 339 periods"
 - source: imf
   id: IMF.STA,CPI/SWE.HICP._T.SRP_IX.M
   alias: e_se_hicp
@@ -9233,15 +9233,15 @@
   attrs:
     region: SE
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.SE.PCPI_IX
+- source: imf
+  id: IMF.STA,CPI/SWE.CPI._T.SRP_IX.M
   alias: e_se_cpi
   name: Sweden CPI (all items, index)
   frequency: M
   attrs:
     region: SE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 4.7e-04)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 1.4e-04, 90th percentile 3.5e-04 over 847 periods"
 - source: bis
   id: WS_TC/Q.SE.P.A.M.770.A
   alias: e_se_credit_private
@@ -9356,16 +9356,16 @@
   attrs:
     region: SE
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
-- source: dbnomics
-  id: OECD/MEI/SWE.MANMM101.IXOBSA.M
+    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/SWE.M.MANM.IX._Z.N._Z._Z.N
   alias: e_se_m1
   name: Sweden narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: SE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.4e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 3.3e-03, 90th percentile 1.1e-02 over 251 periods"
 - source: bis
   id: WS_EER/M.N.B.SE
   alias: e_se_neer
@@ -9423,15 +9423,15 @@
   attrs:
     region: SE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/M.SE.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/SWE.TBG_USD.G001.M
   alias: e_se_trade_balance_goods
   name: Sweden goods trade balance (USD)
   frequency: M
   attrs:
     region: SE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.5e-16, 90th percentile 3.3e-09 over 785 periods"
 - source: imf
   id: IMF.STA,LS/SWE.U.PT.M
   alias: e_se_unemployment
@@ -9472,15 +9472,15 @@
   attrs:
     region: TH
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.TH.PCPI_IX
+- source: imf
+  id: IMF.STA,CPI/THA.CPI._T.SRP_IX.M
   alias: e_th_cpi
   name: Thailand CPI (all items, index)
   frequency: M
   attrs:
     region: TH
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 7.3e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 8.8e-16, 90th percentile 1.1e-04 over 723 periods"
 - source: bis
   id: WS_TC/Q.TH.P.A.M.770.A
   alias: e_th_credit_private
@@ -9562,15 +9562,15 @@
   attrs:
     region: TH
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.TH.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/THA.MG.CIF_USD.A
   alias: e_th_imports_goods
   name: Thailand goods imports, CIF (USD)
   frequency: A
   attrs:
     region: TH
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 4.5e-03, 90th percentile 4.1e-02 over 69 periods"
 - source: worldbank
   id: NE.IMP.GNFS.CD/THA
   alias: e_th_imports_gs
@@ -9595,15 +9595,15 @@
   attrs:
     region: TH
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.TH.PPPI_IX
+- source: imf
+  id: IMF.STA,PPI/THA.PPI.IX.M
   alias: e_th_ppi
   name: Thailand producer price index
   frequency: M
   attrs:
     region: TH
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.9e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 9.0e-16, 90th percentile 4.2e-15 over 766 periods"
 - source: bis
   id: WS_EER/M.R.B.TH
   alias: e_th_reer
@@ -9612,15 +9612,15 @@
   attrs:
     region: TH
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.TH.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/THA.IRFCLDT1_IRFCL65_USD.S1XS1311.M
   alias: e_th_reserves
   name: Thailand FX reserves (USD)
   frequency: M
   attrs:
     region: TH
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 9.9e-01)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.4e-06, 90th percentile 7.3e-05 over 304 periods"
 - source: imf
   id: IMF.STA,MFS_IR/THA.GSTBILY_RT_PT_A_PT.M
   alias: e_th_short_rate
@@ -9629,15 +9629,15 @@
   attrs:
     region: TH
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/M.TH.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/THA.TBG_USD.G001.M
   alias: e_th_trade_balance_goods
   name: Thailand goods trade balance (USD)
   frequency: M
   attrs:
     region: TH
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.5e-15, 90th percentile 1.2e-06 over 754 periods"
 - source: imf
   id: IMF.STA,LS/THA.U.PT.M
   alias: e_th_unemployment
@@ -9654,15 +9654,15 @@
   attrs:
     region: TH
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/TUR.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/TUR.M.MABM.IX._Z.N._Z._Z.N
   alias: e_tr_broad_money
   name: Turkey broad money M3 (index, SA)
   frequency: M
   attrs:
     region: TR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.4e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 3.5e-03, 90th percentile 1.6e-02 over 348 periods"
 - source: imf
   id: IMF.RES,WEO/TUR.GGXCNL_NGDP.A
   alias: e_tr_budget_balance_gdp
@@ -9679,15 +9679,15 @@
   attrs:
     region: TR
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/TUR.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/TUR.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_tr_consumer_confidence
   name: Turkey consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: TR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 4.5e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 1.7e-03, 90th percentile 3.4e-03 over 240 periods"
 - source: imf
   id: IMF.STA,CPI/TUR.HICP._T.SRP_IX.M
   alias: e_tr_hicp
@@ -9720,15 +9720,15 @@
   attrs:
     region: TR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.TR.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/TUR.XG.FOB_USD.A
   alias: e_tr_exports_goods
   name: Turkey goods exports, FOB (USD)
   frequency: A
   attrs:
     region: TR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 3.3e-04, 90th percentile 9.9e-03 over 77 periods"
 - source: worldbank
   id: NE.EXP.GNFS.CD/TUR
   alias: e_tr_exports_gs
@@ -9785,15 +9785,15 @@
   attrs:
     region: TR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.TR.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/TUR.MG.CIF_USD.A
   alias: e_tr_imports_goods
   name: Turkey goods imports, CIF (USD)
   frequency: A
   attrs:
     region: TR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.5e-03, 90th percentile 3.8e-02 over 77 periods"
 - source: worldbank
   id: NE.IMP.GNFS.CD/TUR
   alias: e_tr_imports_gs
@@ -9802,15 +9802,15 @@
   attrs:
     region: TR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.TR.AIP_IX
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_INDSERV/TUR.M.PRVM.IX.BTE.N._Z._Z.N
   alias: e_tr_ind_prod
   name: Turkey industrial production (index)
   frequency: M
   attrs:
     region: TR
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 6.9e-08, 90th percentile 2.7e-07 over 423 periods"
 - source: dbnomics
   id: OECD/MEI/TUR.MANMM101.IXOBSA.M
   alias: e_tr_m1
@@ -9861,15 +9861,15 @@
   attrs:
     region: TR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.TR.RAFA_USD
+- source: imf
+  id: IMF.STA,IRFCL/TUR.IRFCLDT4_IRFCL11_DIC_GROUP_USD.S1XS1311.M
   alias: e_tr_reserves
   name: Turkey FX reserves (USD)
   frequency: M
   attrs:
     region: TR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.4e-04, 90th percentile 3.2e-03 over 225 periods"
 - source: dbnomics
   id: IMF/IFS/M.TR.FITB_PA
   alias: e_tr_short_rate
@@ -9879,15 +9879,15 @@
     region: TR
     commercial_ok: restricted
     stale: "2026-10: no candidate"
-- source: dbnomics
-  id: IMF/DOT/M.TR.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/TUR.TBG_USD.G001.M
   alias: e_tr_trade_balance_goods
   name: Turkey goods trade balance (USD)
   frequency: M
   attrs:
     region: TR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 0.0e+00, 90th percentile 1.9e-16 over 779 periods"
 - source: imf
   id: IMF.STA,LS/TUR.U.PT.M
   alias: e_tr_unemployment
@@ -9912,15 +9912,15 @@
   attrs:
     region: UK
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/GBR.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/GBR.M.MABM.IX._Z.Y._Z._Z.N
   alias: e_uk_broad_money
   name: United Kingdom broad money M3 (index, SA)
   frequency: M
   attrs:
     region: UK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.5e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 3.0e-05, 90th percentile 1.4e-03 over 405 periods"
 - source: imf
   id: IMF.RES,WEO/GBR.GGXCNL_NGDP.A
   alias: e_uk_budget_balance_gdp
@@ -9937,15 +9937,15 @@
   attrs:
     region: UK
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/GBR.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/GBR.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_uk_consumer_confidence
   name: United Kingdom consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: UK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.5e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 3.0e-04, 90th percentile 8.1e-04 over 408 periods"
 - source: dbnomics
   id: IMF/IFS/M.GB.PCPIHA_IX
   alias: e_uk_hicp
@@ -10069,16 +10069,16 @@
   attrs:
     region: UK
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
-- source: dbnomics
-  id: OECD/MEI/GBR.MANMM101.IXOBSA.M
+    stale: "2026-10: values differ (max relative gap 8.0e-02)"
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/GBR.M.MANM.IX._Z.Y._Z._Z.N
   alias: e_uk_m1
   name: United Kingdom narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: UK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 6.2e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 4.2e-05, 90th percentile 4.4e-04 over 405 periods"
 - source: bis
   id: WS_EER/M.N.B.GB
   alias: e_uk_neer
@@ -10103,15 +10103,15 @@
   attrs:
     region: UK
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.GB.PPPI_IX
+- source: imf
+  id: IMF.STA,PPI/GBR.PPI.IX.M
   alias: e_uk_ppi
   name: United Kingdom producer price index
   frequency: M
   attrs:
     region: UK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 8.8e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 5.1e-16, 90th percentile 4.3e-15 over 792 periods"
 - source: bis
   id: WS_EER/M.R.B.GB
   alias: e_uk_reer
@@ -10138,15 +10138,15 @@
     region: UK
     commercial_ok: restricted
     stale: "2026-10: no candidate"
-- source: dbnomics
-  id: IMF/DOT/M.GB.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/GBR.TBG_USD.G001.M
   alias: e_uk_trade_balance_goods
   name: United Kingdom goods trade balance (USD)
   frequency: M
   attrs:
     region: UK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 5.0e-15, 90th percentile 2.5e-05 over 785 periods"
 - source: dbnomics
   id: IMF/IFS/M.GB.LUR_PT
   alias: e_uk_unemployment
@@ -10220,15 +10220,15 @@
   attrs:
     region: US
     commercial_ok: 'no'
-- source: dbnomics
-  id: OECD/MEI/USA.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/USA.M.MABM.XDC._Z.Y._Z._Z.N
   alias: e_us_broad_money
   name: United States broad money M3 (index, SA)
   frequency: M
   attrs:
     region: US
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 5.9e-03)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 1.0e-03, 90th percentile 2.0e-03 over 405 periods"
 - source: imf
   id: IMF.RES,WEO/USA.GGXCNL_NGDP.A
   alias: e_us_budget_balance_gdp
@@ -10245,15 +10245,15 @@
   attrs:
     region: US
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/USA.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/USA.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_us_consumer_confidence
   name: United States consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: US
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 6.0e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 8.8e-04, 90th percentile 2.7e-03 over 408 periods"
 - source: fred
   id: CPILFESL
   alias: e_us_core_cpi
@@ -10367,15 +10367,15 @@
   attrs:
     region: US
     commercial_ok: 'no'
-- source: dbnomics
-  id: IMF/DOT/A.US.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/USA.MG.CIF_USD.A
   alias: e_us_imports_goods
   name: United States goods imports, CIF (USD)
   frequency: A
   attrs:
     region: US
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 8.3e-03, 90th percentile 4.2e-02 over 77 periods"
 - source: worldbank
   id: NE.IMP.GNFS.CD/USA
   alias: e_us_imports_gs
@@ -10400,15 +10400,15 @@
   attrs:
     region: US
     commercial_ok: 'no'
-- source: dbnomics
-  id: OECD/MEI/USA.MANMM101.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/USA.M.MANM.XDC._Z.Y._Z._Z.N
   alias: e_us_m1
   name: United States narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: US
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.1e-02)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 1.2e-15, 90th percentile 6.2e-03 over 405 periods"
 - source: fred
   id: M2SL
   alias: e_us_m2
@@ -10489,15 +10489,15 @@
   attrs:
     region: US
     commercial_ok: 'no'
-- source: dbnomics
-  id: IMF/DOT/M.US.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/USA.TBG_USD.G001.M
   alias: e_us_trade_balance_goods
   name: United States goods trade balance (USD)
   frequency: M
   attrs:
     region: US
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 0.0e+00, 90th percentile 1.5e-16 over 785 periods"
 - source: fred
   id: UNRATE
   alias: e_us_unemployment
@@ -10514,15 +10514,15 @@
   attrs:
     region: US
     commercial_ok: 'yes'
-- source: dbnomics
-  id: OECD/MEI/ZAF.MABMM301.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/ZAF.M.MABM.IX._Z.Y._Z._Z.N
   alias: e_za_broad_money
   name: South Africa broad money M3 (index, SA)
   frequency: M
   attrs:
     region: ZA
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 4.4e-03)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 6.9e-08, 90th percentile 3.2e-07 over 405 periods"
 - source: imf
   id: IMF.RES,WEO/ZAF.GGXCNL_NGDP.A
   alias: e_za_budget_balance_gdp
@@ -10539,24 +10539,24 @@
   attrs:
     region: ZA
     commercial_ok: restricted
-- source: dbnomics
-  id: OECD/MEI/ZAF.CSCICP03.IXNSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_CLI/ZAF.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_za_consumer_confidence
   name: South Africa consumer confidence (OECD CCI)
   frequency: M
   attrs:
     region: ZA
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.5e-03)"
-- source: dbnomics
-  id: IMF/IFS/M.ZA.PCPI_IX
+    close_match: "2026-10: same units; relative gap to the mirror: median 8.4e-04, 90th percentile 1.1e-03 over 408 periods"
+- source: imf
+  id: IMF.STA,CPI/ZAF.CPI._T.IX.M
   alias: e_za_cpi
   name: South Africa CPI (all items, index)
   frequency: M
   attrs:
     region: ZA
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.7e-03)"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 2.1e-07, 90th percentile 1.4e-03 over 817 periods"
 - source: bis
   id: WS_TC/Q.ZA.P.A.M.770.A
   alias: e_za_credit_private
@@ -10664,15 +10664,15 @@
     region: ZA
     commercial_ok: restricted
     stale: "2026-10: no candidate"
-- source: dbnomics
-  id: OECD/MEI/ZAF.MANMM101.IXOBSA.M
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/ZAF.M.MANM.IX._Z.N._Z._Z.N
   alias: e_za_m1
   name: South Africa narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: ZA
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 2.5e-02)"
+    close_match: "2026-10: same units; relative gap to the mirror: median 6.4e-03, 90th percentile 1.6e-02 over 348 periods"
 - source: bis
   id: WS_EER/M.N.B.ZA
   alias: e_za_neer

@@ -22,6 +22,8 @@ from data_pipeline.store.sources.base import reject_params
 FIXTURES = pathlib.Path(__file__).parent / "fixtures"
 NOW = datetime.datetime(2026, 6, 6, 12, 0, tzinfo=datetime.UTC)
 Handler = Callable[[httpx.Request], httpx.Response]
+# FRED's answer to a request for the vintages of a series that ALFRED does not keep
+NOT_IN_ALFRED = {"error_message": "Bad Request.  The series does not exist in ALFRED but may exist in FRED."}
 
 
 def fixture(name: str) -> str:

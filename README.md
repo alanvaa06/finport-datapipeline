@@ -2,8 +2,9 @@
 
 A local store of public economic and company data that never forgets. It downloads a series'
 full history once, then only what changed. A revision never overwrites a value: it adds a new
-row, so you can read every series **as it was known on any past date**. That is what a backtest
-needs to avoid look-ahead bias.
+row, so you can read a series **as it was known on a past date**. That is what a backtest needs
+to avoid look-ahead bias. How far back that works depends on the source: see
+[Reading as of a past date](#reading-as-of-a-past-date).
 
 - **Macro:** a bundled catalog of **1,293 curated series across 44 economies**. It covers rates,
   money and credit, prices, activity, sentiment, labour and the external sector. Every series
@@ -84,6 +85,23 @@ store.table("comtrade", "MEX", flow="X")         # one row per partner, product 
 store.table("sec_xbrl", "AAPL", concept="Assets", as_of="2024-03-01")  # as filed by that day
 store.documents("sec_filings", "AAPL", form="10-K")  # the files on disk, with their path
 ```
+
+### Reading as of a past date
+
+`as_of` returns, for each period, the last value known by the end of that day. A value is known
+from the day its source published it, when the source says so; otherwise from the day the store
+fetched it.
+
+- **FRED series kept in ALFRED** (most macro series, such as `UNRATE`, `GDP`, `CPIAUCSL`,
+  `DGS10`): every vintage is stored with the day FRED published it, so `as_of` works back to
+  ALFRED's first vintage, years before your first sync. `store.revisions(...)` lists each one.
+  FRED gives the day, not the hour, so a vintage counts as known from the end of that day (UTC):
+  `as_of="2026-10-02"` sees what came out that day, `as_of="2026-10-02T12:00Z"` does not.
+- **SEC XBRL facts:** each version is dated with the day the filing was received.
+- **Every other source,** and FRED series that ALFRED does not keep (such as `SP500`): the
+  source does not say when a value was published, so the store dates it by its own fetch. On
+  those, `as_of` sees nothing before your first sync, and point-in-time history starts that day.
+  Keep syncing regularly: each run records what changed.
 
 To download from Python, give the store a catalog, or add entries for the session:
 
