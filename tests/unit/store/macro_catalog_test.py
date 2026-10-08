@@ -120,3 +120,82 @@ def test_a_stale_series_at_its_publisher_says_what_its_last_period_was_and_when(
     for region in euro:  # the national central banks' rates end with the euro
         assert "e_ecb_rate" in stale[f"e_{region}_policy_rate"]
     assert stale["e_de_unemployment"].startswith("2026-10: last period at the publisher 2026-02")
+
+
+# The units a name may end with, in parentheses: "(<unit>)", "(<unit>, <detail>)" or "(<unit>; <detail>)".
+UNITS = frozenset(
+    {
+        "USD", "USD millions", "USD billions", "current USD", "constant USD", "EUR millions", "LCU per USD",
+        "MXN per USD", "index", "%", "% p.a.", "% GDP", "% of active", "% balance", "YoY %",
+        "percentage points", "thousands", "persons",
+    }
+)  # fmt: skip
+
+
+def concept_of(alias):
+    return re.sub(r"^e_[a-z]{2,3}_", "", alias)
+
+
+def unit_of(name):
+    found = re.search(r"\(([^()]*)\)$", name)
+    return re.split(r"[;,]", found.group(1))[0].strip() if found else None
+
+
+def test_every_name_ends_with_a_unit_its_family_shares_unless_it_says_it_differs():
+    """Goods trade and reserves mixed USD (the IMF) and millions of USD (the DBnomics mirror of DOT
+    and IFS) under the same "(USD)" name: a factor of 10^6 inside one indicator family. Now every
+    name ends with its real unit, every family shares one, and an entry in another unit carries
+    attrs.units_differ saying which."""
+    entries = load_catalog(pathlib.Path("macro"))
+    families = collections.defaultdict(list)
+    for entry in entries:
+        assert unit_of(entry.name) in UNITS, (entry.alias, entry.name)
+        families[concept_of(entry.alias)].append(entry)
+    for concept, members in families.items():
+        shared = {unit_of(entry.name) for entry in members if "units_differ" not in entry.attrs}
+        assert len(shared) == 1, (concept, shared)
+        for entry in members:
+            if "units_differ" in entry.attrs:
+                assert unit_of(entry.name) not in shared, entry.alias
+                assert entry.attrs["units_differ"].startswith(unit_of(entry.name)), entry.alias
+    differ = collections.Counter(concept_of(entry.alias) for entry in entries if "units_differ" in entry.attrs)
+    assert differ == {
+        "exports_goods": 10, "imports_goods": 13, "trade_balance_goods": 7, "reserves": 7, "gdp_nominal": 1
+    }  # fmt: skip
+    mirror = [entry for entry in entries if "as the retired IMF" in entry.attrs.get("units_differ", "")]
+    assert len(mirror) == 36
+    assert all(entry.source == "dbnomics" for entry in mirror)
+
+
+def adjusted(entry):
+    """Whether the id selects a seasonally adjusted series, for the sources whose ids say so."""
+    flow, _, key = entry.source_id.partition("/")
+    parts = key.split(".")
+    if entry.source == "oecd":
+        return parts[5 if "DSD_STES@" in flow else 4] == "Y"
+    if entry.source == "eurostat":
+        return bool({"SA", "SCA"} & set(parts))
+    if entry.source == "dbnomics" and entry.source_id.startswith("OECD/MEI/"):
+        return parts[-2].endswith("OBSA")
+    return None
+
+
+def test_a_name_says_seasonally_adjusted_only_of_an_adjusted_series():
+    """Twenty-two OECD money aggregates were named "(index, SA)" while their id asks for the series
+    neither seasonally nor calendar adjusted."""
+    for entry in load_catalog(pathlib.Path("macro")):
+        says = re.search(r"\bSA\b", entry.name) is not None
+        if adjusted(entry) is not None and (says or "not seasonally adjusted" in entry.name):
+            assert says == adjusted(entry), (entry.alias, entry.name)
+
+
+def test_the_short_rates_say_which_rate_and_the_pmi_columns_that_they_are_not_pmis():
+    entries = load_catalog(pathlib.Path("macro"))
+    rates = [entry for entry in entries if concept_of(entry.alias) == "short_rate"]
+    kinds = collections.Counter(entry.name.split(": ", 1)[1].removesuffix(" (% p.a.)") for entry in rates)
+    assert set(kinds) == {
+        "3-month interbank rate, OECD", "money-market rate", "Treasury bill yield", "Treasury bill rate", "deposit rate"
+    }  # fmt: skip
+    assert kinds["deposit rate"] == 1  # e_ch_short_rate: the IMF's MFS135 for Switzerland is its deposit rate
+    pmi = [entry for entry in entries if concept_of(entry.alias) == "pmi_mfg"]
+    assert all(".BCICP.PB." in entry.source_id and "not a PMI (% balance)" in entry.name for entry in pmi)
