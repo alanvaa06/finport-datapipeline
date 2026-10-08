@@ -13,6 +13,7 @@ from data_pipeline.store.sources.sdmx import (
     Sdmx,
     group_requests,
     read_csv,
+    rows_of,
     split_id,
     splitting_column,
 )
@@ -263,6 +264,23 @@ def test_the_splitting_column_is_the_one_that_holds_the_requested_values():
     assert splitting_column(rows, ["XX", "YY"]) is None
     twins = [{"A": "AR", "B": "AR", "TIME_PERIOD": "2026", "OBS_VALUE": "1"}]
     assert splitting_column(twins, ["AR", "BR"]) is None
+
+
+def test_only_a_dimension_can_split_an_answer_never_an_attribute():
+    # SDMX-CSV puts the dimensions before TIME_PERIOD and the attributes after OBS_VALUE
+    after = rows_of("REF_AREA,TIME_PERIOD,OBS_VALUE,OBS_STATUS\nA,2024,1,B\nA,2025,2,C\n")
+    assert splitting_column(after, ["A", "B", "C"]) == "REF_AREA"
+    # a known attribute is left out wherever the provider puts it
+    before = rows_of("REF_AREA,OBS_STATUS,TIME_PERIOD,OBS_VALUE\nA,B,2024,1\nA,C,2025,2\n")
+    assert splitting_column(before, ["A", "B", "C"]) == "REF_AREA"
+
+
+def test_rows_of_an_omitted_series_are_never_given_to_another_one():
+    answer = "FREQ,REF_AREA,TIME_PERIOD,OBS_VALUE,OBS_STATUS\nA,AR,2024,1,BR\nA,AR,2025,2,CL\n"
+    requests = [Request(entry(f"FLOW/A.{country}", "bis")) for country in ("AR", "BR", "CL")]
+    (batch,) = fetch("bis", lambda _request: httpx.Response(200, text=answer), requests)
+    assert [(series.key, len(series.observations)) for series in batch.series] == [("bis:FLOW/A.AR", 2)]
+    assert [failure.outcome for failure in batch.failures] == [Outcome.NOT_FOUND, Outcome.NOT_FOUND]
 
 
 def test_a_group_is_one_call_and_its_answer_is_split_by_series():

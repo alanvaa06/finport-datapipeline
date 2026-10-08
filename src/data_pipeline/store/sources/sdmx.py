@@ -17,8 +17,10 @@ for in one call, with the values of that position joined by `+`:
 
     WS_TC/Q.AR.P.A.M.770.A, WS_TC/Q.BR.P.A.M.770.A  ->  WS_TC/Q.AR+BR.P.A.M.770.A
 
-The answer is split back into its series by the column that carries those values. A group that
-cannot be read as a group is asked for series by series.
+The answer is split back into its series by the column that carries those values. Only a
+dimension can be that column: SDMX-CSV puts the dimensions before TIME_PERIOD and OBS_VALUE and
+the attributes after them, and known attributes (OBS_STATUS, UNIT_MULT...) are left out
+wherever they are. A group that cannot be read as a group is asked for series by series.
 """
 
 import csv
@@ -55,6 +57,10 @@ OK = 200
 NOT_FOUND = frozenset({400, 404})
 UNIT_COLUMNS = ("UNIT_MEASURE", "UNIT", "unit")
 MEASURE_COLUMNS = frozenset({"TIME_PERIOD", "OBS_VALUE"})
+# attributes the providers send beside the data; never a dimension, wherever they come
+ATTRIBUTE_COLUMNS = frozenset(
+    {"OBS_STATUS", "OBS_FLAG", "OBS_CONF", "CONF_STATUS", "UNIT_MULT", "DECIMALS", "TIME_FORMAT", "COMMENT"}
+)
 NO_OBSERVATIONS = "the query returned no observations"
 SEVERAL_SERIES = "the key returns several series: fix every dimension"
 MAX_PER_CALL = 50  # series in one grouped call: keeps the address short
@@ -165,14 +171,20 @@ def rows_of(text: str) -> list[Row]:
     return [row for row in csv.DictReader(io.StringIO(text)) if (row.get("TIME_PERIOD") or "").strip()]
 
 
+def dimension_columns(row: Row) -> list[str]:
+    """The columns of an SDMX-CSV answer that can be dimensions: those before TIME_PERIOD and
+    OBS_VALUE (the attributes come after them), less the known attributes."""
+    columns = list(row)
+    end = min((columns.index(column) for column in MEASURE_COLUMNS if column in columns), default=len(columns))
+    return [column for column in columns[:end] if column not in ATTRIBUTE_COLUMNS]
+
+
 def splitting_column(rows: Sequence[Row], values: Sequence[str]) -> str | None:
-    """The column that tells the series of a grouped answer apart: the one whose values are all
-    among the requested ones. None when no column qualifies or two qualify equally."""
+    """The dimension that tells the series of a grouped answer apart: the one whose values are all
+    among the requested ones. None when no dimension qualifies or two qualify equally."""
     wanted = set(values)
     candidates = []
-    for column in rows[0]:
-        if column in MEASURE_COLUMNS:
-            continue
+    for column in dimension_columns(rows[0]):
         seen = {row[column] for row in rows}
         if seen <= wanted:
             candidates.append((len(seen), column))
