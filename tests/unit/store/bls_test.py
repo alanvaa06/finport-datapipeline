@@ -130,6 +130,38 @@ def test_a_first_load_walks_back_until_a_window_is_empty():
     assert series.name == "LNS14000000"
 
 
+OLD = {(year, "M01"): "1.0" for year in range(1990, 2003)}  # discontinued in 2002
+LIVE = {(year, "M01"): "2.0" for year in range(1980, 2027)}
+
+
+def test_a_series_discontinued_long_ago_loads_alone_as_it_does_in_a_group():
+    alone = Server({"OLD": OLD})
+    (series,) = fetch(alone, [Request(bls("OLD"))])[0].series
+    assert len(series.observations) == 13
+    assert alone.spans() == [("2007", "2026"), ("1987", "2006"), ("1967", "1986")]
+    grouped = fetch(Server({"OLD": OLD, "LIVE": LIVE}), [Request(bls("OLD")), Request(bls("LIVE"))])[0]
+    assert [len(item.observations) for item in grouped.series] == [13, 47]
+
+
+def test_each_series_stops_walking_back_where_its_own_history_starts():
+    server = Server({"OLD": OLD, "LIVE": {**LIVE, (1955, "M01"): "2.0"}})
+    fetch(server, [Request(bls("OLD")), Request(bls("LIVE"))])
+    assert [(call["startyear"], call["seriesid"]) for call in server.calls] == [
+        ("2007", ["OLD", "LIVE"]),
+        ("1987", ["OLD", "LIVE"]),
+        ("1967", ["OLD", "LIVE"]),
+        ("1947", ["LIVE"]),
+        ("1927", ["LIVE"]),
+    ]
+
+
+def test_a_series_the_api_says_does_not_exist_ends_its_walk_at_once():
+    server = Server({})
+    failure = fetch(server, [Request(bls("NOPE"))])[0].failures[0]
+    assert len(server.calls) == 1
+    assert (failure.outcome, failure.reason) == (Outcome.NOT_FOUND, "Series does not exist for Series NOPE")
+
+
 def test_a_declared_start_replaces_the_walk_back():
     server = Server({"LNS14000000": UNRATE})
     fetch(server, [Request(bls("LNS14000000", start=datetime.date(1990, 1, 1)))])

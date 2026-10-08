@@ -114,8 +114,12 @@ Each is one file under `store/sources/`, one registry line and one citation titl
   `FetchBatch`.
 - Start year of a group: the earliest `since` among its requests. For requests without `since`
   (first load, or `full`): the entry's `start` if it has one; otherwise the source walks back
-  from the current year in 20-year windows and stops at the first window in which no series of
-  the group returns an observation.
+  from the current year in 20-year windows, deciding for each series on its own: a series stops
+  at the first window that brings it nothing after an earlier one did, or as soon as the API
+  says it does not exist; a series that has shown no data yet keeps walking back, down to 1900.
+  Each window asks only for the series still walking, so a series discontinued before the first
+  window loads the same alone as in a group. A gap of 20 years or more inside a series still
+  ends its walk.
 - Name comes from the catalog block's `series_title`; seasonal adjustment from its `seasonality`
   (`SA` or `NSA`). If the block is absent the name is the id.
 - Frequency comes from the period codes: `M01` to `M12` monthly, `Q01` to `Q04` quarterly, `A01`
