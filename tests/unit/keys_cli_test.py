@@ -123,6 +123,42 @@ def test_setup_asks_before_writing_to_the_env_file_of_a_parent_folder(tmp_path, 
     assert not (root / "notebooks" / ".env").exists()
 
 
+@pytest.mark.parametrize(
+    ("before", "after"),
+    [
+        (None, b".env\n.env.lock\n"),
+        (b"build/\r\n", b"build/\r\n.env\r\n.env.lock\r\n"),  # its line endings are kept
+        (b"build/", b"build/\n.env\n.env.lock\n"),
+        (b"\xef\xbb\xbf.env\n", b"\xef\xbb\xbf.env\n.env.lock\n"),  # already listed, behind a BOM
+        (b"/.env\n/.env.lock\n", b"/.env\n/.env.lock\n"),
+    ],
+)
+def test_setup_keeps_the_env_file_out_of_git(tmp_path, monkeypatch, before, after):
+    monkeypatch.setattr(keys_check, "check", checker({}))
+    runner = CliRunner()
+    with runner.isolated_filesystem(temp_dir=tmp_path):
+        if before is not None:
+            pathlib.Path(".gitignore").write_bytes(before)
+        result = runner.invoke(cli, ["setup"], input="1\nfred\n")
+        gitignore = pathlib.Path(".gitignore").read_bytes()
+    assert result.exit_code == 0, result.output
+    assert gitignore == after
+
+
+def test_setup_lists_the_env_file_in_the_gitignore_of_its_own_folder(tmp_path, monkeypatch):
+    monkeypatch.setattr(keys_check, "check", checker({}))
+    root = tmp_path / "project"
+    (root / "notebooks").mkdir(parents=True)
+    (root / ".git").mkdir()
+    (root / ".env").write_text("", encoding="utf-8")
+    monkeypatch.chdir(root / "notebooks")
+    result = CliRunner().invoke(cli, ["setup"], input="y\n1\nfred\n")
+    assert result.exit_code == 0, result.output
+    assert (root / ".gitignore").read_bytes() == b".env\n.env.lock\n"
+    assert not (root / "notebooks" / ".gitignore").exists()
+    assert "Added .env, .env.lock to" in result.output
+
+
 def test_setup_refuses_numbers_outside_the_list(tmp_path):
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
@@ -136,9 +172,11 @@ def test_setup_enter_picks_every_missing_key_and_enter_skips_each_one(tmp_path):
     with runner.isolated_filesystem(temp_dir=tmp_path):
         result = runner.invoke(cli, ["setup"], input="\n" * 7)
         written = pathlib.Path(".env").exists()
+        ignored = pathlib.Path(".gitignore").exists()
     assert result.exit_code == 0, result.output
     assert "Nothing saved." in result.output
     assert not written
+    assert not ignored
 
 
 def test_setup_keeps_the_keys_accepted_before_an_interruption(tmp_path, monkeypatch):

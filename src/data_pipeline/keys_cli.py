@@ -8,6 +8,8 @@ import click
 from data_pipeline import credentials, keys_check
 from data_pipeline.credentials import Key
 
+GITIGNORE_FILE = ".gitignore"
+
 
 def echo(line: str) -> None:
     """Print one line, replacing anything outside ASCII (Windows consoles default to cp1252)."""
@@ -76,6 +78,25 @@ def _ask(key: Key, *, check: bool) -> str | None:
             return None
 
 
+def _keep_out_of_git(env_file: pathlib.Path) -> None:
+    """List `env_file` and its lock file in the `.gitignore` of its folder, unless they are already.
+
+    The `.gitignore` is only appended to, byte for byte: whatever its encoding or line endings,
+    the existing content is left as it is.
+    """
+    gitignore = env_file.parent / GITIGNORE_FILE
+    data = gitignore.read_bytes() if gitignore.is_file() else b""
+    listed = {line.strip().removeprefix("/") for line in data.decode("utf-8", "replace").lstrip("\ufeff").splitlines()}
+    missing = [name for name in (env_file.name, credentials.lock_file(env_file).name) if name not in listed]
+    if not missing:
+        return
+    newline = b"\r\n" if b"\r\n" in data else b"\n"
+    separator = newline if data and not data.endswith(b"\n") else b""
+    with gitignore.open("ab") as handle:
+        handle.write(separator + b"".join(name.encode("ascii") + newline for name in missing))
+    echo(f"Added {', '.join(missing)} to {gitignore}")
+
+
 @cli.command("setup")
 @click.option("--no-check", is_flag=True, help="Save without asking each source whether the key works.")
 def setup_command(*, no_check: bool) -> None:
@@ -118,6 +139,8 @@ def setup_command(*, no_check: bool) -> None:
             continue
         value = _ask(key, check=not no_check)
         if value:
+            if not saved:
+                _keep_out_of_git(env_file)  # before the first key reaches the file
             credentials.save(env_file, {key.name: value})  # now, so an interruption keeps what was accepted
             saved = True
     echo(f"Saved in {env_file}." if saved else "Nothing saved.")
