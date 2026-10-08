@@ -83,14 +83,61 @@ def test_a_candidate_equal_on_enough_periods_and_newer_is_accepted(finder):
 
 
 def test_rounding_differences_pass_the_tolerance_and_revisions_do_not(finder):
-    reference = months([100.0 + i for i in range(30)])
-    rounded = months([round((100.0 + i) * (1 + 5e-5), 4) for i in range(36)])
+    reference = months([100.123456 + i for i in range(30)])  # six decimals: rounding cannot explain 5e-5
+    rounded = months([round((100.123456 + i) * (1 + 5e-5), 6) for i in range(36)])
+    assert not finder.compare(reference, rounded)["within_rounding"]
     assert finder.accepted(finder.compare(reference, rounded), 1e-4)
     assert not finder.accepted(finder.compare(reference, rounded), 1e-6)
-    revised = months([(100.0 + i) * 1.01 for i in range(36)])
+    revised = months([(100.123456 + i) * 1.01 for i in range(36)])
     outcome = finder.compare(reference, revised)
     assert not finder.accepted(outcome)
     assert finder.reason(outcome).startswith("values differ (max relative gap 9.9e-03")
+
+
+def test_the_decimals_a_series_publishes_set_how_far_rounding_can_move_it(finder):
+    assert [finder.decimals(value) for value in (101.3, 101.25, 100.0, 1.5e-05, 2e20)] == [1, 2, 1, 6, 0]
+    assert finder.decimals(0.1 + 0.2) == finder.MAX_DECIMALS  # float noise, not a published digit
+    assert finder.half_unit([101.3, 99.0, 100.25]) == pytest.approx(0.005)
+    assert finder.half_unit([]) == pytest.approx(0.5 * 10**-finder.MAX_DECIMALS)
+
+
+def test_an_index_published_with_fewer_decimals_is_equal_within_its_rounding(finder):
+    """An index near 100 published with one decimal differs from the same index published with two
+    by up to 0.05, 5e-4 relative: more than the 1e-4 tolerance, and still the same series."""
+    values = [100.0 + 0.37 * i for i in range(36)]
+    reference = months([round(value, 2) for value in values[:30]])
+    candidate = months([round(value, 1) for value in values])
+    outcome = finder.compare(reference, candidate)
+    assert outcome["gap"] > finder.TOLERANCE
+    assert outcome["within_rounding"]
+    assert finder.accepted(outcome)
+    assert finder.reason(outcome) == "accepted"
+    revised = months([round(value + 0.2, 1) for value in values])  # a revision, not rounding
+    outcome = finder.compare(reference, revised)
+    assert not outcome["within_rounding"]
+    assert not finder.accepted(outcome)
+    assert finder.reason(outcome).startswith("values differ")
+
+
+def test_recent_measures_the_close_rule_on_the_last_years_only(finder):
+    """Goods trade on the mirror (millions, revised in its early decades) against the publisher in
+    dollars: equal for the last ten years, 20 per cent off before."""
+    years = [str(year) for year in range(1980, 2025)]
+    reference = {year: 1000.0 + i for i, year in enumerate(years)}
+    candidate = {year: (1000.0 + i) * 1e6 * (1.2 if year < "2010" else 1.0) for i, year in enumerate(years)}
+    candidate["2025"] = 2000.0e6
+    whole = finder.compare(reference, candidate, "exports_goods")
+    assert not finder.close(whole)
+    outcome = finder.compare(reference, candidate, "exports_goods", recent=10)
+    assert (outcome["how"], outcome["window"], outcome["common"]) == ("other units", 10, 45)
+    assert finder.close(outcome)
+    result = {"status": "candidate", "source": "imf", "id": "IMF.STA,ITG/ARG.XG.FOB_USD.A", "outcome": outcome}
+    rewritten = finder.rewrite(CATALOG, {"e_ar_exports_goods": result}, stamp="2026-10", near=True)
+    moved = {entry["alias"]: entry for entry in yaml.safe_load(rewritten)}["e_ar_exports_goods"]
+    assert moved["attrs"]["close_match"] == (
+        "2026-10: other units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00"
+        " over the last 10 years (10 of 45 common periods)"
+    )
 
 
 def test_too_few_common_periods_not_newer_and_other_units_are_told_apart(finder):

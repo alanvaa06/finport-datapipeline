@@ -1,7 +1,7 @@
 """Point the macro catalog's DBnomics series at the dataset that replaced theirs at the publisher.
 
     python scripts/replace_dbnomics_ids.py reference --cache D:/tmp/b2
-    python scripts/replace_dbnomics_ids.py find --cache D:/tmp/b2 [--regions AR AU]
+    python scripts/replace_dbnomics_ids.py find --cache D:/tmp/b2 [--regions AR AU] [--recent 10]
     python scripts/replace_dbnomics_ids.py report --cache D:/tmp/b2 [--tolerance 1e-4]
     python scripts/replace_dbnomics_ids.py write --cache D:/tmp/b2 [--tolerance 1e-4] [--accept-units] [--close]
 
@@ -9,9 +9,15 @@
 series a call). `find` asks the publisher, one wildcard call per country and dataflow (the IMF),
 or per dataflow for every country (the OECD), and keeps for each series the candidate whose
 values are closest to DBnomics'. `report` tabulates the outcome per concept. `write` rewrites
-`src/data_pipeline/store/catalogs/macro.yaml`: a series whose candidate equals DBnomics within
-the tolerance on at least 24 common periods, and reaches a newer period, gets the new source and
-id; every other series gets `attrs.stale` saying why. `--accept-units` also moves a series whose
+`src/data_pipeline/store/catalogs/macro.yaml`: a series whose candidate equals DBnomics on at
+least 24 common periods, and reaches a newer period, gets the new source and id; every other
+series gets `attrs.stale` saying why. Equal means that on every common period the two values
+differ by no more than their published rounding (half a unit of the last decimal each series
+publishes, so an index published with one decimal may differ by 0.05 from the same index
+published with two), or by the relative `--tolerance` (float noise in unrounded series).
+`--recent YEARS` (given to `find`) measures the close rule below on the last YEARS years of
+common periods only, so a revision of the 1950s does not keep a series that agrees today on the
+mirror. `--accept-units` also moves a series whose
 values equal DBnomics' once scaled by a power of ten (the publisher changed units), recording the
 factor in `attrs.units_changed`. `--close` also moves a series that the publisher re-estimated:
 scaled by one, a power of ten or (an index) any rebasing factor, its relative gap to DBnomics has
@@ -22,6 +28,7 @@ is kept under `--cache`/calls, so `find` runs again offline (delete results.json
 
 import argparse
 import collections
+import decimal
 import json
 import math
 import pathlib
@@ -43,7 +50,12 @@ OECD_URL = "https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,{flow}/{key}?st
 GENERIC = "application/vnd.sdmx.genericdata+xml;version=2.1"
 DBNOMICS_BATCH = 20
 OECD_INTERVAL = 61.0
+# Equal: within the published rounding of both series (see `within_rounding`), or within this
+# relative gap, which only absorbs float noise in series published unrounded. On its own, 1e-4
+# over the whole history kept on the mirror series that differ only by rounding: an index of
+# about 100 published with one decimal carries up to 5e-4 of relative rounding error.
 TOLERANCE = 1e-4
+MAX_DECIMALS = 12  # beyond this a decimal is float noise, not a published digit
 MIN_COMMON = 24
 # --close: the publisher re-estimates what the retired dataset held (the OECD seasonally adjusts
 # again, an index is rebased), so its values are close to the mirror's, not equal
@@ -116,12 +128,28 @@ def normalize(period: str) -> str:
 # -- the rule ----------------------------------------------------------------------------------
 
 
-def compare(reference: Mapping[str, float], candidate: Mapping[str, float], concept: str = "") -> Result:
-    """How a candidate relates to the reference: common periods, worst relative gap, whether it
-    reaches a newer period, and the median ratio of the values (a unit change shows as a power of
-    ten). Also the factor that brings the candidate closest to the reference (one, a power of ten,
-    or, for an index of the series' concept, any ratio: it may be rebased), `how` it was chosen,
-    and the median and 90th percentile of the relative gaps once scaled."""
+def decimals(value: float) -> int:
+    """The decimals a value was published with, read from its shortest spelling: 101.3 has one."""
+    exponent = decimal.Decimal(repr(float(value))).as_tuple().exponent
+    return min(max(0, -int(exponent)), MAX_DECIMALS)
+
+
+def half_unit(values: Iterable[float]) -> float:
+    """Half a unit of the last decimal a series publishes, the most decimals any of its values
+    shows (a value that ends in zero drops it: 101.30 reads as 101.3)."""
+    return 0.5 * 10.0 ** -max((decimals(value) for value in values), default=MAX_DECIMALS)
+
+
+def compare(
+    reference: Mapping[str, float], candidate: Mapping[str, float], concept: str = "", recent: int | None = None
+) -> Result:
+    """How a candidate relates to the reference: common periods, worst relative gap, whether every
+    common value is equal within the published rounding of both series, whether it reaches a newer
+    period, and the median ratio of the values (a unit change shows as a power of ten). Also the
+    factor that brings the candidate closest to the reference (one, a power of ten, or, for an
+    index of the series' concept, any ratio: it may be rebased), `how` it was chosen, and the
+    median and 90th percentile of the relative gaps once scaled: over every common period, or with
+    `recent`, over the common periods of the last `recent` years (`window` of them)."""
     theirs = {normalize(p): float(v) for p, v in reference.items()}
     ours = {normalize(p): float(v) for p, v in candidate.items()}
     common = sorted(set(theirs) & set(ours))
@@ -129,6 +157,8 @@ def compare(reference: Mapping[str, float], candidate: Mapping[str, float], conc
     out["newer"] = bool(ours) and bool(theirs) and max(ours) > max(theirs)
     if common:
         out["gap"] = max(abs(theirs[p] - ours[p]) / max(abs(ours[p]), 1e-12) for p in common)
+        allowed = half_unit(theirs[p] for p in common) + half_unit(ours[p] for p in common)
+        out["within_rounding"] = all(abs(theirs[p] - ours[p]) <= allowed + 1e-12 * abs(ours[p]) for p in common)
         ratios = sorted(theirs[p] / ours[p] for p in common if ours[p])
         out["ratio"] = ratios[len(ratios) // 2] if ratios else None
         scale = power_of_ten(out["ratio"])
@@ -136,15 +166,23 @@ def compare(reference: Mapping[str, float], candidate: Mapping[str, float], conc
             # the same series in other units: the gap once the candidate is scaled to the reference
             out["scale"] = scale
             out["scaled_gap"] = max(abs(theirs[p] - ours[p] * 10**scale) / max(abs(ours[p] * 10**scale), 1e-12) for p in common)
+        window = common
+        if recent is not None:
+            newest = int(common[-1][:4])
+            window = [p for p in common if int(p[:4]) > newest - recent]
+            out.update(recent=recent, window=len(window))
+        # the factors are read off the periods the rule measures: the window's median ratio
+        recent_ratios = sorted(theirs[p] / ours[p] for p in window if ours[p])
+        ratio = recent_ratios[len(recent_ratios) // 2] if recent_ratios else None
         factors = {"same units": 1.0}
-        if scale is not None:
-            factors["other units"] = 10.0**scale
-        if concept in INDEXES and out["ratio"]:
-            factors["rebased"] = out["ratio"]
+        if power_of_ten(ratio) is not None:
+            factors["other units"] = 10.0 ** power_of_ten(ratio)
+        if concept in INDEXES and ratio:
+            factors["rebased"] = ratio
         floor = 1.0 if concept in RATES else 1e-12
         spreads = {}
         for how, factor in factors.items():
-            gaps = sorted(abs(theirs[p] - ours[p] * factor) / max(abs(ours[p] * factor), floor) for p in common)
+            gaps = sorted(abs(theirs[p] - ours[p] * factor) / max(abs(ours[p] * factor), floor) for p in window)
             spreads[how] = (gaps[len(gaps) // 2], gaps[min(len(gaps) - 1, math.ceil(0.9 * len(gaps)) - 1)], factor)
         how = min(spreads, key=lambda name: spreads[name][:2])
         out.update(how=how, median_gap=spreads[how][0], p90_gap=spreads[how][1], factor=spreads[how][2])
@@ -174,7 +212,8 @@ def power_of_ten(ratio: float | None) -> int | None:
 
 
 def accepted(outcome: Mapping[str, Any], tolerance: float = TOLERANCE, *, units: bool = False, near: bool = False) -> bool:
-    """The rule: enough common periods, equal within the tolerance, and newer than DBnomics.
+    """The rule: enough common periods, equal (within the published rounding of both series, or
+    within the relative tolerance), and newer than DBnomics.
 
     With `units`, a candidate that equals the reference once scaled by a power of ten (the same
     series published in other units) is accepted too. With `near`, so is a candidate that passes
@@ -183,9 +222,10 @@ def accepted(outcome: Mapping[str, Any], tolerance: float = TOLERANCE, *, units:
     if near and close(outcome):
         return True
     gap = outcome.get("gap")
+    equal = gap is not None and (gap <= tolerance or bool(outcome.get("within_rounding")))
     if units and outcome.get("scaled_gap") is not None:
-        gap = min(gap, outcome["scaled_gap"]) if gap is not None else outcome["scaled_gap"]
-    return outcome.get("common", 0) >= MIN_COMMON and gap is not None and gap <= tolerance and bool(outcome.get("newer"))
+        equal = equal or outcome["scaled_gap"] <= tolerance
+    return outcome.get("common", 0) >= MIN_COMMON and equal and bool(outcome.get("newer"))
 
 
 def reason(outcome: Mapping[str, Any] | None, tolerance: float = TOLERANCE) -> str:
@@ -194,7 +234,7 @@ def reason(outcome: Mapping[str, Any] | None, tolerance: float = TOLERANCE) -> s
         return "no candidate"
     if outcome.get("common", 0) < MIN_COMMON:
         return f"only {outcome.get('common', 0)} periods in common"
-    if outcome["gap"] > tolerance:
+    if outcome["gap"] > tolerance and not outcome.get("within_rounding"):
         if outcome.get("scaled_gap") is not None and outcome["scaled_gap"] <= tolerance:
             return f"same values in other units (x1e{outcome['scale']})"
         return f"values differ (max relative gap {outcome['gap']:.1e})"
@@ -203,12 +243,14 @@ def reason(outcome: Mapping[str, Any] | None, tolerance: float = TOLERANCE) -> s
     return "accepted"
 
 
-def best(reference: Mapping[str, float], candidates: Mapping[str, Series], concept: str = "") -> tuple[str, Result] | None:
+def best(
+    reference: Mapping[str, float], candidates: Mapping[str, Series], concept: str = "", recent: int | None = None
+) -> tuple[str, Result] | None:
     """The candidate closest to the reference: accepted ones first, then close ones, then by the
     median gap."""
     ranked = []
     for key, series in candidates.items():
-        outcome = compare(reference, series, concept)
+        outcome = compare(reference, series, concept, recent)
         tier = 0 if accepted(outcome, TOLERANCE) else 1 if close(outcome) else 2
         spread = outcome.get("median_gap", 9e9) if outcome.get("common", 0) >= MIN_COMMON else 9e9
         ranked.append(((tier, spread), key, outcome))
@@ -256,9 +298,12 @@ def rewrite(
         if result is not None and outcome and accepted(outcome, tolerance, units=units, near=near):
             block = block.replace(f"- source: dbnomics\n  id: {found.group(1)}\n", f"- source: {result['source']}\n  id: {result['id']}\n", 1)
             if not accepted(outcome, tolerance, units=units):  # moved only by the close rule: say how close
+                over = f"{outcome['common']} periods"
+                if outcome.get("window") is not None:
+                    over = f"the last {outcome['recent']} years ({outcome['window']} of {outcome['common']} common periods)"
                 note = (
                     f"{stamp}: {outcome['how']}; relative gap to the mirror: median {outcome['median_gap']:.1e}, "
-                    f"90th percentile {outcome['p90_gap']:.1e} over {outcome['common']} periods"
+                    f"90th percentile {outcome['p90_gap']:.1e} over {over}"
                 )
                 block = block.rstrip("\n") + f"\n    close_match: {json.dumps(note)}\n"
             elif not accepted(outcome, tolerance):  # moved only thanks to the unit change: say so
@@ -386,6 +431,7 @@ def find(
     publishers: Publishers,
     regions: Iterable[str] = (),
     done: Mapping[str, Result] | None = None,
+    recent: int | None = None,
 ) -> Iterable[tuple[str, Result]]:
     """Yield (alias, result) for every series: the closest candidate at the publisher, or why none."""
     wanted = set(regions)
@@ -410,7 +456,7 @@ def find(
             if source == "oecd":
                 series = {k: v for k, v in series.items() if k.split(".")[0] == country}
             series = {k: v for k, v in series.items() if fits(concept, k)}
-            chosen = best(periods, series, concept) if series else None
+            chosen = best(periods, series, concept, recent) if series else None
             if chosen is None:
                 result["status"] = f"no data ({code})"
             else:
@@ -464,6 +510,7 @@ def main(argv: Sequence[str]) -> int:
     parser.add_argument("--catalog", type=pathlib.Path, default=CATALOG)
     parser.add_argument("--tolerance", type=float, default=TOLERANCE)
     parser.add_argument("--regions", nargs="*", default=())
+    parser.add_argument("--recent", type=int, default=None, help="find: measure the close rule on the last N years only")
     parser.add_argument("--accept-units", action="store_true", help="also move a series equal in other units (x10^n)")
     parser.add_argument("--close", action="store_true", help="also move a series close to the mirror's (CLOSE_MEDIAN, CLOSE_P90)")
     args = parser.parse_args(argv)
@@ -482,7 +529,7 @@ def main(argv: Sequence[str]) -> int:
     if args.command == "find":
         results = json.loads(results_path.read_text(encoding="utf-8")) if results_path.exists() else {}
         with httpx.Client(timeout=300, follow_redirects=True) as client:
-            for alias, result in find(entries, reference, Publishers(client, args.cache / "calls"), args.regions, results):
+            for alias, result in find(entries, reference, Publishers(client, args.cache / "calls"), args.regions, results, args.recent):
                 results[alias] = result
                 results_path.write_text(json.dumps(results, indent=1), encoding="utf-8")
                 print(f"{alias:<30} {result['status']} {result.get('id', '')}")
