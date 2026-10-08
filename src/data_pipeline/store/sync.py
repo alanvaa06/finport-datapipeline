@@ -256,6 +256,21 @@ def last_real(observations: pd.DataFrame, today: datetime.date) -> dict[str, Las
     }
 
 
+def _frequency_change(series: SeriesData, previous: Row | None) -> str:
+    """The failure of a stored series that the source now sends with another frequency, or "".
+
+    Its periods are not stored: months next to quarters under one key would both stay current
+    (no new month replaces an old one), so series() would mix them and frame() repeat dates.
+    """
+    held = str(previous.get("frequency") or "") if previous else ""
+    if not held or held == series.frequency.value:
+        return ""
+    return (
+        f"{Outcome.SOURCE_ERROR.value}: the source now sends this series as {series.frequency.value}; "
+        f"the store holds it as {held} and keeps that data. One key cannot hold two frequencies"
+    )
+
+
 def _since(entry: CatalogEntry, row: Row | None, last: LastReal | None) -> datetime.date | None:
     if row is None or last is None or not row.get("frequency"):
         return entry.start
@@ -629,10 +644,15 @@ def _sync_source(
         try:
             for batch in source.fetch(requests):
                 fresh = [series for series in batch.series if series.key not in done]
-                checkpoints.keep(fresh)
+                moved = {series.key: _frequency_change(series, index.get(series.key)) for series in fresh}
+                checkpoints.keep([series for series in fresh if not moved[series.key]])
                 for series in fresh:
                     done.add(series.key)
-                    ok += 1
+                    if moved[series.key]:
+                        failed.append((series.key, moved[series.key]))
+                        checkpoints.failed(series.entry, moved[series.key])
+                    else:
+                        ok += 1
                 for failure in batch.failures:
                     key = failure.entry.key
                     if key in done:

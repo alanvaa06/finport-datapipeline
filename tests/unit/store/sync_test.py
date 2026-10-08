@@ -528,3 +528,25 @@ def test_failure_reasons_are_scrubbed_before_they_are_stored_or_printed(tmp_path
     report = run(tmp_path, source, http=client(secrets=("TOPSECRET42",)))
     assert report.sources[0].failed == (("fake:UNRATE", "source_error: HTTP 500: token=*** rejected"),)
     assert index_row(tmp_path)["reason"] == "source_error: HTTP 500: token=*** rejected"
+
+
+def quarterly(catalog_entry, values):
+    observations = tuple(
+        Observation(*read_period(period, Frequency.QUARTERLY), value) for period, value in values.items()
+    )
+    return SeriesData(catalog_entry, catalog_entry.key, "Q", Frequency.QUARTERLY, observations=observations)
+
+
+def test_a_series_whose_frequency_changes_fails_and_keeps_its_data(tmp_path):
+    source = FakeSource()
+    source.answers["UNRATE"] = monthly(UNRATE, {"2026-01": 10.0, "2026-02": 11.0, "2026-03": 12.0})
+    run(tmp_path, source)
+    source.answers["UNRATE"] = quarterly(UNRATE, {"2026Q1": 33.0})
+    report = run(tmp_path, source, now=LATER)
+    (key, reason), = report.sources[0].failed
+    assert key == "fake:UNRATE"
+    assert reason.startswith("source_error: the source now sends this series as Q; the store holds it as M")
+    assert report.exit_code == 1
+    assert stored_values(tmp_path) == {"2026-01": 10.0, "2026-02": 11.0, "2026-03": 12.0}
+    row = index_row(tmp_path)
+    assert (row["status"], row["frequency"], row["last_period"]) == ("failed", "M", "2026-03")
