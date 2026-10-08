@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 import data_pipeline
+from data_pipeline.store import storage as st
 from data_pipeline.store.api import Store
 from data_pipeline.store.errors import CatalogError, StoreError, UnknownSeriesError
 
@@ -303,3 +304,38 @@ def test_a_series_with_vintages_reads_as_it_was_published_before_the_first_sync(
     history = store.revisions("fred:UNRATE")
     assert list(history["value"]) == [4.0, 4.1, 4.2]
     assert list(history["published_at"].dt.date.astype(str)) == ["2026-05-08", "2026-06-05", "2026-06-05"]
+
+
+def give_alias_to(store_root, key, alias):
+    """Leave `alias` on another stored series too, as a store synced with an older catalog has it."""
+    storage = st.Storage(store_root)
+    index = storage.read_index()
+    index.loc[index["key"] == key, "alias"] = alias
+    storage.write_index(index)
+
+
+def test_an_alias_on_several_stored_series_is_refused_without_a_catalog(world, tmp_path):
+    store, _server, _clock = world
+    store.sync()
+    give_alias_to(tmp_path / "store", "fred:DGS10", "usa.empleo.desempleo")
+    with pytest.raises(StoreError, match=r"fred:DGS10, fred:UNRATE"):
+        Store(tmp_path / "store").series("usa.empleo.desempleo")
+
+
+def test_the_catalog_decides_which_stored_series_an_alias_names(world, tmp_path):
+    store, _server, _clock = world
+    store.sync()
+    give_alias_to(tmp_path / "store", "fred:DGS10", "usa.empleo.desempleo")
+    moved = "- source: fred\n  id: DGS10\n  alias: usa.empleo.desempleo\n"
+    (tmp_path / "moved.yaml").write_text(moved, encoding="utf-8")
+    reader = Store(tmp_path / "store", tmp_path / "moved.yaml")
+    assert reader.info("usa.empleo.desempleo").key == "fred:DGS10"
+
+
+def test_an_alias_the_catalog_moved_to_a_series_not_stored_yet_asks_for_a_sync(world, tmp_path):
+    store, _server, _clock = world
+    store.sync()
+    moved = "- source: fred\n  id: PAYEMS\n  alias: usa.empleo.desempleo\n"
+    (tmp_path / "moved.yaml").write_text(moved, encoding="utf-8")
+    with pytest.raises(UnknownSeriesError, match=r"fred:PAYEMS.*sync"):
+        Store(tmp_path / "store", tmp_path / "moved.yaml").series("usa.empleo.desempleo")

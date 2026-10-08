@@ -1,4 +1,4 @@
-"""Console commands of the store: sync, status, show. Output is ASCII only.
+"""Console commands of the store: sync, status, show, catalog. Output is ASCII only.
 
 Exit codes: 0 everything is up to date, 1 there were failures, 2 configuration error,
 3 incomplete because of a quota (run again tomorrow).
@@ -9,7 +9,9 @@ import pathlib
 import click
 
 from data_pipeline.store.api import STATE_OK, Store
+from data_pipeline.store.catalog import load_catalog
 from data_pipeline.store.errors import StoreError
+from data_pipeline.store.model import CatalogEntry
 from data_pipeline.store.storage import KIND_DOCUMENT, KIND_TABLE
 from data_pipeline.store.sync import EXIT_CONFIGURATION, EXIT_FAILURES, EXIT_OK
 
@@ -129,3 +131,36 @@ def show_command(*, root: pathlib.Path, key: str, as_of: str | None) -> None:
     echo(f"{info.name} | {info.units} | {info.frequency} | {info.seasonal_adjustment}")
     for row in rows.tail(SHOWN_ROWS).to_dict(orient="records"):
         echo(f"{row['period']}  {row['value']}")
+
+
+def _matches(entry: CatalogEntry, query: str, source: str | None, region: str | None) -> bool:
+    if source is not None and entry.source != source:
+        return False
+    if region is not None and entry.attrs.get("region", "").lower() != region.lower():
+        return False
+    text = " ".join((entry.alias or "", entry.name or "", entry.key)).lower()
+    return query.lower() in text
+
+
+@cli.command("catalog")
+@click.argument("query", default="")
+@click.option(
+    "--catalog", type=PATH, default=pathlib.Path("macro"), show_default=True, help="A bundled catalog or a YAML file."
+)
+@click.option("--source", default=None, help="Only the series of this source.")
+@click.option("--region", default=None, help="Only the series of this region, such as MX.")
+def catalog_command(*, query: str, catalog: pathlib.Path, source: str | None, region: str | None) -> None:
+    """Find series in a catalog: QUERY is matched in the alias, the name and the key. Needs no store."""
+    try:
+        entries = load_catalog(catalog)
+    except StoreError as exc:
+        raise fail(exc) from exc
+    found = [entry for entry in entries if _matches(entry, query, source, region)]
+    alias_width = max((len(entry.alias or "") for entry in found), default=0)
+    key_width = max((len(entry.key) for entry in found), default=0)
+    for entry in found:
+        frequency = entry.frequency.value if entry.frequency else "?"
+        stale = "  [stale]" if "stale" in entry.attrs else ""
+        line = f"{entry.alias or '':<{alias_width}}  {frequency}  {entry.key:<{key_width}}  {entry.name or ''}{stale}"
+        echo(line.rstrip())
+    echo(f"{len(found)} of {len(entries)} series")

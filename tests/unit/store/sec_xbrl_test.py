@@ -88,7 +88,8 @@ def test_a_fact_reported_once_is_one_version_with_everything_the_sec_says():
         "fiscal_period": "FY",
         "frame": "CY2023",
     }
-    assert row["published_at"] == datetime.datetime(2023, 11, 3, tzinfo=datetime.UTC)
+    # known from the end of the day the SEC received it: a filing comes in during the day
+    assert row["published_at"] == datetime.datetime.combine(datetime.date(2023, 11, 3), datetime.time.max, datetime.UTC)
 
 
 def test_a_later_filing_that_repeats_the_value_is_not_a_version():
@@ -424,6 +425,9 @@ def test_the_stored_table_keeps_every_version(store, sec, clock, tmp_path):
     stored = pd.read_parquet(tmp_path / "store" / "tables" / "sec_xbrl" / "AAPL.parquet")
     revenues = stored[stored["concept"] == "Revenues"]
     assert list(revenues["value"]) == [383285000000.0, 383000000000.0]
-    published = [pd.Timestamp("2023-11-03", tz="UTC"), pd.Timestamp("2025-10-31", tz="UTC")]
+    published = [
+        pd.Timestamp(datetime.datetime.combine(datetime.date(*day), datetime.time.max, datetime.UTC))
+        for day in ((2023, 11, 3), (2025, 10, 31))
+    ]
     assert list(revenues["published_at"]) == published
     assert list(revenues["fetched_at"]) == [pd.Timestamp(NOW), pd.Timestamp(LATER)]
