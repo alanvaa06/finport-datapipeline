@@ -336,6 +336,48 @@ def test_an_alias_that_moves_to_another_series_leaves_the_old_one(tmp_path):
     assert index.isna()["fake:OLD"]
 
 
+class CountingStorage(Storage):
+    """A storage that counts how many times the observations and the index are written."""
+
+    def __init__(self, root):
+        super().__init__(root)
+        object.__setattr__(self, "writes", {"observations": 0, "index": 0})
+
+    def write_observations(self, source, frame):
+        self.writes["observations"] += 1
+        super().write_observations(source, frame)
+
+    def write_index(self, frame):
+        self.writes["index"] += 1
+        super().write_index(frame)
+
+
+def many(count):
+    entries = [entry(f"S{i}") for i in range(count)]
+    source = FakeSource()
+    for item in entries:
+        source.answers[item.source_id] = monthly(item, {"2026-04": 1.0, "2026-05": float(len(item.source_id))})
+    return entries, source
+
+
+def test_a_quick_run_writes_each_file_once_per_source(tmp_path):
+    entries, source = many(5)
+    storage = CountingStorage(tmp_path)
+    report = sync(storage, entries, {"fake": source}, client(), NOW)
+    assert (report.sources[0].ok, report.sources[0].new) == (5, 10)
+    assert storage.writes == {"observations": 1, "index": 1}
+    assert stored_values(tmp_path, "fake:S4") == {"2026-04": 1.0, "2026-05": 2.0}
+    assert index_row(tmp_path, "fake:S4")["last_period"] == "2026-05"
+
+
+def test_a_slow_run_keeps_what_it_downloaded_at_every_checkpoint(tmp_path):
+    entries, source = many(3)
+    storage = CountingStorage(tmp_path)
+    ticks = iter(range(0, 10_000, 61))
+    sync(storage, entries, {"fake": source}, client(), NOW, monotonic=lambda: float(next(ticks)))
+    assert storage.writes["observations"] == 3
+
+
 def test_a_dated_version_stored_as_a_projection_becomes_actual_when_its_period_closes(tmp_path):
     source = FakeSource()
     source.answers["UNRATE"] = vintages(UNRATE, [("2026-06", 4.3, "2026-06-05")])  # June still open on NOW

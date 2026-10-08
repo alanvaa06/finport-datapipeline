@@ -53,10 +53,14 @@ The World Bank, the BIS, the ECB, Eurostat, the OECD, the IMF and DBnomics need 
 ## Command line
 
 ```bash
+data-pipeline catalog cpi --region MX
 data-pipeline sync --root D:/data --catalog macro
 data-pipeline status --root D:/data
 data-pipeline show e_us_cpi --root D:/data
 ```
+
+`catalog` finds series in a catalog (the bundled `macro` by default) by alias, name or key, and
+can narrow them with `--source` and `--region`. It needs no store, no key and no network.
 
 `--catalog` takes the name of a bundled catalog (`macro`) or the path to your own YAML file:
 

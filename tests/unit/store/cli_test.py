@@ -148,3 +148,65 @@ def test_show_as_of_and_unknown_keys(workspace):
     unknown = invoke("show", "fred:NOPE", "--root", str(root / "store"))
     assert unknown.exit_code == 2
     assert unknown.output == "[x]   no stored series has key 'fred:NOPE'\n"
+
+
+CATALOG_WITH_ALIASES = """
+- source: fred
+  id: CPIAUCSL
+  alias: e_us_cpi
+  name: United States CPI (all items)
+  frequency: M
+  attrs: {region: US}
+- source: inegi
+  id: "628194"
+  alias: e_mx_cpi
+  name: Mexico CPI (INPC)
+  frequency: M
+  attrs: {region: MX}
+- source: dbnomics
+  id: IMF/IFS/M.AR.PCPI_IX
+  alias: e_ar_cpi
+  name: Argentina CPI (index)
+  frequency: M
+  attrs: {region: AR, stale: "2026-10: no candidate"}
+- source: fred
+  id: UNRATE
+  alias: e_us_unemployment
+  name: United States unemployment rate
+  frequency: M
+  attrs: {region: US}
+"""
+
+
+def test_catalog_searches_aliases_names_and_keys_without_a_store(tmp_path):
+    path = tmp_path / "mine.yaml"
+    path.write_text(CATALOG_WITH_ALIASES, encoding="utf-8")
+    result = invoke("catalog", "cpi", "--catalog", str(path))
+    assert result.exit_code == 0
+    assert result.output.splitlines() == [
+        "e_us_cpi  M  fred:CPIAUCSL                  United States CPI (all items)",
+        "e_mx_cpi  M  inegi:628194                   Mexico CPI (INPC)",
+        "e_ar_cpi  M  dbnomics:IMF/IFS/M.AR.PCPI_IX  Argentina CPI (index)  [stale]",
+        "3 of 4 series",
+    ]
+
+
+def test_catalog_filters_by_source_and_region(tmp_path):
+    path = tmp_path / "mine.yaml"
+    path.write_text(CATALOG_WITH_ALIASES, encoding="utf-8")
+    assert invoke("catalog", "--catalog", str(path), "--source", "fred").output.splitlines()[-1] == "2 of 4 series"
+    lines = invoke("catalog", "--catalog", str(path), "--region", "mx").output.splitlines()
+    assert lines == ["e_mx_cpi  M  inegi:628194  Mexico CPI (INPC)", "1 of 4 series"]
+    assert invoke("catalog", "nothing", "--catalog", str(path)).output == "0 of 4 series\n"
+
+
+def test_catalog_lists_the_bundled_macro_catalog_by_default():
+    result = invoke("catalog", "e_mx_igae")
+    assert result.exit_code == 0
+    assert result.output.splitlines()[-1] == "1 of 1293 series"
+
+
+def test_catalog_reports_an_unknown_catalog_as_a_configuration_error(tmp_path):
+    result = invoke("catalog", "--catalog", str(tmp_path / "missing.yaml"))
+    assert result.exit_code == 2
+    assert result.output.startswith("[x]   ")

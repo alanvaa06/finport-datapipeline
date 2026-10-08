@@ -1,8 +1,9 @@
 """Sync: download what the catalog declares and store what changed.
 
 An entry never downloaded is asked for its full history (or from its `start`). An entry already
-stored is asked from its last real period minus a revision window. Each batch a source yields is
-stored as it arrives, so an interrupted run keeps what it already downloaded. A series that fails
+stored is asked from its last real period minus a revision window. What a source of series
+yields is stored at checkpoints (every FLUSH_SECONDS, at the end of the source, and when the run
+is interrupted), so an interrupted run keeps what it already downloaded. A series that fails
 keeps its previous data; the failure is recorded in the index.
 """
 
@@ -12,7 +13,8 @@ import datetime
 import json
 import os
 import pathlib
-from collections.abc import Collection, Iterator, Mapping, Sequence
+import time
+from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from typing import Any
 
 import pandas as pd
@@ -65,6 +67,7 @@ EXIT_OK = 0
 EXIT_FAILURES = 1
 EXIT_CONFIGURATION = 2
 EXIT_QUOTA = 3
+FLUSH_SECONDS = 60.0  # a sync stores what it downloaded at least this often
 
 Row = dict[str, Any]
 LastReal = tuple[str, datetime.date]  # (period label, last day) of a series' last real observation
@@ -459,6 +462,59 @@ def _calls_today(record: Mapping[str, Any] | None, today: datetime.date) -> int:
     return int(budget.get("calls", 0)) if budget.get("day") == today.isoformat() else 0
 
 
+@dataclasses.dataclass
+class _Checkpoints:
+    """Series downloaded from one source wait in memory and are stored together: every
+    FLUSH_SECONDS, when the source ends, and when the run is interrupted. Each checkpoint merges
+    and writes the source's file and the index once, however many batches it holds."""
+
+    storage: Storage
+    name: str
+    index: dict[str, Row]
+    observations: pd.DataFrame
+    now: datetime.datetime
+    monotonic: Callable[[], float]
+    rows: list[Row] = dataclasses.field(default_factory=list)
+    series: list[SeriesData] = dataclasses.field(default_factory=list)
+    changed_index: bool = False
+    added: int = 0
+    revised: int = 0
+    last: float = dataclasses.field(init=False)
+
+    def __post_init__(self) -> None:
+        self.last = self.monotonic()
+
+    def keep(self, series: Sequence[SeriesData]) -> None:
+        """Hold downloaded series until the next checkpoint."""
+        for item in series:
+            self.rows.extend(observation_rows(item, self.now, self.now.date()))
+            self.series.append(item)
+
+    def failed(self, entry: CatalogEntry, reason: str) -> None:
+        self.index[entry.key] = _failed_row(entry, self.index.get(entry.key), reason)
+        self.changed_index = True
+
+    def tick(self) -> None:
+        """Store what is held when the last checkpoint is FLUSH_SECONDS old."""
+        if self.monotonic() - self.last >= FLUSH_SECONDS:
+            self.flush()
+
+    def flush(self) -> None:
+        if self.rows:
+            self.observations, more, changed = _append_observations(self.observations, typed(self.rows, OBS_DTYPES))
+            self.added += more
+            self.revised += changed
+            self.storage.write_observations(self.name, self.observations)
+        if self.series:
+            known = last_real(self.observations, self.now.date())
+            for item in self.series:
+                self.index[item.key] = _ok_row(item, self.index.get(item.key), known.get(item.key), self.now)
+        if self.series or self.changed_index:
+            self.storage.write_index(typed(list(self.index.values()), INDEX_DTYPES))
+        self.rows, self.series, self.changed_index = [], [], False
+        self.last = self.monotonic()
+
+
 def _sync_source(
     storage: Storage,
     source: Source,
@@ -469,6 +525,7 @@ def _sync_source(
     now: datetime.datetime,
     *,
     full: bool,
+    monotonic: Callable[[], float] = time.monotonic,
 ) -> SourceReport:
     if source.kind is Kind.TABLE:
         return _sync_tables(storage, source, client, wanted, index, spent_today, now, full=full)
@@ -486,24 +543,17 @@ def _sync_source(
     remaining = None if source.daily_budget is None else source.daily_budget - spent_today
     done: set[str] = set()
     failed: list[tuple[str, str]] = []
-    ok = added = revised = 0
+    ok = 0
+    checkpoints = _Checkpoints(storage, name, index, observations, now, monotonic)
     quota = remaining is not None and remaining <= 0
     if not quota:
         try:
             for batch in source.fetch(requests):
                 fresh = [series for series in batch.series if series.key not in done]
-                rows = [row for series in fresh for row in observation_rows(series, now, today)]
-                if rows:
-                    observations, more, changed = _append_observations(observations, typed(rows, OBS_DTYPES))
-                    added += more
-                    revised += changed
-                    storage.write_observations(name, observations)
-                if fresh:
-                    known = last_real(observations, today)
+                checkpoints.keep(fresh)
                 for series in fresh:
                     done.add(series.key)
                     ok += 1
-                    index[series.key] = _ok_row(series, index.get(series.key), known.get(series.key), now)
                 for failure in batch.failures:
                     key = failure.entry.key
                     if key in done:
@@ -511,13 +561,15 @@ def _sync_source(
                     done.add(key)
                     reason = f"{failure.outcome.value}: {failure.reason}"
                     failed.append((key, reason))
-                    index[key] = _failed_row(failure.entry, index.get(key), reason)
-                storage.write_index(typed(list(index.values()), INDEX_DTYPES))
+                    checkpoints.failed(failure.entry, reason)
+                checkpoints.tick()
                 if remaining is not None and client.calls.get(name, 0) - calls_before >= remaining:
                     quota = True
                     break
         except QuotaExhaustedError:
             quota = True
+        finally:
+            checkpoints.flush()  # also when the run is interrupted: keep what was downloaded
     missing = [request.entry for request in requests if request.entry.key not in done]
     if not quota:
         for entry in missing:
@@ -530,8 +582,8 @@ def _sync_source(
         source=name,
         ok=ok,
         failed=tuple(failed),
-        new=added,
-        revised=revised,
+        new=checkpoints.added,
+        revised=checkpoints.revised,
         calls=client.calls.get(name, 0) - calls_before,
         quota_exhausted=quota,
         pending=len(missing) if quota else 0,
@@ -560,8 +612,10 @@ def sync(
     only_sources: Collection[str] = (),
     only_keys: Collection[str] = (),
     full: bool = False,
+    monotonic: Callable[[], float] = time.monotonic,
 ) -> SyncReport:
-    """Run one sync. `now` (UTC) stamps every row fetched in this run."""
+    """Run one sync. `now` (UTC) stamps every row fetched in this run; `monotonic` times the
+    checkpoints."""
     with lock(storage.root):
         storage.prepare()
         check_catalog(entries, sources)
@@ -578,7 +632,9 @@ def sync(
             if not wanted:
                 continue
             spent = _calls_today(runs.get(name), today)
-            report = _sync_source(storage, sources[name], client, wanted, index, spent, now, full=full)
+            report = _sync_source(
+                storage, sources[name], client, wanted, index, spent, now, full=full, monotonic=monotonic
+            )
             reports.append(report)
             runs[name] = {
                 "last_run": now.isoformat(),
