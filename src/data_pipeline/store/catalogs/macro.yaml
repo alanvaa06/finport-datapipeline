@@ -8111,7 +8111,7 @@
   attrs:
     region: PH
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    stale: "2026-10: no data: the mirror holds no values; the OECD (DF_INDSERV) has no Philippine industrial production (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.N.B.PH
   alias: e_ph_neer
@@ -9855,7 +9855,7 @@
   attrs:
     region: TR
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    stale: "2026-10: no data: the mirror holds no values; neither the IMF (MFS_IR) nor the OECD (IR3TIB) has a Turkish money-market or bill rate (checked 2026-10-08)"
 - source: imf
   id: IMF.STA,IMTS/TUR.TBG_USD.G001.M
   alias: e_tr_trade_balance_goods

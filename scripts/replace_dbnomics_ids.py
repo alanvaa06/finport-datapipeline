@@ -243,6 +243,18 @@ def reason(outcome: Mapping[str, Any] | None, tolerance: float = TOLERANCE) -> s
     return "accepted"
 
 
+def why(result: Mapping[str, Any] | None, tolerance: float = TOLERANCE) -> str:
+    """The catalog note of a series that stays on DBnomics: the rule's reason, or, when no candidate
+    was compared, why not (the mirror holds no values, or the publisher answered nothing)."""
+    if result is not None and not result.get("outcome"):
+        status = str(result.get("status", ""))
+        if status == "no reference":
+            return "no data: the mirror holds no values"
+        if status.startswith("no data") or status == "no template":
+            return f"no candidate at the publisher ({status})"
+    return reason(result.get("outcome") if result else None, tolerance)
+
+
 def best(
     reference: Mapping[str, float], candidates: Mapping[str, Series], concept: str = "", recent: int | None = None
 ) -> tuple[str, Result] | None:
@@ -310,7 +322,7 @@ def rewrite(
                 note = f"{stamp}: the publisher's values are 1e{-outcome['scale']} times the mirror's (other units)"
                 block = block.rstrip("\n") + f"\n    units_changed: {json.dumps(note)}\n"
         else:
-            note = f"{stamp}: {reason(result.get('outcome') if result else None, tolerance)}"
+            note = f"{stamp}: {why(result, tolerance)}"
             if "  attrs:\n" in block:
                 block = block.rstrip("\n") + f"\n    stale: {json.dumps(note)}\n"
             else:

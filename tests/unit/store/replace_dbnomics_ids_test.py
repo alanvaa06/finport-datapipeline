@@ -380,3 +380,13 @@ def test_a_concept_only_takes_candidates_of_its_own_index(finder):
     assert finder.fits("cpi", "FRA.CPI._T.IX.M")
     assert not finder.fits("cpi", "FRA.HICP._T.IX.M")
     assert finder.fits("reserves", "FRA.IRFCLDT1_IRFCL65_USD.S1X.M")
+
+
+def test_a_series_without_a_candidate_says_whether_the_mirror_or_the_publisher_had_nothing(finder):
+    assert finder.why({"status": "no reference"}) == "no data: the mirror holds no values"
+    assert finder.why({"status": "no data (404)"}) == "no candidate at the publisher (no data (404))"
+    assert finder.why({"status": "no template"}) == "no candidate at the publisher (no template)"
+    assert finder.why(None) == "no candidate"
+    rewritten = finder.rewrite(CATALOG, {"e_ar_cpi": {"status": "no reference"}}, stamp="2026-10")
+    entries = {entry["alias"]: entry for entry in yaml.safe_load(rewritten)}
+    assert entries["e_ar_cpi"]["attrs"]["stale"] == "2026-10: no data: the mirror holds no values"

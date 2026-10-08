@@ -97,3 +97,11 @@ def test_the_short_rates_that_ended_at_the_imf_read_a_live_rate_and_say_which():
         assert "3-month interbank rate" in entry.name
     assert by_alias["e_my_short_rate"].key == "imf:IMF.STA,MFS_IR/MYS.MMRT_RT_PT_A_PT.M"
     assert "money-market rate" in by_alias["e_my_short_rate"].name
+
+
+def test_the_series_the_mirror_holds_no_values_for_say_so():
+    """DBnomics holds no values for these and no publisher has a replacement: the alias stays, with
+    a note that it has no data, rather than the "no candidate" that read like a lookup miss."""
+    by_alias = {entry.alias: entry for entry in load_catalog(pathlib.Path("macro"))}
+    for alias in ("e_tr_short_rate", "e_ph_ind_prod"):
+        assert by_alias[alias].attrs["stale"].startswith("2026-10: no data: the mirror holds no values")
