@@ -101,7 +101,8 @@ fetched it.
   ALFRED's first vintage, years before your first sync. `store.revisions(...)` lists each one.
   FRED gives the day, not the hour, so a vintage counts as known from the end of that day (UTC):
   `as_of="2026-10-02"` sees what came out that day, `as_of="2026-10-02T12:00Z"` does not.
-- **SEC XBRL facts:** each version is dated with the day the filing was received.
+- **SEC XBRL facts:** each version is dated with the day the filing was received, and also
+  counts as known from the end of that day.
 - **Every other source,** and FRED series that ALFRED does not keep (such as `SP500`): the
   source does not say when a value was published, so the store dates it by its own fetch. On
   those, `as_of` sees nothing before your first sync, and point-in-time history starts that day.

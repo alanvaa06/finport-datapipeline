@@ -171,12 +171,33 @@ class Store:
         return self._storage.read_index()
 
     def _row(self, name: str) -> dict[str, Any]:
+        """The index row of a key or an alias. An alias is the catalog's when this store has one:
+        it names the series the catalog gives it, even if an older catalog left it on another."""
         index = self._storage.read_index()
-        column = "key" if ":" in name else "alias"
-        found = index[index[column] == name]
+        if ":" in name:
+            found = index[index["key"] == name]
+            if found.empty:
+                msg = f"no stored series has key {name!r}"
+                raise UnknownSeriesError(msg)
+            return st.records(found)[0]
+        declared = next((entry.key for entry in self._entries if entry.alias == name), None)
+        if declared is not None:
+            found = index[index["key"] == declared]
+            if found.empty:
+                msg = f"alias {name!r} names {declared}, which is not stored yet: run sync"
+                raise UnknownSeriesError(msg)
+            return st.records(found)[0]
+        found = index[index["alias"] == name]
         if found.empty:
-            msg = f"no stored series has {column} {name!r}"
+            msg = f"no stored series has alias {name!r}"
             raise UnknownSeriesError(msg)
+        if len(found) > 1:
+            keys = ", ".join(sorted(str(key) for key in found["key"]))
+            msg = (
+                f"alias {name!r} is on several stored series ({keys}): "
+                "read one by its key, or open the store with a catalog"
+            )
+            raise StoreError(msg)
         return st.records(found)[0]
 
     def _observations(self, name: str) -> pd.DataFrame:

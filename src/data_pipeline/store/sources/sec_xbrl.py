@@ -97,7 +97,9 @@ def versions(payload: Mapping[str, Any]) -> tuple[Row, ...]:
                                 "fiscal_year": _text(item.get("fy")),
                                 "fiscal_period": _text(item.get("fp")),
                                 "frame": _text(item.get("frame")),
-                                "published_at": datetime.datetime.combine(filed, datetime.time(), datetime.UTC),
+                                # the SEC gives the day it received the filing, not the hour: known
+                                # from the end of that day, so no moment within it sees it early
+                                "published_at": datetime.datetime.combine(filed, datetime.time.max, datetime.UTC),
                             }
                         )
     return tuple(rows)

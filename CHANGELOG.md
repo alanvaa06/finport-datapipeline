@@ -10,6 +10,12 @@ First version.
   the store's first sync on.
 - When the catalog moves an alias to another series (from a mirror to its publisher), `sync` takes
   it away from the old one, so reading by alias returns the new series.
+- A store opened with a catalog reads an alias as the series that catalog gives it, and asks for a
+  `sync` when that series is not stored yet; without a catalog, an alias left on several stored
+  series is refused instead of returning the first one.
+- SEC XBRL versions count as known from the end of the day the filing was received, as FRED
+  vintages do, so an `as_of` with a time on that day does not see them early. A store synced
+  before this change stores each version once more, with the same value, on its next sync.
 - Sources: FRED, BLS, Banxico SIE, INEGI, the World Bank, the BIS, the ECB, Eurostat, the OECD,
   the IMF and DBnomics.
 - Tables: UN Comtrade goods trade and SEC XBRL company facts, each version dated with its filing day.
