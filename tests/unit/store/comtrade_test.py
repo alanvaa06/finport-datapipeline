@@ -271,6 +271,14 @@ def test_each_call_is_one_batch_with_the_rows_of_the_recorded_answer():
     assert math.isnan(month["weight_kg"])
 
 
+def test_a_zero_weight_with_trade_is_a_weight_not_reported():
+    rows = [data_row(product="06", value=198635735.0, weight=0.0), data_row(product="27", value=0.0, weight=0.0)]
+    batches = fetch(lambda _request: answer(rows), [Request(reporter(months=0), held=stored(ALL_YEARS))])
+    traded, nothing = batches[0].tables[0].rows
+    assert math.isnan(traded["weight_kg"])  # the recorded answer has cmdCode 06 so: 198,635,735 USD and 0 kg
+    assert nothing["weight_kg"] == 0.0
+
+
 def test_breakdown_rows_and_flows_not_asked_for_are_dropped():
     rows = [
         data_row(value=10.0),

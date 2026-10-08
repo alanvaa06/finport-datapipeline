@@ -73,7 +73,7 @@ is translated with the same map.
 | `period` | `2024` or `2024-06` |
 | `date` | Last day of the period |
 | `value_usd` | Trade value |
-| `weight_kg` | Net weight |
+| `weight_kg` | Net weight; missing when not reported, including a weight of 0 on a row with trade |
 | `level` | HS level the row was asked at (`AG2`, `AG4`, `AG6`) |
 | `fetched_at`, `published_at` | As for series |
 

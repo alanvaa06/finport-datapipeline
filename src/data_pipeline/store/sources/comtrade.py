@@ -18,6 +18,9 @@ call: mixing 2- and 4-digit products in one table would count trade twice in any
 
 Only the total of a key is kept. Comtrade also answers with breakdowns by mode of transport,
 customs procedure and second partner; those rows are dropped.
+
+A weight of 0 on a row with trade is a weight not reported, and is stored as missing: summed as
+zero it would cut weight totals short and make value per kilogram infinite.
 """
 
 import dataclasses
@@ -25,6 +28,7 @@ import datetime
 import functools
 import importlib.resources
 import json
+import math
 from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from typing import Any
 
@@ -207,6 +211,13 @@ def is_total(row: Mapping[str, Any]) -> bool:
     )
 
 
+def weight(item: Mapping[str, Any]) -> float:
+    """Net weight in kg; 0 with a positive trade value is a weight not reported (NaN)."""
+    kilograms = number(item.get("netWgt"))
+    value = number(item.get("primaryValue"))
+    return math.nan if kilograms == 0 and value > 0 else kilograms
+
+
 def read_rows(payload: Mapping[str, Any], reporter: str, query: Query, chosen: Settings) -> tuple[Row, ...]:
     """The answer of one call as table rows; breakdown rows and other flows are dropped."""
     rows: list[Row] = []
@@ -225,7 +236,7 @@ def read_rows(payload: Mapping[str, Any], reporter: str, query: Query, chosen: S
                 "period": period,
                 "date": day,
                 "value_usd": number(item.get("primaryValue")),
-                "weight_kg": number(item.get("netWgt")),
+                "weight_kg": weight(item),
                 "level": chosen.level,
             }
         )
