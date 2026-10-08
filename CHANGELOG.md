@@ -21,9 +21,10 @@ First version.
 - Tables: UN Comtrade goods trade and SEC XBRL company facts, each version dated with its filing day.
 - Documents: SEC filings (10-K, 10-Q, 8-K, 20-F, 40-F) with their exhibits.
 - A bundled `macro` catalog of 1,293 series across 44 economies.
-  252 series that DBnomics only mirrored from retired datasets (IMF IFS and DOT, OECD MEI) now
+  279 series that DBnomics only mirrored from retired datasets (IMF IFS and DOT, OECD MEI) now
   come from the dataset that replaced theirs at the publisher, each with `attrs.close_match`
-  saying how close it is to the mirror; 148 stay on DBnomics, marked `stale`.
+  saying how close it is to the mirror; 25 more left DBnomics for another live series, and 96
+  stay on DBnomics, marked `stale`.
 - `data-pipeline catalog`: find series of a catalog by alias, name or key, by source or region.
 - A sync stores a source's series at checkpoints (every minute, at the end, and when interrupted)
   instead of after every batch: 400 series sync about 50 times faster on the local side.
