@@ -17,15 +17,17 @@ One series with fields of its own:
       frequency: M
 
 Fields every source shares: source, ids or id, alias, name, frequency, start, stale_after_days,
-attrs. Any other field belongs to the source and is checked by its `validate`.
+attrs. Any other field belongs to the source and is checked by its `validate`. An id or an alias
+is the text written: YAML 1.1 would read 0123 as 83, 12:30 as 750 and NO as False.
 
-A catalog can also be one of those shipped with the library, named without a path: "macro".
+A catalog can also be one of those shipped with the library: "bundled:macro" always names it;
+"macro" alone does too, unless a file of that name is in the folder.
 """
 
 import datetime
 import importlib.resources
 import pathlib
-from collections.abc import Mapping, Sequence
+from collections.abc import Hashable, Mapping, Sequence
 from typing import Any
 
 import yaml
@@ -39,6 +41,35 @@ SHARED_FIELDS = frozenset(
 )
 BUNDLED_PACKAGE = "data_pipeline.store.catalogs"
 BUNDLED_SUFFIX = ".yaml"
+BUNDLED_PREFIX = "bundled:"
+TEXT_FIELDS = frozenset({"id", "ids", "alias"})  # read as written, never as numbers or booleans
+_TEXT = "tag:yaml.org,2002:str"
+_GUESSED = frozenset(
+    {"tag:yaml.org,2002:int", "tag:yaml.org,2002:float", "tag:yaml.org,2002:bool", "tag:yaml.org,2002:timestamp"}
+)
+
+
+def _keep_text(node: yaml.Node) -> None:
+    """Make every plain scalar under `node` that YAML took for a number, a boolean or a date its text."""
+    if isinstance(node, yaml.ScalarNode) and node.tag in _GUESSED and node.style is None:
+        node.tag = _TEXT
+    elif isinstance(node, yaml.SequenceNode):
+        for item in node.value:
+            _keep_text(item)
+    elif isinstance(node, yaml.MappingNode):
+        for key, value in node.value:
+            _keep_text(key)
+            _keep_text(value)
+
+
+class _Loader(yaml.SafeLoader):
+    """The safe loader, except that the ids and aliases of an entry keep the text written."""
+
+    def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> dict[Hashable, Any]:
+        for key, value in node.value:
+            if isinstance(key, yaml.ScalarNode) and key.value in TEXT_FIELDS:
+                _keep_text(value)
+        return super().construct_mapping(node, deep=deep)
 
 
 def _fail(where: str, problem: str) -> CatalogError:
@@ -161,23 +192,30 @@ def bundled_catalogs() -> tuple[str, ...]:
     return tuple(sorted(name.removesuffix(BUNDLED_SUFFIX) for name in names))
 
 
+def _bundled(name: str, where: str) -> tuple[str, str]:
+    if name not in bundled_catalogs():
+        known = ", ".join(bundled_catalogs()) or "none"
+        raise _fail(where, f"the catalog file does not exist (bundled catalogs: {known})")
+    resource = importlib.resources.files(BUNDLED_PACKAGE).joinpath(name + BUNDLED_SUFFIX)
+    return resource.read_text(encoding="utf-8"), f"bundled catalog {name!r}"
+
+
 def _read(reference: pathlib.Path) -> tuple[str, str]:
-    """(text, where) of a catalog: an existing file wins, then a bundled catalog of that name."""
-    if reference.exists():
-        return reference.read_text(encoding="utf-8"), str(reference)
+    """(text, where) of a catalog: "bundled:NAME" is always a bundled catalog; otherwise an
+    existing file wins, then a bundled catalog of that name. A folder is never read as a file."""
     name = str(reference)
-    if name in bundled_catalogs():
-        resource = importlib.resources.files(BUNDLED_PACKAGE).joinpath(name + BUNDLED_SUFFIX)
-        return resource.read_text(encoding="utf-8"), f"bundled catalog {name!r}"
-    known = ", ".join(bundled_catalogs()) or "none"
-    raise _fail(str(reference), f"the catalog file does not exist (bundled catalogs: {known})")
+    if name.startswith(BUNDLED_PREFIX):
+        return _bundled(name.removeprefix(BUNDLED_PREFIX), name)
+    if reference.is_file():
+        return reference.read_text(encoding="utf-8"), name
+    return _bundled(name, name)
 
 
 def load_catalog(reference: pathlib.Path) -> tuple[CatalogEntry, ...]:
     """Read a YAML catalog: a file, or the name of a catalog shipped with the library."""
     text, where = _read(reference)
     try:
-        raw = yaml.safe_load(text)
+        raw = yaml.load(text, Loader=_Loader)  # noqa: S506 - a SafeLoader: it builds plain data only
     except yaml.YAMLError as exc:
         raise _fail(where, f"not valid YAML ({exc})") from exc
     return parse_catalog(raw, where=where)

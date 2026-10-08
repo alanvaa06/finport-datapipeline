@@ -145,7 +145,11 @@ def _matches(entry: CatalogEntry, query: str, source: str | None, region: str | 
 @cli.command("catalog")
 @click.argument("query", default="")
 @click.option(
-    "--catalog", type=PATH, default=pathlib.Path("macro"), show_default=True, help="A bundled catalog or a YAML file."
+    "--catalog",
+    type=PATH,
+    default=pathlib.Path("bundled:macro"),
+    show_default=True,
+    help="A bundled catalog (bundled:NAME) or a YAML file.",
 )
 @click.option("--source", default=None, help="Only the series of this source.")
 @click.option("--region", default=None, help="Only the series of this region, such as MX.")

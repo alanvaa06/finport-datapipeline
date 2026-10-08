@@ -62,7 +62,9 @@ data-pipeline show e_us_cpi --root D:/data
 `catalog` finds series in a catalog (the bundled `macro` by default) by alias, name or key, and
 can narrow them with `--source` and `--region`. It needs no store, no key and no network.
 
-`--catalog` takes the name of a bundled catalog (`macro`) or the path to your own YAML file:
+`--catalog` takes the name of a bundled catalog (`macro`) or the path to your own YAML file. A
+file of the same name in the folder wins over a bundled catalog; `bundled:macro` always means the
+bundled one. Ids and aliases are read as the text you write (`0123` stays `0123`, `NO` stays `NO`):
 
 ```yaml
 - source: fred
