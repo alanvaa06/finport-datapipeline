@@ -402,7 +402,7 @@ def _sync_tables(
                         index[table.key] = _table_row(table, index.get(table.key), merged, received_at)
                 for failure in batch.failures:
                     key = failure.entry.key
-                    reason = f"{failure.outcome.value}: {failure.reason}"
+                    reason = client.scrub(f"{failure.outcome.value}: {failure.reason}")
                     failed.setdefault(key, reason)
                     index[key] = _failed_row(failure.entry, index.get(key), failed[key], KIND_TABLE)
                 storage.write_index(typed(list(index.values()), INDEX_DTYPES))
@@ -503,7 +503,7 @@ def _sync_documents(
                         index[data.key] = _document_row(data, index.get(data.key), listed, received_at)
                 for failure in batch.failures:
                     key = failure.entry.key
-                    reason = f"{failure.outcome.value}: {failure.reason}"
+                    reason = client.scrub(f"{failure.outcome.value}: {failure.reason}")
                     failed.setdefault(key, reason)
                     index[key] = _failed_row(failure.entry, index.get(key), failed[key], KIND_DOCUMENT)
                 storage.write_index(typed(list(index.values()), INDEX_DTYPES))
@@ -638,7 +638,7 @@ def _sync_source(
                     if key in done:
                         continue
                     done.add(key)
-                    reason = f"{failure.outcome.value}: {failure.reason}"
+                    reason = client.scrub(f"{failure.outcome.value}: {failure.reason}")
                     failed.append((key, reason))
                     checkpoints.failed(failure.entry, reason)
                 checkpoints.tick()

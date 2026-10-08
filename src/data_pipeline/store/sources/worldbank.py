@@ -148,7 +148,7 @@ class WorldBank:
                 per_minute=self.requests_per_minute,
             )
             if response.status_code != OK:
-                msg = f"HTTP {response.status_code}: {self._client.scrub(response.text[:200])}"
+                msg = f"HTTP {response.status_code}: {self._client.excerpt(response.text, 200)}"
                 raise _IndicatorError(msg)
             payload = response.json()
             head = payload[0]

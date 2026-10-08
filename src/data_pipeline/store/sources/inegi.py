@@ -84,7 +84,7 @@ class Inegi:
             params={"type": "json"},
             per_minute=self.requests_per_minute,
         )
-        text = self._client.scrub(response.text[:300])
+        text = self._client.excerpt(response.text, 300)
         if response.status_code != OK:
             if NO_RESULTS in text:
                 return Failure(entry, Outcome.NOT_FOUND, f"{bank}: no results ({NO_RESULTS})")

@@ -520,3 +520,11 @@ def test_each_series_is_stamped_with_the_time_it_was_downloaded(tmp_path):
     known = as_of(stored, to_moment("2026-06-06"))
     assert list(known["key"]) == ["fake:UNRATE"]
     assert index_row(tmp_path, "fake:DGS10")["last_fetched_at"] == pd.Timestamp("2026-06-07 00:00", tz="UTC")
+
+
+def test_failure_reasons_are_scrubbed_before_they_are_stored_or_printed(tmp_path):
+    source = FakeSource()
+    source.answers["UNRATE"] = Failure(UNRATE, Outcome.SOURCE_ERROR, "HTTP 500: token=TOPSECRET42 rejected")
+    report = run(tmp_path, source, http=client(secrets=("TOPSECRET42",)))
+    assert report.sources[0].failed == (("fake:UNRATE", "source_error: HTTP 500: token=*** rejected"),)
+    assert index_row(tmp_path)["reason"] == "source_error: HTTP 500: token=*** rejected"

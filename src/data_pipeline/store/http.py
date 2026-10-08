@@ -79,6 +79,11 @@ class Client:
     def scrub(self, text: str) -> str:
         return scrub(text, self._secrets)
 
+    def excerpt(self, text: str, length: int) -> str:
+        """The first `length` characters of `text`, secrets hidden. Scrubbed before it is cut: a
+        key cut in two would no longer match, and its first characters would show."""
+        return self.scrub(text)[:length]
+
     def get(
         self,
         source: str,

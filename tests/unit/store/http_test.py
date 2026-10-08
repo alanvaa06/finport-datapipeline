@@ -117,3 +117,13 @@ def test_the_key_never_shows_in_the_request_log_of_httpx(caplog):
     with caplog.at_level(logging.INFO, logger="httpx"):
         logging.getLogger("httpx").info("after close: %s", "s3cr3t")
     assert "after close: s3cr3t" in caplog.text  # the filter leaves with the client
+
+
+def test_an_excerpt_is_scrubbed_before_it_is_cut():
+    key = "abcdef0123456789abcdef0123456789"
+    text = "." * 280 + "api_key=" + key + " and more"
+    client = Client(secrets=(key,))
+    excerpt = client.excerpt(text, 300)
+    assert len(excerpt) == 300
+    assert key[:12] not in excerpt
+    assert excerpt.endswith("api_key=***" + " and more"[: 300 - 291])

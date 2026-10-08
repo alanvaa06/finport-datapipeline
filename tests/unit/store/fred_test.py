@@ -209,3 +209,14 @@ def test_a_window_still_refused_for_too_many_vintages_is_split_in_two(monkeypatc
     series = fetch(handler, [Request(entry("DGS10", "fred"))])[0].series[0]
     assert windows == [("2026-01-05", "2026-03-05"), ("2026-03-06", "9999-12-31")]
     assert [observation.value for observation in series.observations] == [4.4]
+
+
+def test_a_key_echoed_across_the_cut_of_the_message_leaves_no_prefix():
+    def echo(request):
+        echoed = " echoed: api_key=" + request.url.params["api_key"]
+        return httpx.Response(400, text='{"error_message":"Bad Request. ' + "." * 240 + echoed + '"}')
+
+    batches = fetch(echo, [Request(entry("UNRATE", "fred"))])
+    reason = batches[0].failures[0].reason
+    assert KEY[:8] not in reason
+    assert "api_key=***" in reason
