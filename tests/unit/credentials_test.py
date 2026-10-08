@@ -161,6 +161,30 @@ def test_save_refuses_unknown_names_and_line_breaks(tmp_path):
     assert not (tmp_path / ".env").exists()
 
 
+@pytest.mark.parametrize("character", ["\u2028", "\u2029", "\x85", "\x0b", "\x0c", "\x1c", "\x00", "\t"])
+def test_save_refuses_line_separators_and_control_characters(tmp_path, character):
+    env_file = tmp_path / ".env"
+    with pytest.raises(ValueError, match="Invalid value for FRED_API_KEY"):
+        save(env_file, {"FRED_API_KEY": f"abc{character}BLS_API_KEY=planted"})
+    assert not env_file.exists()
+
+
+def test_a_line_separator_inside_a_line_never_splits_it_on_save(tmp_path):
+    env_file = tmp_path / ".env"
+    env_file.write_text("NOTE=a\u2028FRED_API_KEY=planted\nBLS_API_KEY=old\n", encoding="utf-8")
+    assert resolve(environ={}, env_file=env_file).get("FRED_API_KEY") is None  # python-dotenv reads one line
+    save(env_file, {"BLS_API_KEY": "new"})
+    assert env_file.read_text(encoding="utf-8") == "NOTE=a\u2028FRED_API_KEY=planted\nBLS_API_KEY=new\n"
+    assert resolve(environ={}, env_file=env_file).get("FRED_API_KEY") is None
+
+
+def test_save_reads_every_kind_of_line_ending(tmp_path):
+    env_file = tmp_path / ".env"
+    env_file.write_bytes(b"A=1\r\nBLS_API_KEY=old\rB=2\n")
+    save(env_file, {"BLS_API_KEY": "new"})
+    assert env_file.read_bytes() == b"A=1\nBLS_API_KEY=new\nB=2\n"
+
+
 def test_the_missing_message_names_the_key_where_to_get_it_and_the_command():
     assert credentials.missing_message("FRED_API_KEY") == (
         "FRED_API_KEY is missing. Get one at https://fredaccount.stlouisfed.org/apikey and run: data-pipeline setup"

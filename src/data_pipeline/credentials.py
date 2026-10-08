@@ -13,6 +13,8 @@ This module imports nothing from the store: the store and the command line both 
 import dataclasses
 import os
 import pathlib
+import re
+import unicodedata
 from collections.abc import Mapping
 
 import dotenv
@@ -20,6 +22,10 @@ import dotenv
 ENV_FILE_NAME = ".env"
 ENV_FILE_ENCODING = "utf-8-sig"  # plain UTF-8, tolerating the BOM some editors add
 PROJECT_MARKERS = (".git", "pyproject.toml")  # a folder holding either is the root of a project
+LINE_BREAK = re.compile(r"\r\n|\r|\n")  # the only line breaks python-dotenv knows
+# Unicode categories a saved value may not hold: control characters (line feeds, tabs, NEL, VT,
+# FS...) and the line and paragraph separators U+2028 and U+2029.
+UNSAFE_CATEGORIES = frozenset({"Cc", "Zl", "Zp"})
 ORIGIN_CODE = "code"
 ORIGIN_ENVIRONMENT = "environment"
 SETUP_COMMAND = "data-pipeline setup"
@@ -196,10 +202,10 @@ def save(env_file: pathlib.Path, updates: Mapping[str, str]) -> None:
         if name not in _BY_NAME:
             msg = f"Unknown environment variable: {name}"
             raise ValueError(msg)
-        if "\n" in value or "\r" in value:
-            msg = f"Invalid value for {name}"
+        if any(unicodedata.category(char) in UNSAFE_CATEGORIES for char in value):
+            msg = f"Invalid value for {name}: it holds a line break or another control character"
             raise ValueError(msg)
-    lines = env_file.read_text(encoding=ENV_FILE_ENCODING).splitlines() if env_file.is_file() else []
+    lines = _lines(env_file.read_text(encoding=ENV_FILE_ENCODING)) if env_file.is_file() else []
     remaining = dict(updates)
     written: set[str] = set()
     kept: list[str] = []
@@ -214,6 +220,16 @@ def save(env_file: pathlib.Path, updates: Mapping[str, str]) -> None:
         kept.append(line)
     kept.extend(f"{name}={_encode(value)}" for name, value in remaining.items())
     env_file.write_text("\n".join(kept) + "\n", encoding="utf-8", newline="\n")
+
+
+def _lines(text: str) -> list[str]:
+    """The lines of a `.env` as python-dotenv sees them: split on CR LF, CR or LF only.
+
+    `str.splitlines` also splits on U+2028, U+0085, VT, FS and others, which would turn part of a
+    value into a line of its own on the next save.
+    """
+    lines = LINE_BREAK.split(text)
+    return lines[:-1] if lines[-1] == "" else lines
 
 
 def _line_name(line: str) -> str | None:
