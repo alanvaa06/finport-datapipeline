@@ -8,7 +8,8 @@
 Observations are append-only: a changed value adds a row, nothing is rewritten or deleted.
 Every write goes to a temporary file, is flushed to the disk, and then replaces the target, so a
 run that dies halfway (or a power cut) never leaves a half-written file. Missing files read as
-empty frames; a file that cannot be read is a StoreError that names it.
+empty frames; a file that cannot be read is a StoreError that names it and says whether the
+system would not open it (another program holds it) or its content is damaged.
 """
 
 import dataclasses
@@ -365,23 +366,29 @@ def document_rows(
 
 
 def _unreadable(path: pathlib.Path, error: Exception) -> StoreError:
-    return StoreError(
-        f"{path}: cannot be read ({type(error).__name__}: {error}). "
-        "If the file is damaged, restore it from a backup or move it aside"
-    )
+    """The error for a file that could not be read. An OSError with an errno is the operating
+    system refusing to open or read it (another program holds it, say): the file may be fine, so
+    it is not called damaged. Anything else is its content: ArrowInvalid (a ValueError), a JSON
+    or UTF-8 error, or an OSError without an errno, which pyarrow raises for corrupt pages."""
+    reason = f"{type(error).__name__}: {error}"
+    if isinstance(error, OSError) and error.errno is not None:
+        hint = ": another program may have it open, or this account may not read it"
+        return StoreError(f"{path}: could not be opened ({reason}){hint if isinstance(error, PermissionError) else ''}")
+    advice = "If the file is damaged, restore it from a backup or move it aside"
+    return StoreError(f"{path}: cannot be read ({reason}). {advice}")
 
 
 def _read_parquet(path: pathlib.Path) -> pd.DataFrame:
     try:
         return pd.read_parquet(path)
-    except (OSError, ValueError) as exc:  # a torn file: ArrowInvalid (a ValueError) or OSError
+    except (OSError, ValueError) as exc:
         raise _unreadable(path, exc) from exc
 
 
 def _read_json(path: pathlib.Path) -> Any:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except ValueError as exc:  # JSONDecodeError, UnicodeDecodeError
+    except (OSError, ValueError) as exc:  # ValueError: JSONDecodeError, UnicodeDecodeError
         raise _unreadable(path, exc) from exc
 
 
