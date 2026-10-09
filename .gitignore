@@ -10,5 +10,6 @@ dist/
 .hypothesis/
 .coverage
 .env
+.env.lock
 .idea/
 .vscode/
