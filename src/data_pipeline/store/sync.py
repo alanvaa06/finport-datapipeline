@@ -430,11 +430,12 @@ def _sync_tables(
     *,
     full: bool,
 ) -> SourceReport:
-    """Sync a source of kind table. There is no `since`: each request carries what is stored."""
+    """Sync a source of kind table. There is no `since`: each request carries what is stored, also
+    when the sync is full, so a source can refuse an entry the stored table cannot take."""
     name = source.name
     by: Sequence[str] = getattr(source, "held_by", ())  # columns a source tells its stored rows apart by
     requests = [
-        Request(entry, held=frozenset() if full else held_periods(storage.read_table(name, entry.source_id), by))
+        Request(entry, held=held_periods(storage.read_table(name, entry.source_id), by), full=full)
         for entry in wanted
     ]
     calls_before = client.calls.get(name, 0)

@@ -14,7 +14,8 @@ an entry given a new partner or flow, is filled in by itself. A partner and flow
 trade in a period are asked for it again on every run, like a period not yet published.
 
 A table holds one HS level. An entry whose `level` differs from the one stored fails without a
-call: mixing 2- and 4-digit products in one table would count trade twice in any sum.
+call, in a full sync too: mixing 2- and 4-digit products in one table would count trade twice
+in any sum. A full sync asks for every period again, whatever is held.
 
 Only the total of a key is kept. Comtrade also answers with breakdowns by mode of transport,
 customs procedure and second partner; those rows are dropped.
@@ -296,7 +297,7 @@ class Comtrade:
                 f"store to load {chosen.level} from the start"
             )
             raise _AnswerError(msg)
-        for query in queries(request.held, chosen, self._today()):
+        for query in queries(frozenset() if request.full else request.held, chosen, self._today()):
             rows = self._rows(entry.source_id, chosen, query, key)
             table = TableData(
                 entry=entry,

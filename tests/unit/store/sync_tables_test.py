@@ -165,12 +165,14 @@ def test_a_revised_value_appends_a_version_and_keeps_the_old_one(tmp_path):
     assert list(latest(stored(tmp_path), KEY, KEY)["value_usd"]) == [120.0]
 
 
-def test_full_sends_nothing_held_and_stores_only_what_changed(tmp_path):
+def test_full_says_so_still_sends_what_is_held_and_stores_only_what_changed(tmp_path):
+    # the source asks for everything again, and can still refuse what the stored table cannot take
     source, http = setup()
     source.calls["MEX"] = [[row()]]
     run(tmp_path, source, http)
     report = run(tmp_path, source, http, now=LATER, full=True)
-    assert source.seen[1].held == frozenset()
+    assert (source.seen[0].full, source.seen[1].full) == (False, True)
+    assert source.seen[1].held == {("A", "2024")}
     assert report.sources[0].new == 0
     assert len(stored(tmp_path)) == 1
 

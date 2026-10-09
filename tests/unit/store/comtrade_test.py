@@ -185,6 +185,22 @@ def test_a_change_of_level_is_refused_before_any_call_and_the_next_reporter_goes
     assert "tables/comtrade/MEX.parquet" in failure.reason
 
 
+def test_a_full_request_asks_for_everything_and_still_refuses_a_change_of_level():
+    chosen = settings(reporter())
+    asked = []
+
+    def handler(request):
+        asked.append(request.url.params["period"])
+        return answer([])
+
+    fetch(handler, [Request(reporter(), held=stored(), full=True)])
+    assert asked == [",".join(query.periods).replace("-", "") for query in queries(frozenset(), chosen, TODAY)]
+    asked.clear()
+    (batch,) = fetch(handler, [Request(reporter(level="AG4"), held=stored(), full=True)])
+    assert asked == []
+    assert "the stored table holds HS level AG2, not AG4" in batch.failures[0].reason
+
+
 def test_months_zero_turns_the_monthly_data_off_and_partners_multiply_calls():
     asked = queries(frozenset(), settings(reporter(months=0, annual_from=2020, partners=["WLD", "USA"])), TODAY)
     assert [(query.frequency.value, query.partner, len(query.periods)) for query in asked] == [
@@ -409,3 +425,34 @@ def test_a_run_stopped_after_the_world_asks_the_next_partner_for_its_whole_histo
     assert asked == [("0", "2024,2025"), ("842", "2020,2021,2022,2023,2024,2025")]
     table = Storage(tmp_path).read_table("comtrade", "MEX")
     assert set(table["level"]) == {"AG2"}
+
+
+def rows_asked(request, product="27"):
+    """An answer with one row per period and flow asked for."""
+    periods = request.url.params["period"].split(",")
+    return answer([data_row(period, flow, product) for period in periods for flow in FLOWS])
+
+
+def sync_comtrade(tmp_path, entries, handler, now=NOW, **options):
+    http = client(handler, secrets=(KEY_VALUE,))
+    sources = {"comtrade": Comtrade(http, CREDENTIALS, today=lambda: TODAY)}
+    return sync(Storage(tmp_path), list(entries), sources, http, now, **options)
+
+
+def test_a_full_sync_after_a_change_of_level_is_refused_without_a_call(tmp_path):
+    # MEX stored at AG2, then `level: AG4` and `sync --full`: AG4 rows next to AG2 rows would count trade twice
+    sync_comtrade(tmp_path, [reporter(months=0, annual_from=2023)], rows_asked)
+    before = Storage(tmp_path).read_table("comtrade", "MEX")
+    calls = []
+
+    def recorded(request):
+        calls.append(request)
+        return rows_asked(request, product="2709")
+
+    later = NOW + datetime.timedelta(days=1)
+    report = sync_comtrade(tmp_path, [reporter(level="AG4", months=0, annual_from=2023)], recorded, later, full=True)
+    assert calls == []
+    ((key, reason),) = report.sources[0].failed
+    assert key == "comtrade:MEX"
+    assert "the stored table holds HS level AG2, not AG4" in reason
+    assert len(Storage(tmp_path).read_table("comtrade", "MEX")) == len(before)

@@ -113,9 +113,9 @@ what is missing from the store, so a run stopped by the quota resumes by itself.
 
 A period the reporter has not published yet is asked for again on every run until it appears.
 
-`sync(full=True)` asks for everything again and stores only what changed. It sends nothing held,
-so it does not see the stored level either: a full sync after a change of level adds the new
-level's rows, each marked with its level, and the next sync refuses the entry.
+`sync(full=True)` asks for everything again and stores only what changed. Its requests still
+carry what is held, and say they are full: the source asks for every period whatever is held,
+and refuses a change of level before any call, as a normal sync does.
 
 ## The source
 
@@ -134,7 +134,8 @@ level's rows, each marked with its level, and the next sync refuses the entry.
 - `model`: `TableData` (entry, key, rows, key columns, value columns, name, default staleness
   threshold), `FetchBatch.tables`, and `Request.held`, the `(frequency, period)` pairs already
   stored for a table entry, each followed by its values in the columns the source names in
-  `held_by` (Comtrade: partner, flow, level).
+  `held_by` (Comtrade: partner, flow, level), and `Request.full`, set by a full sync, which
+  still sends what is held.
 - `storage`: `read_table` and `write_table`, and an append-only merge for any key and value
   columns. `latest` and `as_of` take the key columns as an argument. The series code path is
   not rewritten.
