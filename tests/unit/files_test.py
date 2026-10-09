@@ -1,3 +1,4 @@
+import errno
 import os
 import sys
 
@@ -61,6 +62,40 @@ def test_the_content_reaches_the_disk_before_it_replaces_the_file(tmp_path, monk
     )
     write_atomic(tmp_path / "data.json", b"new")
     assert events[:2] == ["fsync", "replace"]
+
+
+def test_the_folder_is_flushed_once_the_file_is_replaced(tmp_path, monkeypatch):
+    seen = []
+    path = tmp_path / "data.json"
+    monkeypatch.setattr(_files, "_sync_folder", lambda folder: seen.append((folder, path.read_bytes())))
+    write_atomic(path, b"new")
+    assert seen == [(tmp_path, b"new")]  # after the replacement: the rename is what it makes durable
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX flushes a folder through a descriptor")
+def test_on_posix_the_folder_is_fsynced(tmp_path, monkeypatch):
+    synced = []
+    real = os.fsync
+    monkeypatch.setattr(_files.os, "fsync", lambda descriptor: synced.append(descriptor) or real(descriptor))
+    _files._sync_folder(tmp_path)
+    assert len(synced) == 1
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows cannot open a folder with os.open")
+def test_on_windows_the_folder_is_left_alone(tmp_path, monkeypatch):
+    monkeypatch.setattr(_files.os, "open", lambda *_args: pytest.fail("a folder was opened"))
+    _files._sync_folder(tmp_path)
+
+
+def test_a_folder_that_cannot_be_flushed_does_not_fail_a_write_that_succeeded(tmp_path, monkeypatch):
+    def unsupported(_descriptor):
+        raise OSError(errno.EINVAL, "Invalid argument")
+
+    monkeypatch.setattr(_files.sys, "platform", "linux")
+    monkeypatch.setattr(_files.os, "open", lambda *_args: 99)
+    monkeypatch.setattr(_files.os, "fsync", unsupported)
+    monkeypatch.setattr(_files.os, "close", lambda _descriptor: None)
+    _files._sync_folder(tmp_path)  # some network file systems refuse to flush a folder
 
 
 def test_a_target_held_open_is_retried_and_then_replaced(tmp_path, monkeypatch):

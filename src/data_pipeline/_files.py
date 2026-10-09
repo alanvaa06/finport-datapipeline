@@ -12,9 +12,11 @@ byte far past any content, so the file's own content stays readable while it is 
 An atomic write puts the content in a new temporary file in the same folder, flushes it to the
 disk and then replaces the target with it: a reader sees the old file or the new one, never half
 of one, and a write that fails leaves the old file as it was. Windows refuses the replacement
-while another program has the target open; it is tried again for about five seconds.
+while another program has the target open; it is tried again for about five seconds. On POSIX
+the folder is flushed after the replacement, so the replacement itself survives a power cut.
 """
 
+import contextlib
 import errno
 import os
 import pathlib
@@ -111,3 +113,19 @@ def write_atomic(path: pathlib.Path, content: bytes, *, mode: int = 0o666) -> No
         _replace(temporary, path)
     finally:
         temporary.unlink(missing_ok=True)  # still there only when the replacement failed
+    _sync_folder(path.parent)
+
+
+def _sync_folder(folder: pathlib.Path) -> None:
+    """Flush a folder's entries to the disk on POSIX, so a file just replaced in it stays
+    replaced after a power cut: the rename lives in the folder, not in the file. Windows cannot
+    open a folder with os.open, so it is skipped there. A file system that refuses to flush a
+    folder (some network mounts) does not fail a write that already took place."""
+    if sys.platform == "win32":
+        return
+    with contextlib.suppress(OSError):
+        descriptor = os.open(folder, os.O_RDONLY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)

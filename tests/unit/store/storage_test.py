@@ -250,11 +250,12 @@ def test_every_write_reaches_the_disk_before_it_replaces_the_file(tmp_path, monk
     monkeypatch.setattr(
         files_module, "_replace", lambda temporary, path: events.append("replace") or real_replace(temporary, path)
     )
+    monkeypatch.setattr(files_module, "_sync_folder", lambda _folder: events.append("folder"))
     storage = Storage(tmp_path)
     storage.write_observations("fred", rows({"2026-05": 4.1}, JUNE_6))
     storage.write_runs({"fred": {"ok": 1}})
     storage.write_document("sec_filings", "AAPL", "0001", "a.htm", b"<html></html>")
-    assert events == ["fsync", "replace"] * 3
+    assert events == ["fsync", "replace", "folder"] * 3
 
 
 @pytest.mark.parametrize("day", ["2026-06-15", "20260615", " 2026-06-15 ", datetime.date(2026, 6, 15)])
