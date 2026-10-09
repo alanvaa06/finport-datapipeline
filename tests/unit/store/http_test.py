@@ -5,7 +5,7 @@ import httpx
 import pytest
 
 from data_pipeline.store.errors import NetworkError, RateLimitedError
-from data_pipeline.store.http import Client, scrub
+from data_pipeline.store.http import Client, retry_after, scrub
 
 
 def test_returns_a_non_retryable_answer_as_it_is():
@@ -259,3 +259,23 @@ def test_an_answer_resets_the_count_of_failed_requests():
             outcomes.append("failed")
     assert outcomes == ["failed", "failed", 200, "failed", "failed", "failed"]
     assert client.calls == {"ecb": 6}
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [("120", 120.0), (" 7 ", 7.0), ("²", None), ("٣", None), ("1.5", None), ("-1", None), ("", None)],
+)
+def test_retry_after_in_seconds_is_ascii_digits_only(value, expected):
+    # "²" (superscript two) passes str.isdigit() and reaches httpx as latin-1; float() refuses it
+    response = httpx.Response(503, headers=[(b"Retry-After", value.encode("utf-8"))])
+    assert retry_after(response) == expected
+
+
+def test_a_retry_after_that_is_not_a_number_falls_back_to_the_usual_wait():
+    superscript = "²".encode("latin-1")
+    answers = iter([httpx.Response(503, headers=[(b"Retry-After", superscript)]), httpx.Response(200)])
+    waits = []
+    transport = httpx.MockTransport(lambda _request: next(answers))
+    client = Client(transport=transport, sleep=waits.append, clock=lambda: 0.0)
+    assert client.get("ecb", "https://example.test/x", per_minute=6_000_000).status_code == 200
+    assert [wait for wait in waits if wait >= 1.0] == [2.0]

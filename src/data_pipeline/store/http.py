@@ -40,7 +40,7 @@ def retry_after(response: httpx.Response) -> float | None:
     """The seconds an answer asks to wait before the next request (its Retry-After, in seconds or
     as an HTTP date), or None when it does not say."""
     value = response.headers.get("Retry-After", "").strip()
-    if value.isdigit():
+    if value.isascii() and value.isdigit():  # isdigit() alone takes "²", which float() refuses
         return float(value)
     try:
         moment = email.utils.parsedate_to_datetime(value)
