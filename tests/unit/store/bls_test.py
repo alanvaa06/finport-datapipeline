@@ -9,7 +9,7 @@ from data_pipeline import credentials as keys
 from data_pipeline.credentials import Credentials
 from data_pipeline.store.errors import QuotaExhaustedError
 from data_pipeline.store.model import Frequency, Outcome, Request
-from data_pipeline.store.sources.bls import Bls, groups, windows
+from data_pipeline.store.sources.bls import Bls, absent, groups, windows
 
 from .helpers import client, entry
 
@@ -160,6 +160,41 @@ def test_a_series_the_api_says_does_not_exist_ends_its_walk_at_once():
     failure = fetch(server, [Request(bls("NOPE"))])[0].failures[0]
     assert len(server.calls) == 1
     assert (failure.outcome, failure.reason) == (Outcome.NOT_FOUND, "Series does not exist for Series NOPE")
+
+
+@pytest.mark.parametrize(
+    ("note", "said"),
+    [
+        ("Series does not exist for Series CUUR0000SA0E1", False),  # another series whose id starts with it
+        ("Series does not exist for Series XCUUR0000SA0", False),
+        ("Series does not exist for Series CUUR0000SA0", True),
+        ("Series does not exist for Series CUUR0000SA0.", True),
+        ("Series does not exist for Series CUUR0000SA0, CUUR0000SA0E1", True),
+    ],
+)
+def test_a_note_is_about_a_series_only_when_it_names_its_whole_id(note, said):
+    assert absent("CUUR0000SA0", [note]) is said
+
+
+def test_a_series_is_not_taken_for_absent_by_the_note_of_one_whose_id_it_starts():
+    # CUUR0000SA0 has data only before the first window; CUUR0000SA0E1 does not exist
+    server = Server({"CUUR0000SA0": {(2001, "M01"): "177.1"}})
+    batch = fetch(server, [Request(bls("CUUR0000SA0")), Request(bls("CUUR0000SA0E1"))])[0]
+    assert [series.key for series in batch.series] == ["bls:CUUR0000SA0"]
+    assert [(failure.entry.source_id, failure.reason) for failure in batch.failures] == [
+        ("CUUR0000SA0E1", "Series does not exist for Series CUUR0000SA0E1")
+    ]
+
+
+def test_a_series_without_data_is_not_given_the_note_of_another():
+    server = Server({"CUUR0000SA0": {}})
+    since = datetime.date(2026, 1, 1)  # one group, one window
+    (batch,) = fetch(server, [Request(bls("CUUR0000SA0"), since), Request(bls("CUUR0000SA0E1"), since)])
+    assert len(server.calls) == 1
+    assert {failure.entry.source_id: failure.reason for failure in batch.failures} == {
+        "CUUR0000SA0": "BLS returned no observations for this series",
+        "CUUR0000SA0E1": "Series does not exist for Series CUUR0000SA0E1",
+    }
 
 
 def test_a_declared_start_replaces_the_walk_back():

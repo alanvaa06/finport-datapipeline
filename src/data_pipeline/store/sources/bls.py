@@ -18,6 +18,7 @@ Annual averages (period codes M13 and Q05) are ignored: they would share a date 
 """
 
 import datetime
+import re
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from typing import Any
 
@@ -95,9 +96,15 @@ def groups(requests: Sequence[Request]) -> list[tuple[int | None, list[Request]]
     ]
 
 
+def mentions(note: str, series_id: str) -> bool:
+    """Whether a note of the API names this series: its whole id, not the start of a longer one
+    (CUUR0000SA0 is not named by a note about CUUR0000SA0E1)."""
+    return re.search(rf"(?<![A-Za-z0-9]){re.escape(series_id)}(?![A-Za-z0-9])", note) is not None
+
+
 def absent(series_id: str, messages: Sequence[str]) -> bool:
     """Whether the API said that this series does not exist."""
-    return any(series_id in note and DOES_NOT_EXIST in note.lower() for note in messages)
+    return any(mentions(note, series_id) and DOES_NOT_EXIST in note.lower() for note in messages)
 
 
 def windows(first: int, last: int) -> list[tuple[int, int]]:
@@ -240,7 +247,7 @@ class Bls:
     ) -> SeriesData | Failure:
         entry = request.entry
         if not raw:
-            said = next((note for note in messages if entry.source_id in note), NO_DATA)
+            said = next((note for note in messages if mentions(note, entry.source_id)), NO_DATA)
             return Failure(entry, Outcome.NOT_FOUND, said)
         letters = {letter for letter, _, _, _ in raw}
         letter = next((candidate for candidate in PREFERENCE if candidate in letters), None)
