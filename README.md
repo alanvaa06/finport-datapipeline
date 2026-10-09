@@ -79,6 +79,12 @@ bundled one. Ids and aliases are read as the text you write (`0123` stays `0123`
 `sync --source fred` and `sync --key fred:UNRATE` (both repeatable) sync only part of the
 catalog; `--full` asks for each series' whole history again and stores only what changed.
 
+A series the source starts sending at another frequency (say you corrected a catalog's
+`frequency: Q` to `M`) fails with a reason that names the way out: `sync --full --key <key>`.
+That sync stores it at the new frequency and gives each old period a missing value, so `series`
+and `frame` read only the new periods, while `as_of` a date before it still reads the old ones
+and `revisions` lists them. Nothing is deleted.
+
 `sync` exits with 0 when everything is up to date, 1 when there were failures, 2 for a
 configuration error (an unknown `--source` or `--key` included) and 3 when a quota stopped it (run it again tomorrow). If a source is down,
 the store keeps what it already had; after three requests in a row fail, the rest of its series

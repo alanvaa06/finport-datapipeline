@@ -8,12 +8,17 @@ is interrupted), so an interrupted run keeps what it already downloaded. A serie
 keeps its previous data; the failure is recorded in the index. A source that breaks (a bug, a
 damaged file) fails its own unfinished entries and the run goes on with the next source; its
 calls are recorded in runs.json even when the run is interrupted.
+
+A stored series the source now sends at another frequency fails and keeps its data, unless the
+sync is full: then it is stored at the new frequency, and each old period gets a missing value
+(it leaves the current data; as_of before that sync still reads it). Nothing is deleted.
 """
 
 import contextlib
 import dataclasses
 import datetime
 import json
+import math
 import os
 import pathlib
 import socket
@@ -238,19 +243,52 @@ def last_real(observations: pd.DataFrame, today: datetime.date) -> dict[str, Las
     }
 
 
-def _frequency_change(series: SeriesData, previous: Row | None) -> str:
-    """The failure of a stored series that the source now sends with another frequency, or "".
+def _held_frequency(series: SeriesData, previous: Row | None) -> str:
+    """The frequency the store holds a series at, when the source now sends it at another; or ""."""
+    held = str(previous.get("frequency") or "") if previous else ""
+    return "" if held == series.frequency.value else held
+
+
+def _frequency_change(series: SeriesData, held: str) -> str:
+    """Why a sync that is not full refuses a stored series the source now sends at another
+    frequency, and the way out.
 
     Its periods are not stored: months next to quarters under one key would both stay current
-    (no new month replaces an old one), so series() would mix them and frame() repeat dates.
+    (no new month replaces an old one), so series() would mix them and frame() repeat dates. A
+    full sync of the key stores it at the new frequency and retires the old periods (see
+    retired_rows).
     """
-    held = str(previous.get("frequency") or "") if previous else ""
-    if not held or held == series.frequency.value:
-        return ""
+    new = series.frequency.value
     return (
-        f"{Outcome.SOURCE_ERROR.value}: the source now sends this series as {series.frequency.value}; "
-        f"the store holds it as {held} and keeps that data. One key cannot hold two frequencies"
+        f"{Outcome.SOURCE_ERROR.value}: the source now sends this series as {new}; "
+        f"the store holds it as {held} and keeps that data. One key cannot hold two frequencies: "
+        f"to store it as {new}, sync it with full (data-pipeline sync --full --key {series.key}, "
+        f"or Store.sync(keys=[{series.key!r}], full=True)); its {held} periods then leave its "
+        "current data and stay readable with as_of"
     )
+
+
+def retired_rows(stored: pd.DataFrame, series: SeriesData, fetched_at: datetime.datetime) -> list[Row]:
+    """A missing value, fetched at `fetched_at`, for each period of `series` that has a value in
+    `stored` and that the source no longer sends. A missing value is how the store says a period
+    has none now: series() and frame() leave it out, while every stored version stays, so as_of
+    before `fetched_at` still reads it. A full sync appends these for a series whose frequency
+    changed, so the old periods leave its current data without deleting anything."""
+    current = latest(stored[stored["key"] == series.key])
+    sent = {observation.period for observation in series.observations}
+    return [
+        {
+            "key": series.key,
+            "period": period,
+            "date": date,
+            "value": math.nan,
+            "projection": False,
+            "fetched_at": fetched_at,
+            "published_at": None,
+        }
+        for period, date, value in zip(current["period"], current["date"], current["value"], strict=True)
+        if period not in sent and pd.notna(value)
+    ]
 
 
 def _since(entry: CatalogEntry, row: Row | None, last: LastReal | None) -> datetime.date | None:
@@ -584,10 +622,13 @@ class _Checkpoints:
     def __post_init__(self) -> None:
         self.last = self.monotonic()
 
-    def keep(self, series: Sequence[SeriesData]) -> None:
-        """Hold downloaded series until the next checkpoint."""
+    def keep(self, series: Sequence[SeriesData], moved: Collection[str] = ()) -> None:
+        """Hold downloaded series until the next checkpoint. A series in `moved` is stored at a
+        new frequency: its old periods are retired (see retired_rows)."""
         received_at = self.clock()
         for item in series:
+            if item.key in moved:
+                self.rows.extend(retired_rows(self.observations, item, received_at))
             self.rows.extend(observation_rows(item, received_at, received_at.date()))
             self.series.append((item, received_at))
 
@@ -655,13 +696,16 @@ def _sync_source(
         try:
             for batch in source.fetch(requests):
                 fresh = [series for series in batch.series if series.key not in done]
-                moved = {series.key: _frequency_change(series, index.get(series.key)) for series in fresh}
-                checkpoints.keep([series for series in fresh if not moved[series.key]])
+                held = {series.key: _held_frequency(series, index.get(series.key)) for series in fresh}
+                moved = {key for key, frequency in held.items() if frequency}
+                # A full sync stores a series at its new frequency; any other refuses it.
+                refused = {} if full else {s.key: _frequency_change(s, held[s.key]) for s in fresh if s.key in moved}
+                checkpoints.keep([series for series in fresh if series.key not in refused], moved)
                 for series in fresh:
                     done.add(series.key)
-                    if moved[series.key]:
-                        failed.append((series.key, moved[series.key]))
-                        checkpoints.failed(series.entry, moved[series.key])
+                    if series.key in refused:
+                        failed.append((series.key, refused[series.key]))
+                        checkpoints.failed(series.entry, refused[series.key])
                     else:
                         ok += 1
                 for failure in batch.failures:

@@ -146,7 +146,14 @@ class Store:
         *,
         full: bool = False,
     ) -> SyncReport:
-        """Download what the catalog declares and store what changed."""
+        """Download what the catalog declares and store what changed: of the `sources` and the
+        `keys` given, or all of it.
+
+        `full` asks each series for its whole history again. It is also how a series whose
+        frequency changed (say a catalog's `frequency: Q` corrected to `M`) is stored again, which
+        any other sync refuses: its old periods get a missing value, so `series` and `frame` read
+        only the new frequency, while `as_of` a moment before still reads the old periods.
+        """
         credentials = resolve(self._credentials, env_file=self._env_file)
         with Client(secrets=credentials.secrets(), transport=self._transport, sleep=self._sleep) as client:
             instances = {
