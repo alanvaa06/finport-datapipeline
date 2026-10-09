@@ -9,8 +9,10 @@ the source lists the company's filings and downloads the ones that are missing, 
 one filing a batch, so a run that stops resumes by itself. A filing that fails (a file the SEC
 lists but does not have, an answer that cannot be read, a name the store refuses, a network
 failure) is recorded as the company's failure and skipped, so it never holds back the filings
-after it; the next run asks for it again. After MAX_NETWORK_FAILURES network failures the SEC
-is taken to be unreachable and the rest of the company waits for the next run.
+after it; the next run asks for it again. Names are checked before anything of a filing is
+downloaded: the store takes plain file names only (model.check_name). After
+MAX_NETWORK_FAILURES network failures the SEC is taken to be unreachable and the rest of the
+company waits for the next run.
 """
 
 import dataclasses
@@ -34,6 +36,7 @@ from data_pipeline.store.model import (
     Kind,
     Outcome,
     Request,
+    check_name,
 )
 from data_pipeline.store.sources.base import missing_key, reject_params, utc_today
 from data_pipeline.store.sources.sec import (
@@ -135,6 +138,17 @@ def missing(filings: Sequence[Filing], chosen: Settings, stored: Collection[str]
         if filing.form.upper() in chosen.forms and filing.filed >= chosen.start and filing.accession not in stored
     }
     return sorted(found.values(), key=lambda filing: (filing.filed, filing.accession))
+
+
+def _plain(name: str, what: str, listed: str | None = None) -> str:
+    """`name` when the store takes it as a file or folder name (model.check_name), else the
+    AnswerError that fails its filing. `listed` is the name as the SEC wrote it."""
+    try:
+        check_name(name)
+    except ValueError:
+        msg = f"the SEC lists {what} {listed if listed is not None else name!r}, not a plain file name"
+        raise AnswerError(msg) from None
+    return name
 
 
 def exhibits(items: Sequence[Mapping[str, Any]], primary: str) -> list[str]:
@@ -254,6 +268,9 @@ class SecFilings:
         return str(root.get("name") or ""), filings
 
     def _document(self, edgar: Edgar, cik: str, filing: Filing) -> Document:
+        """One filing's files. Every name is checked before anything is downloaded: one the store
+        would refuse fails this filing alone."""
+        _plain(filing.accession, "a filing numbered")
         folder = filing.accession.replace("-", "")
         primary = filing.primary or f"{filing.accession}.txt"  # no primary document: the complete filing
         names = [(primary, PRIMARY)]
@@ -261,14 +278,15 @@ class SecFilings:
             listing = edgar.json(ARCHIVE_URL.format(cik=int(cik), folder=folder, file="index.json"))
             items = [] if listing is None else listing["directory"]["item"]
             names.extend((name, EXHIBIT) for name in exhibits(items, pathlib.PurePosixPath(primary).name))
+        stored = [_plain(pathlib.PurePosixPath(name).name, "a file named", name) for name, _ in names]
         files = []
-        for name, role in names:
+        for (name, role), file in zip(names, stored, strict=True):
             url = ARCHIVE_URL.format(cik=int(cik), folder=folder, file=name)
             response = edgar.get(url)
             if response is None:
                 msg = f"the SEC lists {name} but does not have it"
                 raise AnswerError(msg)
-            files.append(DocumentFile(pathlib.PurePosixPath(name).name, response.content, url, role))
+            files.append(DocumentFile(file, response.content, url, role))
         return Document(
             group=filing.accession,
             date=filing.filed,

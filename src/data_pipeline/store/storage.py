@@ -25,6 +25,7 @@ import pandas as pd
 
 from data_pipeline._files import ReplaceRefusedError, write_atomic
 from data_pipeline.store.errors import StoreError
+from data_pipeline.store.model import check_name
 
 SCHEMA_VERSION = 1
 STORE_FILE = "store.json"
@@ -538,6 +539,12 @@ class Storage:
         )
 
     def document_path(self, source: str, name: str, group: str, file: str) -> pathlib.Path:
+        """Where one file of a document lives. `group` and `file` come from a source's answer, so
+        each must be a plain name (model.check_name): no separator of either kind, no `..`, no
+        drive, no device name; ValueError otherwise. `source` and `name` are the store's own
+        source name and a catalog id its source has checked."""
+        for part in (group, file):
+            check_name(part)
         return self.root / DOCUMENTS_DIR / source / name / group / file
 
     def document_names(self, source: str) -> list[str]:

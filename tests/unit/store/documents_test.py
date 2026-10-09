@@ -9,8 +9,12 @@ from data_pipeline.store.storage import DOCUMENT_COLUMNS, Storage, document_rows
 
 from .helpers import NOW
 
+BACK = chr(92)  # a backslash
 
-@pytest.mark.parametrize("name", ["aapl-20230930.htm", "0000320193-23-000106", "a_b.c-d", "R2.htm"])
+
+@pytest.mark.parametrize(
+    "name", ["aapl-20230930.htm", "0000320193-23-000106", "a_b.c-d", "R2.htm", "console.htm", "COM10.htm", "nul-1.htm"]
+)
 def test_a_plain_name_is_safe(name):
     check_name(name)
 
@@ -19,6 +23,34 @@ def test_a_plain_name_is_safe(name):
 def test_a_name_that_could_leave_its_folder_is_refused(name):
     with pytest.raises(ValueError, match="unsafe file name"):
         check_name(name)
+
+
+@pytest.mark.parametrize("name", ["CON", "nul.htm", "Aux.tar.gz", "com1.htm", "LPT9", "prn", "a.htm.", "..."])
+def test_a_name_windows_keeps_for_a_device_or_cuts_short_is_refused(name):
+    # NUL.htm is the null device on Windows, and Windows drops a final dot: a.htm. would be a.htm
+    with pytest.raises(ValueError, match="unsafe file name"):
+        check_name(name)
+
+
+@pytest.mark.parametrize(
+    ("group", "file"),
+    [
+        ("0001", BACK.join(["..", "..", "x.htm"])),
+        ("0001", "../x.htm"),
+        ("0001", "C:x.htm"),
+        ("0001", ""),
+        ("0001", "nul.htm"),
+        ("..", "x.htm"),
+        (BACK.join(["..", "0001"]), "x.htm"),
+    ],
+)
+def test_the_storage_refuses_a_document_path_that_is_not_plain_names(tmp_path, group, file):
+    storage = Storage(tmp_path / "store")
+    with pytest.raises(ValueError, match="unsafe file name"):
+        storage.document_path("sec_filings", "AAPL", group, file)
+    with pytest.raises(ValueError, match="unsafe file name"):
+        storage.write_document("sec_filings", "AAPL", group, file, b"x")
+    assert not any(path.is_file() for path in tmp_path.rglob("*"))
 
 
 def test_files_and_documents_check_their_names_when_built():

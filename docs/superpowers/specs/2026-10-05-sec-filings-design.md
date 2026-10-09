@@ -86,8 +86,14 @@ A filing that fails (a file the SEC lists but does not have, an answer that cann
 file name the store refuses, a network failure) fails the company for this run with the
 filing's accession number in the reason, and the source goes on with the next filing: one
 filing that always fails never holds back the ones filed after it. The third network failure in
-one company's run ends that company's run, since the SEC is then likely unreachable. `sync(full=True)` changes nothing for documents: a
-stored filing is never asked for again.
+one company's run ends that company's run, since the SEC is then likely unreachable.
+
+The store takes plain file names only: letters, digits, `.`, `_` and `-`, with no separator of
+either kind, no `..`, no drive, no final dot and no name Windows keeps for a device (`NUL.htm`).
+`Storage.document_path` refuses anything else, and the source checks every name of a filing
+before downloading any of it, so a listing item such as `..\..\x.htm` fails that filing alone.
+
+`sync(full=True)` changes nothing for documents: a stored filing is never asked for again.
 
 `requests_per_minute = 300`, no daily budget. HTTP 403 and a persistent 429 stop the source, as
 for `sec_xbrl`. An unknown ticker fails that entry with `NOT_FOUND`.

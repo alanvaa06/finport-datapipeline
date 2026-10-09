@@ -300,7 +300,25 @@ def test_a_name_the_store_refuses_fails_only_its_filing():
     assert groups(batches) == [ANNUAL, EVENT, AMENDED]
     ((outcome, reason),) = failures(batches)
     assert outcome is Outcome.SOURCE_ERROR
-    assert reason.startswith(f"{odd}: unexpected answer (ValueError: unsafe file name")
+    assert reason == f"{odd}: the SEC lists a file named 'quarterly report.htm', not a plain file name"
+    assert "quarterly report.htm" not in sec.paths()  # refused before it is downloaded
+
+
+def test_an_exhibit_named_to_leave_its_folder_fails_its_filing_before_any_download():
+    escape = chr(92).join(["..", "..", "evil.htm"])  # a backslash path: on Windows it leaves the folder
+    sec = Sec()
+
+    def handler(request):
+        if request.url.path.endswith("/000032019326000005/index.json"):
+            return httpx.Response(200, json={"directory": {"item": [*FOLDER, {"name": escape}]}})
+        return sec(request)
+
+    batches = fetch(handler, [Request(company())])
+    assert groups(batches) == [ANNUAL, AMENDED]
+    assert failures(batches) == [
+        (Outcome.SOURCE_ERROR, f"{EVENT}: the SEC lists a file named {escape!r}, not a plain file name")
+    ]
+    assert {"aapl-8k.htm", "a8-kex991q1.htm"}.isdisjoint(sec.paths())  # nothing of that filing was downloaded
 
 
 def test_three_network_failures_end_the_company_for_this_run():

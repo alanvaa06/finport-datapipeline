@@ -133,12 +133,17 @@ class TableData:
 
 
 SAFE_NAME = re.compile(r"[A-Za-z0-9._-]+")
+# Names Windows keeps for devices, with any extension (NUL.htm is the null device there)
+DEVICE_NAMES = frozenset({"CON", "PRN", "AUX", "NUL", *(f"{port}{n}" for port in ("COM", "LPT") for n in range(1, 10))})
 
 
 def check_name(name: str) -> None:
-    """Raise ValueError unless `name` can be a file or folder name inside the store: letters,
-    digits, `.`, `_` and `-`, and not `.` or `..`. A source's name never chooses another place."""
-    if not SAFE_NAME.fullmatch(name) or name in {".", ".."}:
+    """Raise ValueError unless `name` can be a file or folder name inside the store on every
+    system: letters, digits, `.`, `_` and `-` only (so no separator, `/` or `\\`, and no drive),
+    not ending in `.` (which also refuses `.` and `..`; Windows drops a final dot, so `a.htm.`
+    would be `a.htm`), and not a name Windows keeps for a device (`CON`, `nul.htm`, `COM1`). A
+    source's name never chooses another place."""
+    if not SAFE_NAME.fullmatch(name) or name.endswith(".") or name.split(".")[0].upper() in DEVICE_NAMES:
         msg = f"unsafe file name {name!r}"
         raise ValueError(msg)
 
