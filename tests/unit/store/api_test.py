@@ -206,7 +206,8 @@ def test_sync_can_be_restricted(world):
     store.sync(keys=["fred:DGS10"])
     assert sorted(store.index()["key"]) == ["fred:DGS10"]
     assert server.requests == 3  # metadata, the vintages ALFRED does not keep, the observations
-    assert store.sync(sources=["bls"]).sources == ()
+    with pytest.raises(StoreError, match="no catalog entry has source 'bls'"):
+        store.sync(sources=["bls"])
 
 
 def test_add_with_an_unknown_source_fails_at_sync(world):
@@ -340,3 +341,36 @@ def test_an_alias_the_catalog_moved_to_a_series_not_stored_yet_asks_for_a_sync(w
     (tmp_path / "moved.yaml").write_text(moved, encoding="utf-8")
     with pytest.raises(UnknownSeriesError, match=r"fred:PAYEMS.*sync"):
         Store(tmp_path / "store", tmp_path / "moved.yaml").series("usa.empleo.desempleo")
+
+
+def test_a_sync_that_crosses_midnight_dates_each_series_by_its_own_download(world, tmp_path):
+    _, server, _ = world
+    store = Store(
+        tmp_path / "store",
+        tmp_path / "catalog.yaml",
+        env_file=tmp_path / ".env",
+        clock=lambda: NOW + datetime.timedelta(hours=3 * server.requests),  # each request takes three hours
+        transport=httpx.MockTransport(server),
+        sleep=lambda _seconds: None,
+    )
+    store.sync()
+    assert not store.series("fred:UNRATE", as_of="2026-06-06").empty
+    assert store.series("fred:DGS10", as_of="2026-06-06").empty  # downloaded after midnight UTC
+    assert not store.series("fred:DGS10", as_of="2026-06-07").empty
+
+
+def test_a_source_that_is_down_is_given_up_after_three_series(tmp_path):
+    def down(request):
+        msg = "timed out"
+        raise httpx.ReadTimeout(msg, request=request)
+
+    env = tmp_path / "empty.env"
+    env.write_text("", encoding="utf-8")
+    store = Store(tmp_path / "store", env_file=env, transport=httpx.MockTransport(down), sleep=lambda _seconds: None)
+    store.add("dbnomics", [f"IMF/IFS/M.X{number}.PCPI_IX" for number in range(30)])
+    report = store.sync()
+    (dbnomics,) = report.sources
+    assert dbnomics.calls == 12  # three series of four attempts, instead of 120
+    assert len(dbnomics.failed) == 30
+    assert all(reason.startswith("network_error: ") for _, reason in dbnomics.failed)
+    assert report.exit_code == 1

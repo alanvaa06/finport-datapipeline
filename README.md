@@ -81,7 +81,9 @@ data-pipeline show e_us_cpi --root D:/data
 `catalog` finds series in a catalog (the bundled `macro` by default) by alias, name or key, and
 can narrow them with `--source` and `--region`. It needs no store, no key and no network.
 
-`--catalog` takes the name of a bundled catalog (`macro`) or the path to your own YAML file:
+`--catalog` takes the name of a bundled catalog (`macro`) or the path to your own YAML file. A
+file of the same name in the folder wins over a bundled catalog; `bundled:macro` always means the
+bundled one. Ids and aliases are read as the text you write (`0123` stays `0123`, `NO` stays `NO`):
 
 ```yaml
 - source: fred
@@ -90,9 +92,20 @@ can narrow them with `--source` and `--region`. It needs no store, no key and no
     UNRATE: us.unemployment
 ```
 
+`sync --source fred` and `sync --key fred:UNRATE` (both repeatable) sync only part of the
+catalog; `--full` asks for each series' whole history again and stores only what changed.
+
+A series the source starts sending at another frequency (say you corrected a catalog's
+`frequency: Q` to `M`) fails with a reason that names the way out: `sync --full --key <key>`.
+That sync stores it at the new frequency and gives each old period a missing value, so `series`
+and `frame` read only the new periods, while `as_of` a date before it still reads the old ones
+and `revisions` lists them. Nothing is deleted.
+
 `sync` exits with 0 when everything is up to date, 1 when there were failures, 2 for a
-configuration error and 3 when a quota stopped it (run it again tomorrow). If a source is down,
-the store keeps what it already had.
+configuration error (an unknown `--source` or `--key` included) and 3 when a quota stopped it (run it again tomorrow). If a source is down,
+the store keeps what it already had; after three requests in a row fail, the rest of its series
+are not asked in that run and fail with `network_error`. A source that breaks (an unexpected answer, a damaged file)
+fails its own series and the run goes on with the next source.
 
 `status` gives each series a state: `ok`, `stale`, `missing` or `failed`, and exits with 1
 unless every one is `ok`. A series is stale when its last period ended more than 10 days ago for
@@ -118,8 +131,13 @@ store.documents("sec_filings", "AAPL", form="10-K")  # the files on disk, with t
 ### Reading as of a past date
 
 `as_of` returns, for each period, the last value known by the end of that day. A value is known
-from the day its source published it, when the source says so; otherwise from the day the store
-fetched it.
+from the day its source published it, when the source says so; otherwise from the moment the
+store downloaded it.
+
+A date without a time (`"2026-06-15"`, `"20260615"` or a `datetime.date`) means the end of that
+day, UTC. With a time (`"2026-06-15T08:00Z"`), or as a `datetime` or pandas `Timestamp` (even at
+midnight), it is that instant, UTC when it has no zone. Other text, such as `"2026/06/15"`, is
+refused with an error (exit 2 for `show --as-of`).
 
 - **FRED series kept in ALFRED** (most macro series, such as `UNRATE`, `GDP`, `CPIAUCSL`,
   `DGS10`): every vintage is stored with the day FRED published it, so `as_of` works back to

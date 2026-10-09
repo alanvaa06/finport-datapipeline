@@ -181,7 +181,7 @@ class Bls:
             per_minute=self.requests_per_minute,
         )
         if response.status_code != OK:
-            msg = f"HTTP {response.status_code}: {self._client.scrub(response.text[:300])}"
+            msg = f"HTTP {response.status_code}: {self._client.excerpt(response.text, 300)}"
             raise _GroupError(msg)
         payload: dict[str, Any] = response.json()
         notes = [self._client.scrub(str(note)) for note in payload.get("message") or [] if note]

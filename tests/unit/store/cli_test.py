@@ -8,7 +8,7 @@ import pytest
 from data_pipeline.store import cli as cli_module
 from data_pipeline.store.api import Store
 from data_pipeline.store.cli import cli
-from data_pipeline.store.sync import LOCK_FILE
+from data_pipeline.store.sync import lock
 
 from .helpers import NOT_IN_ALFRED, NOW
 
@@ -86,6 +86,17 @@ def test_failures_exit_one(workspace):
     assert "fred:NOPE  not_found:" in result.output
 
 
+def test_key_syncs_only_the_series_named(workspace):
+    root, _ = workspace
+    (root / "catalog.yaml").write_text("- source: fred\n  ids: [UNRATE, NOPE]\n", encoding="utf-8")
+    result = invoke("sync", "--root", str(root / "store"), "--key", "fred:UNRATE")
+    assert result.exit_code == 0
+    assert result.output.startswith("[ok]  fred        1 series")
+    typo = invoke("sync", "--root", str(root / "store"), "--key", "fred:UNRAT")
+    assert typo.exit_code == 2
+    assert "no catalog entry has key 'fred:UNRAT'" in typo.output
+
+
 def test_a_missing_key_is_a_clear_message_without_a_traceback(workspace):
     root, _ = workspace
     result = invoke("sync", "--root", str(root / "store"), "--env-file", str(root / "absent.env"))
@@ -102,11 +113,27 @@ def test_configuration_errors_exit_two(workspace):
     missing = invoke("sync", "--root", str(root / "store"), "--catalog", str(root / "absent.yaml"))
     assert missing.exit_code == 2
     assert "the catalog file does not exist" in missing.output
-    (root / "store").mkdir()
-    (root / "store" / LOCK_FILE).write_text("1", encoding="ascii")
-    locked = invoke("sync", "--root", str(root / "store"))
+    with lock(root / "store"):
+        locked = invoke("sync", "--root", str(root / "store"))
     assert locked.exit_code == 2
-    assert "Delete it by hand" in locked.output
+    assert "another sync is running" in locked.output
+
+
+def test_a_damaged_store_file_is_a_configuration_error_that_names_it(workspace):
+    root, _ = workspace
+    invoke("sync", "--root", str(root / "store"))
+    (root / "store" / "runs.json").write_text("{", encoding="utf-8")  # torn by a power cut
+    result = invoke("sync", "--root", str(root / "store"))
+    assert result.exit_code == 2
+    assert "runs.json: cannot be read" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_an_unknown_source_exits_two_and_names_it(workspace):
+    root, _ = workspace
+    result = invoke("sync", "--root", str(root / "store"), "--source", "fredd")
+    assert result.exit_code == 2
+    assert result.output.splitlines() == ["[x]   no catalog entry has source 'fredd' (sources in the catalog: fred)"]
 
 
 def test_status_lists_each_series_and_exits_by_freshness(workspace):
@@ -145,6 +172,9 @@ def test_show_as_of_and_unknown_keys(workspace):
     invoke("sync", "--root", str(root / "store"))
     before = invoke("show", "fred:UNRATE", "--root", str(root / "store"), "--as-of", "2026-01-01")
     assert before.output.splitlines()[2:] == []
+    malformed = invoke("show", "fred:UNRATE", "--root", str(root / "store"), "--as-of", "2026/06/15")
+    assert malformed.exit_code == 2
+    assert "is not a date" in malformed.output
     unknown = invoke("show", "fred:NOPE", "--root", str(root / "store"))
     assert unknown.exit_code == 2
     assert unknown.output == "[x]   no stored series has key 'fred:NOPE'\n"

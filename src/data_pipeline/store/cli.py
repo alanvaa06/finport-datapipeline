@@ -51,6 +51,7 @@ def cli() -> None:
 @root_option
 @click.option("--catalog", type=PATH, default=pathlib.Path("catalog.yaml"), show_default=True, help="YAML catalog.")
 @click.option("--source", "sources", multiple=True, help="Sync only this source. Repeatable.")
+@click.option("--key", "keys", multiple=True, help="Sync only this series, such as fred:UNRATE. Repeatable.")
 @click.option("--full", is_flag=True, help="Ask for every series' whole history again; store only what changed.")
 @click.option(
     "--env-file",
@@ -63,12 +64,13 @@ def sync_command(
     root: pathlib.Path,
     catalog: pathlib.Path,
     sources: tuple[str, ...],
+    keys: tuple[str, ...],
     full: bool,
     env_file: pathlib.Path | None,
 ) -> None:
     """Download what the catalog declares and store what changed."""
     try:
-        report = open_store(root, catalog, env_file).sync(sources=sources or None, full=full)
+        report = open_store(root, catalog, env_file).sync(sources=sources or None, keys=keys or None, full=full)
     except StoreError as exc:
         raise fail(exc) from exc
     for line in report.lines():
@@ -145,7 +147,11 @@ def _matches(entry: CatalogEntry, query: str, source: str | None, region: str | 
 @cli.command("catalog")
 @click.argument("query", default="")
 @click.option(
-    "--catalog", type=PATH, default=pathlib.Path("macro"), show_default=True, help="A bundled catalog or a YAML file."
+    "--catalog",
+    type=PATH,
+    default=pathlib.Path("bundled:macro"),
+    show_default=True,
+    help="A bundled catalog (bundled:NAME) or a YAML file.",
 )
 @click.option("--source", default=None, help="Only the series of this source.")
 @click.option("--region", default=None, help="Only the series of this region, such as MX.")

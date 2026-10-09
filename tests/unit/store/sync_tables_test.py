@@ -227,3 +227,20 @@ def test_the_daily_budget_stops_the_source_between_batches(tmp_path):
     assert (report.sources[0].calls, report.sources[0].quota_exhausted) == (0, True)
     report = run(tmp_path, source, http, now=NEXT_DAY)
     assert report.sources[0].calls == 2
+
+
+def test_each_table_call_is_stamped_with_the_time_it_was_downloaded(tmp_path):
+    http = client()
+    source = FakeTables(http)
+    source.calls["MEX"] = [[row(period="2023")], [row(period="2024")]]
+
+    def clock():
+        return NOW + datetime.timedelta(hours=7 * http.calls.get("trade", 0))
+
+    run(tmp_path, source, http, clock=clock)
+    stored = Storage(tmp_path).read_table("trade", "MEX")
+    stamps = dict(zip(stored["period"], stored["fetched_at"], strict=True))
+    assert stamps == {
+        "2023": pd.Timestamp("2026-06-06 19:00", tz="UTC"),
+        "2024": pd.Timestamp("2026-06-07 02:00", tz="UTC"),
+    }

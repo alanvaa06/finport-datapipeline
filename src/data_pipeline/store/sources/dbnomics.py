@@ -73,7 +73,7 @@ class Dbnomics:
         )
         if response.status_code != OK:
             outcome = Outcome.NOT_FOUND if response.status_code == NOT_FOUND else Outcome.SOURCE_ERROR
-            return Failure(entry, outcome, f"HTTP {response.status_code}: {self._client.scrub(response.text[:300])}")
+            return Failure(entry, outcome, f"HTTP {response.status_code}: {self._client.excerpt(response.text, 300)}")
         documents = response.json()["series"]["docs"]
         if not documents:
             return Failure(entry, Outcome.NOT_FOUND, NO_SERIES)

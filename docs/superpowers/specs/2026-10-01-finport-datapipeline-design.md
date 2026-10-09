@@ -160,7 +160,7 @@ dies midway never leaves a half-written file. A missing file reads as an empty t
 | `date` | date | Last day of the period |
 | `value` | float64 | NaN when the source lists the period without a value. Never a made-up 0 |
 | `projection` | bool | True for forecasts (IMF WEO years after the latest actual year) |
-| `fetched_at` | timestamp, UTC | When this library saw the value. One timestamp per sync run |
+| `fetched_at` | timestamp, UTC | When this library saw the value: the time its batch was downloaded |
 | `published_at` | timestamp, UTC, nullable | When the source published it, when the source says so |
 
 ### Append-only rule
@@ -201,7 +201,8 @@ Limits of as-of reads, stated plainly:
 `frequency`, `units`, `seasonal_adjustment`, `stale_after_days`, `attrs` (JSON text for
 source-specific metadata such as BLS program or NAICS code), `first_fetched_at`,
 `last_fetched_at`, `last_period`, `last_date` (the last day of the last real observation, used
-for freshness), `status` (`ok` or `failed`) and `reason`.
+for freshness), `status` (`ok` or `failed`), `reason` and `asked_from` (the earliest date a
+download of the series asked for; empty for its whole history).
 
 A failed series keeps its previous data and its row records the reason.
 
@@ -334,6 +335,7 @@ One command. `sync()` decides per entry:
 |---|---|
 | Never downloaded | Full history, or from `start` if declared |
 | Already downloaded | From the last stored real period minus the revision window |
+| Already downloaded, `start` now earlier than `asked_from` (or removed) | From `start` (or the full history) |
 
 Revision windows: daily 30 days, weekly 13 weeks, monthly 24 months, quarterly 36 months,
 annual 60 months.
@@ -346,9 +348,11 @@ reworked for its whole history).
 
 Steps of a run:
 
-1. Create `sync.lock` exclusively. If it exists, stop with exit code 2 and a message that names
-   the file and says to delete it by hand if no sync is running. There is no automatic removal
-   of a stale lock.
+1. Take the operating system's lock on `sync.lock` (an exclusive `flock` on POSIX, a byte-range
+   lock on Windows) and write the holder's pid, host and start time in it. While another sync
+   holds it, stop with exit code 2 and a message that names the holder and the file. The system
+   frees the lock when its process ends, however it ends, so a file left behind by a sync that
+   was killed is taken over by the next one.
 2. Load and validate the catalog and the credentials.
 3. For each source in turn: compute each request's `since`, call `fetch`, and for every batch
    merge into `series/<source>.parquet` and update the index.

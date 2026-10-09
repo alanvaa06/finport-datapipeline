@@ -60,7 +60,7 @@ class Edgar:
         if response.status_code == NOT_FOUND:
             return None
         if response.status_code != OK:
-            msg = f"HTTP {response.status_code}: {self._client.scrub(response.text[:200])}"
+            msg = f"HTTP {response.status_code}: {self._client.excerpt(response.text, 200)}"
             raise AnswerError(msg)
         return response
 

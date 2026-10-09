@@ -2,8 +2,11 @@ import datetime
 import json
 
 import pandas as pd
+import pytest
 
-from data_pipeline.store.storage import Storage, TableSchema, append_versions, as_of, latest, table_frame
+from data_pipeline.store import storage as storage_module
+from data_pipeline.store.api import Store
+from data_pipeline.store.storage import Storage, TableSchema, append_versions, as_of, latest, table_frame, to_moment
 
 from .helpers import NOW
 
@@ -112,3 +115,73 @@ def test_a_schema_written_before_versions_existed_reads_as_not_versioned(tmp_pat
     old = {"key_columns": ["reporter", "period"], "value_columns": ["value_usd"]}
     (folder / "schema.json").write_text(json.dumps(old), encoding="utf-8")
     assert Storage(tmp_path).table_schema("comtrade") == TableSchema(("reporter", "period"), ("value_usd",))
+
+
+def test_a_filter_never_revives_a_version_that_was_replaced(tmp_path):
+    merged, _, _ = merge(pd.DataFrame(), [version(100.0, "2024-02-01"), version(90.0, "2024-05-01", form="10-K/A")])
+    Storage(tmp_path).write_table("sec_xbrl", "ACME", merged, SCHEMA)
+    store = Store(tmp_path)
+    assert list(store.table("sec_xbrl", "ACME")["value"]) == [90.0]
+    assert store.table("sec_xbrl", "ACME", form="10-K").empty  # the 10-K's value is no longer current
+    assert store.table("sec_xbrl", "ACME", value=100.0).empty
+    assert list(store.table("sec_xbrl", "ACME", form="10-K/A")["value"]) == [90.0]
+    assert list(store.table("sec_xbrl", "ACME", form="10-K", as_of="2024-03-01")["value"]) == [100.0]
+
+
+def stored_versions(tmp_path):
+    """Three keys of one table, two of them revised by a 10-K/A."""
+    rows = [
+        version(100.0, "2024-02-01"),
+        version(90.0, "2024-05-01", form="10-K/A"),
+        version(7.0, "2024-02-01", concept="Assets"),
+        version(5.0, "2024-11-01", end="2024-09-28"),
+        version(6.0, "2025-01-15", end="2024-09-28", form="10-K/A"),
+    ]
+    merged, _, _ = merge(pd.DataFrame(), rows)
+    Storage(tmp_path).write_table("sec_xbrl", "ACME", merged, SCHEMA)
+    return merged
+
+
+@pytest.mark.parametrize(
+    "filters",
+    [
+        {},
+        {"concept": "Revenues"},
+        {"end": "2024-09-28"},
+        {"concept": "Revenues", "end": "2023-09-30"},
+        {"concept": "Revenues", "form": "10-K"},
+        {"concept": "Revenues", "form": "10-K/A"},
+        {"form": "10-K"},
+        {"value": 90.0},
+        {"concept": "Nope"},
+    ],
+)
+@pytest.mark.parametrize("moment", [None, "2024-03-01", "2024-12-01", "2025-06-01"])
+def test_filters_give_the_rows_of_filtering_after_the_version_is_chosen(tmp_path, filters, moment):
+    merged = stored_versions(tmp_path)
+    order = ["concept", "end", "date"]
+    if moment is None:
+        expected = latest(merged, KEY, order, by_publication=True)
+    else:
+        expected = as_of(merged, to_moment(moment), KEY, order)
+    for column, value in filters.items():
+        expected = expected[expected[column] == value]
+    found = Store(tmp_path).table("sec_xbrl", "ACME", as_of=moment, **filters)
+    pd.testing.assert_frame_equal(found, expected[SCHEMA.columns].reset_index(drop=True))
+
+
+@pytest.mark.parametrize(("chooser", "moment"), [("latest", None), ("as_of", "2025-06-01")])
+def test_filters_on_key_columns_leave_the_other_keys_out_before_a_version_is_chosen(
+    tmp_path, monkeypatch, chooser, moment
+):
+    stored_versions(tmp_path)
+    seen = []
+    real = getattr(storage_module, chooser)
+
+    def spy(frame, *args, **options):
+        seen.append(sorted(set(frame["concept"])))
+        return real(frame, *args, **options)
+
+    monkeypatch.setattr(storage_module, chooser, spy)
+    Store(tmp_path).table("sec_xbrl", "ACME", as_of=moment, concept="Assets", form="10-K")
+    assert seen == [["Assets"]]
