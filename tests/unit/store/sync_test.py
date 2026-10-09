@@ -1,4 +1,5 @@
 import datetime
+import errno
 import math
 import os
 import signal
@@ -9,6 +10,7 @@ import time
 import pandas as pd
 import pytest
 
+from data_pipeline.store import sync as sync_module
 from data_pipeline.store.errors import CatalogError, LockHeldError, StoreError
 from data_pipeline.store.model import Failure, Frequency, Observation, Outcome, SeriesData
 from data_pipeline.store.periods import read_period
@@ -622,3 +624,13 @@ def test_the_budget_day_follows_the_clock_not_the_start_of_the_run(tmp_path):
     runs = Storage(tmp_path).read_runs()
     assert runs["fake"]["budget"] == {"day": "2026-06-07", "calls": 1}
     assert runs["other"]["budget"] == {"day": "2026-06-07", "calls": 1}
+
+
+def test_a_lock_that_fails_for_another_reason_is_an_error_that_names_the_file(tmp_path, monkeypatch):
+    def no_locks(_descriptor):
+        raise OSError(errno.ENOLCK, "No locks available")
+
+    monkeypatch.setattr(sync_module, "try_lock", no_locks)
+    with pytest.raises(StoreError, match=r"sync\.lock: could not be locked \(OSError: .*No locks available") as raised:
+        run(tmp_path, FakeSource())
+    assert not isinstance(raised.value, LockHeldError)

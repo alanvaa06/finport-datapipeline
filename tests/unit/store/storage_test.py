@@ -5,7 +5,7 @@ import math
 import pandas as pd
 import pytest
 
-from data_pipeline.store import storage as storage_module
+from data_pipeline import _files as files_module
 from data_pipeline.store.errors import StoreError
 from data_pipeline.store.storage import (
     INDEX_COLUMNS,
@@ -187,7 +187,7 @@ def test_a_file_held_open_by_a_reader_is_retried_and_then_written(tmp_path, monk
 
     waits = []
     monkeypatch.setattr(type(tmp_path), "replace", busy_twice)
-    monkeypatch.setattr(storage_module, "_sleep", waits.append)
+    monkeypatch.setattr(files_module, "_sleep", waits.append)
     more, _, _ = append_changes(stored, rows({"2026-06": 4.3}, JULY_4))
     storage.write_observations("fred", more)
     assert len(attempts) == 3
@@ -204,7 +204,7 @@ def test_a_file_that_stays_open_is_a_clear_error_and_the_old_data_survives(tmp_p
         raise PermissionError(13, "the file is being used by another process")
 
     monkeypatch.setattr(type(tmp_path), "replace", always_busy)
-    monkeypatch.setattr(storage_module, "_sleep", lambda _seconds: None)
+    monkeypatch.setattr(files_module, "_sleep", lambda _seconds: None)
     more, _, _ = append_changes(stored, rows({"2026-06": 4.3}, JULY_4))
     with pytest.raises(StoreError, match="another program has it open"):
         storage.write_observations("fred", more)
@@ -245,10 +245,10 @@ def test_a_damaged_file_is_a_store_error_that_names_it(tmp_path, name, read):
 
 def test_every_write_reaches_the_disk_before_it_replaces_the_file(tmp_path, monkeypatch):
     events = []
-    real_fsync, real_replace = storage_module.os.fsync, storage_module._replace
-    monkeypatch.setattr(storage_module.os, "fsync", lambda descriptor: events.append("fsync") or real_fsync(descriptor))
+    real_fsync, real_replace = files_module.os.fsync, files_module._replace
+    monkeypatch.setattr(files_module.os, "fsync", lambda descriptor: events.append("fsync") or real_fsync(descriptor))
     monkeypatch.setattr(
-        storage_module, "_replace", lambda temporary, path: events.append("replace") or real_replace(temporary, path)
+        files_module, "_replace", lambda temporary, path: events.append("replace") or real_replace(temporary, path)
     )
     storage = Storage(tmp_path)
     storage.write_observations("fred", rows({"2026-05": 4.1}, JUNE_6))

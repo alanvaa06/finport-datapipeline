@@ -15,15 +15,14 @@ import dataclasses
 import datetime
 import hashlib
 import json
-import os
 import pathlib
-import time
 from collections.abc import Mapping, Sequence
 from typing import Any
 
 import numpy as np
 import pandas as pd
 
+from data_pipeline._files import ReplaceRefusedError, write_atomic
 from data_pipeline.store.errors import StoreError
 
 SCHEMA_VERSION = 1
@@ -392,50 +391,26 @@ def _read(path: pathlib.Path, dtypes: Mapping[str, str]) -> pd.DataFrame:
     return _read_parquet(path)
 
 
-REPLACE_ATTEMPTS = 10
-REPLACE_WAIT = 0.5  # seconds between attempts: about five seconds in all
-_sleep = time.sleep
-
-
-def _replace(temporary: pathlib.Path, path: pathlib.Path) -> None:
-    """Put the finished temporary file in place of the target.
-
-    On Windows the replacement is refused while another program has the target open, which
-    happens when something reads the store during a sync. The reader is given a few seconds to
-    finish; after that the write fails with a clear error and the target keeps its old content.
-    """
-    for attempt in range(1, REPLACE_ATTEMPTS + 1):
-        try:
-            temporary.replace(path)
-        except PermissionError:
-            if attempt == REPLACE_ATTEMPTS:
-                temporary.unlink(missing_ok=True)
-                msg = f"{path}: could not be written because another program has it open; close it and sync again"
-                raise StoreError(msg) from None
-            _sleep(REPLACE_WAIT)
-        else:
-            return
-
-
-def _write_bytes(content: bytes, path: pathlib.Path, temporary: pathlib.Path) -> None:
-    """Write `content` to `temporary`, flush it to the disk, then put it in place of `path`.
-    Without the flush, a power cut after the replacement can leave a target that is torn."""
+def _write_bytes(content: bytes, path: pathlib.Path) -> None:
+    """Put `content` in place of `path` through a temporary file flushed to the disk first (see
+    data_pipeline._files). On Windows the replacement is refused while another program has the
+    target open, which happens when something reads the store during a sync: the reader is given
+    a few seconds to finish; after that the write fails with a clear error and the target keeps
+    its old content."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    with temporary.open("wb") as handle:
-        handle.write(content)
-        handle.flush()
-        os.fsync(handle.fileno())
-    _replace(temporary, path)
+    try:
+        write_atomic(path, content)
+    except ReplaceRefusedError:
+        msg = f"{path}: could not be written because another program has it open; close it and sync again"
+        raise StoreError(msg) from None
 
 
 def _write(frame: pd.DataFrame, path: pathlib.Path) -> None:
-    content = frame.to_parquet(index=False)
-    _write_bytes(content, path, path.with_suffix(path.suffix + ".tmp"))
+    _write_bytes(frame.to_parquet(index=False), path)
 
 
 def _write_json(data: Mapping[str, Any], path: pathlib.Path) -> None:
-    content = json.dumps(data, ensure_ascii=True, indent=2).encode("utf-8")
-    _write_bytes(content, path, path.with_suffix(path.suffix + ".tmp"))
+    _write_bytes(json.dumps(data, ensure_ascii=True, indent=2).encode("utf-8"), path)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -524,7 +499,7 @@ class Storage:
         path = self.document_path(source, name, group, file)
         if path.exists():
             return
-        _write_bytes(content, path, path.with_name(path.name + ".tmp"))
+        _write_bytes(content, path)
 
     def read_documents(self, source: str, name: str) -> pd.DataFrame:
         """The list of an id's documents, one row per file; an empty frame when there is none."""

@@ -17,13 +17,13 @@ import json
 import os
 import pathlib
 import socket
-import sys
 import time
 from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from typing import Any
 
 import pandas as pd
 
+from data_pipeline._files import try_lock, unlock
 from data_pipeline.store.catalog import check_catalog
 from data_pipeline.store.errors import LockHeldError, QuotaExhaustedError, StoreError
 from data_pipeline.store.http import Client
@@ -58,13 +58,7 @@ from data_pipeline.store.storage import (
     typed,
 )
 
-if sys.platform == "win32":
-    import msvcrt
-else:
-    import fcntl
-
 LOCK_FILE = "sync.lock"
-LOCKED_BYTE = 1 << 30  # Windows locks a byte range: one far past the holder's details keeps them readable
 WINDOW_DAYS: Mapping[Frequency, int] = {Frequency.DAILY: 30, Frequency.WEEKLY: 91}
 WINDOW_MONTHS: Mapping[Frequency, int] = {
     Frequency.MONTHLY: 24,
@@ -147,27 +141,21 @@ class SyncReport:
         return [line for report in self.sources for line in report.lines()]
 
 
-def _try_lock(descriptor: int) -> bool:
-    """Take the operating system's lock on an open lock file without waiting. The system releases
-    it when the process ends, however it ends, so a sync that was killed never blocks the next."""
+def _take(descriptor: int, path: pathlib.Path) -> bool:
+    """Take the operating system's lock on an open lock file without waiting (False: another sync
+    holds it). The system releases it when the process ends, however it ends, so a sync that was
+    killed never blocks the next. Any other failure is a StoreError that names the file."""
     try:
-        if sys.platform == "win32":
-            os.lseek(descriptor, LOCKED_BYTE, os.SEEK_SET)
-            msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
-        else:
-            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except OSError:
-        return False
-    return True
+        return try_lock(descriptor)
+    except OSError as exc:
+        os.close(descriptor)
+        msg = f"{path}: could not be locked ({type(exc).__name__}: {exc})"
+        raise StoreError(msg) from exc
 
 
-def _unlock(descriptor: int) -> None:
+def _release(descriptor: int) -> None:
     with contextlib.suppress(OSError):
-        if sys.platform == "win32":
-            os.lseek(descriptor, LOCKED_BYTE, os.SEEK_SET)
-            msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
-        else:
-            fcntl.flock(descriptor, fcntl.LOCK_UN)
+        unlock(descriptor)
     os.close(descriptor)
 
 
@@ -189,7 +177,7 @@ def lock(root: pathlib.Path) -> Iterator[None]:
     root.mkdir(parents=True, exist_ok=True)
     while True:
         descriptor = os.open(path, os.O_RDWR | os.O_CREAT, 0o644)
-        if not _try_lock(descriptor):
+        if not _take(descriptor, path):
             os.close(descriptor)
             msg = f"another sync is running on this store{_holder(path)}: {path}"
             raise LockHeldError(msg)
@@ -199,7 +187,7 @@ def lock(root: pathlib.Path) -> Iterator[None]:
             same = False
         if same:
             break
-        _unlock(descriptor)  # the sync that held it removed the file meanwhile: lock the new one
+        _release(descriptor)  # the sync that held it removed the file meanwhile: lock the new one
     holder = {
         "pid": os.getpid(),
         "host": socket.gethostname(),
@@ -211,7 +199,7 @@ def lock(root: pathlib.Path) -> Iterator[None]:
     try:
         yield
     finally:
-        _unlock(descriptor)
+        _release(descriptor)
         with contextlib.suppress(OSError):  # on Windows a sync that just opened it keeps the file
             path.unlink(missing_ok=True)
 
