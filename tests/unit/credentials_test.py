@@ -333,7 +333,7 @@ def test_an_explicit_env_file_wins_over_the_search_start(tmp_path):
 
 
 def test_a_test_never_finds_an_env_file_outside_its_temp_folder(tmp_path):
-    from tests.conftest import confine_env_search
+    from tests.unit.conftest import confine_env_search
 
     bound = project(tmp_path / "bound")
     outside = project(tmp_path / "outside")

@@ -1,6 +1,13 @@
-# The macro catalog: one entry per series, named by its e_* alias.
-# Series still on DBnomics whose dataset was retired at the origin carry attrs.stale with the
-# reason; scripts/replace_dbnomics_ids.py looks for their replacement at the publisher.
+# The macro catalog: one entry per series, named by its e_* alias. Each name ends with the unit
+# of the values in parentheses; the series of one indicator (the alias without its country) share
+# it, and one that does not says so in attrs.units_differ.
+# attrs.stale marks a series that is not current, with the reason:
+# - every series still on DBnomics, whose dataset was retired at the origin;
+#   scripts/replace_dbnomics_ids.py looks for their replacement at the publisher;
+# - a series at its publisher whose last period, on the day it was checked, was more than one
+#   period behind the store's staleness threshold for its frequency (STALE_AFTER_DAYS in
+#   store/model.py), so it is stale even after the publisher's next release. The note gives the
+#   last period and the day of the check.
 - source: imf
   id: IMF.RES,WEO/ARG.GGXCNL_NGDP.A
   alias: e_ar_budget_balance_gdp
@@ -9,15 +16,14 @@
   attrs:
     region: AR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/IFS/M.AR.PCPI_IX
+- source: imf
+  id: IMF.STA,CPI/ARG.CPI._T.IX.M
   alias: e_ar_cpi
-  name: Argentina CPI (all items, index)
+  name: Argentina CPI, all items (index)
   frequency: M
   attrs:
     region: AR
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
 - source: bis
   id: WS_TC/Q.AR.P.A.M.770.A
   alias: e_ar_credit_private
@@ -119,11 +125,12 @@
 - source: bis
   id: WS_CBPOL/M.AR
   alias: e_ar_policy_rate
-  name: Argentina central-bank policy rate
+  name: Argentina central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: AR
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2025-06 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.AR
   alias: e_ar_reer
@@ -144,7 +151,7 @@
 - source: imf
   id: IMF.STA,MFS_IR/ARG.MMRT_RT_PT_A_PT.M
   alias: e_ar_short_rate
-  name: Argentina short-term interest rate
+  name: "Argentina short-term interest rate: money-market rate (% p.a.)"
   frequency: M
   attrs:
     region: AR
@@ -153,12 +160,13 @@
 - source: dbnomics
   id: IMF/DOT/M.AR.TBG_USD.W00
   alias: e_ar_trade_balance_goods
-  name: Argentina goods trade balance (USD)
+  name: Argentina goods trade balance (USD millions)
   frequency: M
   attrs:
     region: AR
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: dbnomics
   id: IMF/IFS/M.AR.LUR_PT
   alias: e_ar_unemployment
@@ -171,7 +179,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/ARG
   alias: e_ar_unemployment_youth
-  name: Argentina youth unemployment rate (15-24, %)
+  name: Argentina youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: AR
@@ -179,7 +187,7 @@
 - source: eurostat
   id: irt_lt_mcby_m/M.MCBY.AT
   alias: e_at_10y
-  name: Austria 10Y govt bond yield
+  name: Austria 10Y govt bond yield (% p.a.)
   frequency: M
   attrs:
     region: AT
@@ -195,7 +203,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/AUT.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_at_business_confidence
-  name: Austria business confidence (OECD BCI)
+  name: Austria business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: AT
@@ -203,7 +211,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/AUT.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_at_consumer_confidence
-  name: Austria consumer confidence (OECD CCI)
+  name: Austria consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: AT
@@ -212,7 +220,7 @@
 - source: imf
   id: IMF.STA,CPI/AUT.HICP._T.SRP_IX.M
   alias: e_at_hicp
-  name: Austria HICP (all items, index)
+  name: Austria HICP, all items (index)
   frequency: M
   attrs:
     region: AT
@@ -220,7 +228,7 @@
 - source: imf
   id: IMF.STA,CPI/AUT.CPI._T.SRP_IX.M
   alias: e_at_cpi
-  name: Austria CPI (all items, index)
+  name: Austria CPI, all items (index)
   frequency: M
   attrs:
     region: AT
@@ -244,7 +252,7 @@
 - source: eurostat
   id: ei_bssi_m_r2/M.BS-ESI-I.SA.AT
   alias: e_at_econ_sentiment
-  name: Austria economic sentiment indicator (ESI)
+  name: Austria economic sentiment indicator, ESI (index, long-term average = 100)
   frequency: M
   attrs:
     region: AT
@@ -266,15 +274,14 @@
   attrs:
     region: AT
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.AT.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.AT.EUR.E
   alias: e_at_fx_usd
-  name: Austria FX rate (LCU per USD)
+  name: Austria FX rate, euro per USD (LCU per USD; before 1999 the schilling rate at its euro conversion rate)
   frequency: M
   attrs:
     region: AT
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/AUT
   alias: e_at_gdp_growth
@@ -352,7 +359,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/AUT.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_at_pmi_mfg
-  name: Austria manufacturing business confidence (PMI proxy)
+  name: "Austria manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: AT
@@ -360,15 +367,16 @@
 - source: bis
   id: WS_CBPOL/M.AT
   alias: e_at_policy_rate
-  name: Austria central-bank policy rate
+  name: Austria central-bank policy rate, ends 1998 with the euro (% p.a.)
   frequency: M
   attrs:
     region: AT
     commercial_ok: restricted
+    stale: "2026-10: the national central bank's rate ends 1998-12, when the ECB took over (checked 2026-10-08); the euro area's rate is e_ecb_rate"
 - source: imf
   id: IMF.STA,PPI/AUT.PPI.IX.M
   alias: e_at_ppi
-  name: Austria producer price index
+  name: Austria producer price index (index)
   frequency: M
   attrs:
     region: AT
@@ -417,6 +425,7 @@
     region: AT
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 375 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.AT
   alias: e_at_unemployment_harmonised
@@ -436,7 +445,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/AUT
   alias: e_at_unemployment_youth
-  name: Austria youth unemployment rate (15-24, %)
+  name: Austria youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: AT
@@ -461,7 +470,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/AUS.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_au_business_confidence
-  name: Australia business confidence (OECD BCI)
+  name: Australia business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: AU
@@ -469,7 +478,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/AUS.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_au_consumer_confidence
-  name: Australia consumer confidence (OECD CCI)
+  name: Australia consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: AU
@@ -478,7 +487,7 @@
 - source: imf
   id: IMF.STA,CPI/AUS.CPI._T.SRP_IX.Q
   alias: e_au_cpi
-  name: Australia CPI (all items, index)
+  name: Australia CPI, all items (index)
   frequency: Q
   attrs:
     region: AU
@@ -568,12 +577,13 @@
 - source: dbnomics
   id: IMF/DOT/A.AU.TMG_CIF_USD.W00
   alias: e_au_imports_goods
-  name: Australia goods imports, CIF (USD)
+  name: Australia goods imports, CIF (USD millions)
   frequency: A
   attrs:
     region: AU
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.IMP.GNFS.CD/AUS
   alias: e_au_imports_gs
@@ -611,7 +621,7 @@
 - source: bis
   id: WS_CBPOL/M.AU
   alias: e_au_policy_rate
-  name: Australia central-bank policy rate
+  name: Australia central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: AU
@@ -619,7 +629,7 @@
 - source: dbnomics
   id: IMF/IFS/M.AU.PPPI_IX
   alias: e_au_ppi
-  name: Australia producer price index
+  name: Australia producer price index (index)
   frequency: M
   attrs:
     region: AU
@@ -642,15 +652,14 @@
     region: AU
     commercial_ok: restricted
     close_match: "2026-10: other units; relative gap to the mirror: median 3.9e-04, 90th percentile 3.6e-02 over 305 periods"
-- source: dbnomics
-  id: IMF/IFS/M.AU.FITB_PA
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/AUS.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_au_short_rate
-  name: Australia short-term interest rate
+  name: "Australia short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: AU
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 2013-05)"
 - source: imf
   id: IMF.STA,IMTS/AUS.TBG_USD.G001.M
   alias: e_au_trade_balance_goods
@@ -669,10 +678,11 @@
     region: AU
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 565 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: worldbank
   id: SL.UEM.1524.ZS/AUS
   alias: e_au_unemployment_youth
-  name: Australia youth unemployment rate (15-24, %)
+  name: Australia youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: AU
@@ -680,7 +690,7 @@
 - source: eurostat
   id: irt_lt_mcby_m/M.MCBY.BE
   alias: e_be_10y
-  name: Belgium 10Y govt bond yield
+  name: Belgium 10Y govt bond yield (% p.a.)
   frequency: M
   attrs:
     region: BE
@@ -696,7 +706,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/BEL.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_be_business_confidence
-  name: Belgium business confidence (OECD BCI)
+  name: Belgium business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: BE
@@ -704,7 +714,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/BEL.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_be_consumer_confidence
-  name: Belgium consumer confidence (OECD CCI)
+  name: Belgium consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: BE
@@ -713,7 +723,7 @@
 - source: imf
   id: IMF.STA,CPI/BEL.HICP._T.SRP_IX.M
   alias: e_be_hicp
-  name: Belgium HICP (all items, index)
+  name: Belgium HICP, all items (index)
   frequency: M
   attrs:
     region: BE
@@ -721,7 +731,7 @@
 - source: imf
   id: IMF.STA,CPI/BEL.CPI._T.SRP_IX.M
   alias: e_be_cpi
-  name: Belgium CPI (all items, index)
+  name: Belgium CPI, all items (index)
   frequency: M
   attrs:
     region: BE
@@ -746,7 +756,7 @@
 - source: eurostat
   id: ei_bssi_m_r2/M.BS-ESI-I.SA.BE
   alias: e_be_econ_sentiment
-  name: Belgium economic sentiment indicator (ESI)
+  name: Belgium economic sentiment indicator, ESI (index, long-term average = 100)
   frequency: M
   attrs:
     region: BE
@@ -768,15 +778,14 @@
   attrs:
     region: BE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.BE.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.BE.EUR.E
   alias: e_be_fx_usd
-  name: Belgium FX rate (LCU per USD)
+  name: Belgium FX rate, euro per USD (LCU per USD; before 1999 the Belgian franc rate at its euro conversion rate)
   frequency: M
   attrs:
     region: BE
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/BEL
   alias: e_be_gdp_growth
@@ -854,7 +863,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/BEL.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_be_pmi_mfg
-  name: Belgium manufacturing business confidence (PMI proxy)
+  name: "Belgium manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: BE
@@ -862,19 +871,21 @@
 - source: bis
   id: WS_CBPOL/M.BE
   alias: e_be_policy_rate
-  name: Belgium central-bank policy rate
+  name: Belgium central-bank policy rate, ends 1998 with the euro (% p.a.)
   frequency: M
   attrs:
     region: BE
     commercial_ok: restricted
+    stale: "2026-10: the national central bank's rate ends 1998-12, when the ECB took over (checked 2026-10-08); the euro area's rate is e_ecb_rate"
 - source: imf
   id: IMF.STA,PPI/BEL.PPI.IX.M
   alias: e_be_ppi
-  name: Belgium producer price index
+  name: Belgium producer price index (index)
   frequency: M
   attrs:
     region: BE
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.BE
   alias: e_be_reer
@@ -903,12 +914,13 @@
 - source: dbnomics
   id: IMF/DOT/M.BE.TBG_USD.W00
   alias: e_be_trade_balance_goods
-  name: Belgium goods trade balance (USD)
+  name: Belgium goods trade balance (USD millions)
   frequency: M
   attrs:
     region: BE
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: imf
   id: IMF.STA,LS/BEL.U.PT.M
   alias: e_be_unemployment
@@ -918,6 +930,7 @@
     region: BE
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 468 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.BE
   alias: e_be_unemployment_harmonised
@@ -937,7 +950,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/BEL
   alias: e_be_unemployment_youth
-  name: Belgium youth unemployment rate (15-24, %)
+  name: Belgium youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: BE
@@ -945,7 +958,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/BRA.M.MABM.IX._Z.N._Z._Z.N
   alias: e_br_broad_money
-  name: Brazil broad money M3 (index, SA)
+  name: Brazil broad money M3 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: BR
@@ -962,7 +975,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/BRA.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_br_business_confidence
-  name: Brazil business confidence (OECD BCI)
+  name: Brazil business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: BR
@@ -970,7 +983,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/BRA.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_br_consumer_confidence
-  name: Brazil consumer confidence (OECD CCI)
+  name: Brazil consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: BR
@@ -979,7 +992,7 @@
 - source: imf
   id: IMF.STA,CPI/BRA.CPI._T.SRP_IX.M
   alias: e_br_cpi
-  name: Brazil CPI (all items, index)
+  name: Brazil CPI, all items (index)
   frequency: M
   attrs:
     region: BR
@@ -1068,12 +1081,13 @@
 - source: dbnomics
   id: IMF/DOT/A.BR.TMG_CIF_USD.W00
   alias: e_br_imports_goods
-  name: Brazil goods imports, CIF (USD)
+  name: Brazil goods imports, CIF (USD millions)
   frequency: A
   attrs:
     region: BR
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.IMP.GNFS.CD/BRA
   alias: e_br_imports_gs
@@ -1111,7 +1125,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/BRA.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_br_pmi_mfg
-  name: Brazil manufacturing business confidence (PMI proxy)
+  name: "Brazil manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: BR
@@ -1119,7 +1133,7 @@
 - source: bis
   id: WS_CBPOL/M.BR
   alias: e_br_policy_rate
-  name: Brazil central-bank policy rate
+  name: Brazil central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: BR
@@ -1127,7 +1141,7 @@
 - source: dbnomics
   id: IMF/IFS/M.BR.PPPI_IX
   alias: e_br_ppi
-  name: Brazil producer price index
+  name: Brazil producer price index (index)
   frequency: M
   attrs:
     region: BR
@@ -1153,7 +1167,7 @@
 - source: imf
   id: IMF.STA,MFS_IR/BRA.GSTBILY_RT_PT_A_PT.M
   alias: e_br_short_rate
-  name: Brazil short-term interest rate
+  name: "Brazil short-term interest rate: Treasury bill yield (% p.a.)"
   frequency: M
   attrs:
     region: BR
@@ -1179,20 +1193,20 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/BRA
   alias: e_br_unemployment_youth
-  name: Brazil youth unemployment rate (15-24, %)
+  name: Brazil youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: BR
     commercial_ok: 'yes'
 - source: oecd
-  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CAN.M.MABM.XDC._Z.Y._Z._Z.N
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CAN.M.MABM.IX._Z.Y._Z._Z.N
   alias: e_ca_broad_money
   name: Canada broad money M3 (index, SA)
   frequency: M
   attrs:
     region: CA
     commercial_ok: restricted
-    close_match: "2026-10: rebased; relative gap to the mirror: median 2.1e-03, 90th percentile 3.8e-03 over 404 periods"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 3.5e-07, 90th percentile 5.3e-03 over 644 periods"
 - source: imf
   id: IMF.RES,WEO/CAN.GGXCNL_NGDP.A
   alias: e_ca_budget_balance_gdp
@@ -1204,15 +1218,16 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/CAN.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_ca_business_confidence
-  name: Canada business confidence (OECD BCI)
+  name: Canada business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: CA
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: imf
   id: IMF.STA,CPI/CAN.CPI._T.SRP_IX.M
   alias: e_ca_cpi
-  name: Canada CPI (all items, index)
+  name: Canada CPI, all items (index)
   frequency: M
   attrs:
     region: CA
@@ -1302,12 +1317,13 @@
 - source: dbnomics
   id: IMF/DOT/A.CA.TMG_CIF_USD.W00
   alias: e_ca_imports_goods
-  name: Canada goods imports, CIF (USD)
+  name: Canada goods imports, CIF (USD millions)
   frequency: A
   attrs:
     region: CA
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.IMP.GNFS.CD/CAN
   alias: e_ca_imports_gs
@@ -1326,14 +1342,14 @@
     commercial_ok: restricted
     close_match: "2026-10: rebased; relative gap to the mirror: median 1.9e-03, 90th percentile 1.9e-02 over 406 periods"
 - source: oecd
-  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CAN.M.MANM.XDC._Z.Y._Z._Z.N
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CAN.M.MANM.IX._Z.Y._Z._Z.N
   alias: e_ca_m1
   name: Canada narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: CA
     commercial_ok: restricted
-    close_match: "2026-10: rebased; relative gap to the mirror: median 9.3e-16, 90th percentile 1.8e-03 over 404 periods"
+    close_match: "2026-10: same units; relative gap to the mirror: median 9.1e-08, 90th percentile 3.7e-04 over 824 periods"
 - source: bis
   id: WS_EER/M.N.B.CA
   alias: e_ca_neer
@@ -1345,7 +1361,7 @@
 - source: bis
   id: WS_CBPOL/M.CA
   alias: e_ca_policy_rate
-  name: Canada central-bank policy rate
+  name: Canada central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: CA
@@ -1353,7 +1369,7 @@
 - source: dbnomics
   id: IMF/IFS/M.CA.PPPI_IX
   alias: e_ca_ppi
-  name: Canada producer price index
+  name: Canada producer price index (index)
   frequency: M
   attrs:
     region: CA
@@ -1376,15 +1392,14 @@
     region: CA
     commercial_ok: restricted
     close_match: "2026-10: other units; relative gap to the mirror: median 8.9e-06, 90th percentile 2.9e-03 over 295 periods"
-- source: dbnomics
-  id: IMF/IFS/M.CA.FITB_PA
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/CAN.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_ca_short_rate
-  name: Canada short-term interest rate
+  name: "Canada short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: CA
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 2017-04)"
 - source: imf
   id: IMF.STA,IMTS/CAN.TBG_USD.G001.M
   alias: e_ca_trade_balance_goods
@@ -1403,10 +1418,11 @@
     region: CA
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 4.2e-03 over 591 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: worldbank
   id: SL.UEM.1524.ZS/CAN
   alias: e_ca_unemployment_youth
-  name: Canada youth unemployment rate (15-24, %)
+  name: Canada youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: CA
@@ -1414,7 +1430,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CHE.M.MABM.IX._Z.N._Z._Z.N
   alias: e_ch_broad_money
-  name: Switzerland broad money M3 (index, SA)
+  name: Switzerland broad money M3 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: CH
@@ -1431,7 +1447,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/CHE.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_ch_business_confidence
-  name: Switzerland business confidence (OECD BCI)
+  name: Switzerland business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: CH
@@ -1439,7 +1455,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/CHE.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_ch_consumer_confidence
-  name: Switzerland consumer confidence (OECD CCI)
+  name: Switzerland consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: CH
@@ -1448,7 +1464,7 @@
 - source: imf
   id: IMF.STA,CPI/CHE.HICP._T.SRP_IX.M
   alias: e_ch_hicp
-  name: Switzerland HICP (all items, index)
+  name: Switzerland HICP, all items (index)
   frequency: M
   attrs:
     region: CH
@@ -1457,7 +1473,7 @@
 - source: imf
   id: IMF.STA,CPI/CHE.CPI._T.SRP_IX.M
   alias: e_ch_cpi
-  name: Switzerland CPI (all items, index)
+  name: Switzerland CPI, all items (index)
   frequency: M
   attrs:
     region: CH
@@ -1564,7 +1580,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CHE.M.MANM.IX._Z.N._Z._Z.N
   alias: e_ch_m1
-  name: Switzerland narrow money M1 (index, SA)
+  name: Switzerland narrow money M1 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: CH
@@ -1581,7 +1597,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/CHE.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_ch_pmi_mfg
-  name: Switzerland manufacturing business confidence (PMI proxy)
+  name: "Switzerland manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: CH
@@ -1589,7 +1605,7 @@
 - source: bis
   id: WS_CBPOL/M.CH
   alias: e_ch_policy_rate
-  name: Switzerland central-bank policy rate
+  name: Switzerland central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: CH
@@ -1597,11 +1613,12 @@
 - source: imf
   id: IMF.STA,PPI/CHE.PPI.IX.M
   alias: e_ch_ppi
-  name: Switzerland producer price index
+  name: Switzerland producer price index (index)
   frequency: M
   attrs:
     region: CH
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.CH
   alias: e_ch_reer
@@ -1630,20 +1647,20 @@
 - source: imf
   id: IMF.STA,MFS_IR/CHE.MFS135_RT_PT_A_PT.M
   alias: e_ch_short_rate
-  name: Switzerland short-term interest rate
+  name: "Switzerland short-term interest rate: deposit rate (% p.a.)"
   frequency: M
   attrs:
     region: CH
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/M.CH.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/CHE.TBG_USD.G001.M
   alias: e_ch_trade_balance_goods
   name: Switzerland goods trade balance (USD)
   frequency: M
   attrs:
     region: CH
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.3e-06, 90th percentile 2.1e-02 over the last 10 years (113 of 785 common periods)"
 - source: imf
   id: IMF.STA,LS/CHE.U.PT.M
   alias: e_ch_unemployment
@@ -1652,6 +1669,7 @@
   attrs:
     region: CH
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2025-12 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.CH
   alias: e_ch_unemployment_harmonised
@@ -1671,7 +1689,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/CHE
   alias: e_ch_unemployment_youth
-  name: Switzerland youth unemployment rate (15-24, %)
+  name: Switzerland youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: CH
@@ -1679,7 +1697,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CHL.M.MABM.IX._Z.N._Z._Z.N
   alias: e_cl_broad_money
-  name: Chile broad money M3 (index, SA)
+  name: Chile broad money M3 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: CL
@@ -1696,7 +1714,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/CHL.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_cl_business_confidence
-  name: Chile business confidence (OECD BCI)
+  name: Chile business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: CL
@@ -1704,7 +1722,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/CHL.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_cl_consumer_confidence
-  name: Chile consumer confidence (OECD CCI)
+  name: Chile consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: CL
@@ -1713,7 +1731,7 @@
 - source: imf
   id: IMF.STA,CPI/CHL.CPI._T.SRP_IX.M
   alias: e_cl_cpi
-  name: Chile CPI (all items, index)
+  name: Chile CPI, all items (index)
   frequency: M
   attrs:
     region: CL
@@ -1799,15 +1817,15 @@
   attrs:
     region: CL
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.CL.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/CHL.MG.CIF_USD.A
   alias: e_cl_imports_goods
   name: Chile goods imports, CIF (USD)
   frequency: A
   attrs:
     region: CL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 3.2e-04, 90th percentile 6.4e-04 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/CHL
   alias: e_cl_imports_gs
@@ -1845,7 +1863,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/CHL.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_cl_pmi_mfg
-  name: Chile manufacturing business confidence (PMI proxy)
+  name: "Chile manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: CL
@@ -1853,7 +1871,7 @@
 - source: bis
   id: WS_CBPOL/M.CL
   alias: e_cl_policy_rate
-  name: Chile central-bank policy rate
+  name: Chile central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: CL
@@ -1861,7 +1879,7 @@
 - source: dbnomics
   id: IMF/IFS/M.CL.PPPI_IX
   alias: e_cl_ppi
-  name: Chile producer price index
+  name: Chile producer price index (index)
   frequency: M
   attrs:
     region: CL
@@ -1884,15 +1902,14 @@
     region: CL
     commercial_ok: restricted
     close_match: "2026-10: other units; relative gap to the mirror: median 3.7e-04, 90th percentile 4.0e-03 over 299 periods"
-- source: dbnomics
-  id: IMF/IFS/M.CL.FIMM_PA
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/CHL.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_cl_short_rate
-  name: Chile short-term interest rate
+  name: "Chile short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: CL
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 2025-05)"
 - source: imf
   id: IMF.STA,IMTS/CHL.TBG_USD.G001.M
   alias: e_cl_trade_balance_goods
@@ -1911,10 +1928,11 @@
     region: CL
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 1.1e-02 over 252 periods"
+    stale: "2026-10: last period at the publisher 2025-12 (checked 2026-10-08)"
 - source: worldbank
   id: SL.UEM.1524.ZS/CHL
   alias: e_cl_unemployment_youth
-  name: Chile youth unemployment rate (15-24, %)
+  name: Chile youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: CL
@@ -1922,7 +1940,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CHN.M.MABM.IX._Z.N._Z._Z.N
   alias: e_cn_broad_money
-  name: China broad money M3 (index, SA)
+  name: China broad money M3 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: CN
@@ -1939,7 +1957,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/CHN.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_cn_business_confidence
-  name: China business confidence (OECD BCI)
+  name: China business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: CN
@@ -1947,7 +1965,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/CHN.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_cn_consumer_confidence
-  name: China consumer confidence (OECD CCI)
+  name: China consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: CN
@@ -1956,7 +1974,7 @@
 - source: imf
   id: IMF.STA,CPI/CHN.CPI._T.SRP_IX.M
   alias: e_cn_cpi
-  name: China CPI (all items, index)
+  name: China CPI, all items (index)
   frequency: M
   attrs:
     region: CN
@@ -2071,7 +2089,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CHN.M.MANM.IX._Z.N._Z._Z.N
   alias: e_cn_m1
-  name: China narrow money M1 (index, SA)
+  name: China narrow money M1 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: CN
@@ -2088,7 +2106,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/CHN.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_cn_pmi_mfg
-  name: China manufacturing business confidence (PMI proxy)
+  name: "China manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: CN
@@ -2096,7 +2114,7 @@
 - source: bis
   id: WS_CBPOL/M.CN
   alias: e_cn_policy_rate
-  name: China central-bank policy rate
+  name: China central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: CN
@@ -2104,7 +2122,7 @@
 - source: dbnomics
   id: IMF/IFS/M.CN.PPPI_IX
   alias: e_cn_ppi
-  name: China producer price index
+  name: China producer price index (index)
   frequency: M
   attrs:
     region: CN
@@ -2127,15 +2145,14 @@
     region: CN
     commercial_ok: restricted
     close_match: "2026-10: other units; relative gap to the mirror: median 9.8e-05, 90th percentile 1.9e-04 over 121 periods"
-- source: dbnomics
-  id: IMF/IFS/M.CN.FIDR_PA
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/CHN.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_cn_short_rate
-  name: China short-term interest rate
+  name: "China short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: CN
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
 - source: imf
   id: IMF.STA,IMTS/CHN.TBG_USD.G001.M
   alias: e_cn_trade_balance_goods
@@ -2157,7 +2174,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/CHN
   alias: e_cn_unemployment_youth
-  name: China youth unemployment rate (15-24, %)
+  name: China youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: CN
@@ -2182,7 +2199,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/COL.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_co_business_confidence
-  name: Colombia business confidence (OECD BCI)
+  name: Colombia business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: CO
@@ -2190,7 +2207,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/COL.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_co_consumer_confidence
-  name: Colombia consumer confidence (OECD CCI)
+  name: Colombia consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: CO
@@ -2199,7 +2216,7 @@
 - source: imf
   id: IMF.STA,CPI/COL.CPI._T.SRP_IX.M
   alias: e_co_cpi
-  name: Colombia CPI (all items, index)
+  name: Colombia CPI, all items (index)
   frequency: M
   attrs:
     region: CO
@@ -2220,15 +2237,15 @@
   attrs:
     region: CO
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.CO.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/COL.XG.FOB_USD.A
   alias: e_co_exports_goods
   name: Colombia goods exports, FOB (USD)
   frequency: A
   attrs:
     region: CO
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.5e-03, 90th percentile 1.2e-02 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/COL
   alias: e_co_exports_gs
@@ -2331,7 +2348,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/COL.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_co_pmi_mfg
-  name: Colombia manufacturing business confidence (PMI proxy)
+  name: "Colombia manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: CO
@@ -2339,7 +2356,7 @@
 - source: bis
   id: WS_CBPOL/M.CO
   alias: e_co_policy_rate
-  name: Colombia central-bank policy rate
+  name: Colombia central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: CO
@@ -2347,7 +2364,7 @@
 - source: dbnomics
   id: IMF/IFS/M.CO.PPPI_IX
   alias: e_co_ppi
-  name: Colombia producer price index
+  name: Colombia producer price index (index)
   frequency: M
   attrs:
     region: CO
@@ -2373,7 +2390,7 @@
 - source: imf
   id: IMF.STA,MFS_IR/COL.MMRT_RT_PT_A_PT.M
   alias: e_co_short_rate
-  name: Colombia short-term interest rate
+  name: "Colombia short-term interest rate: money-market rate (% p.a.)"
   frequency: M
   attrs:
     region: CO
@@ -2381,12 +2398,13 @@
 - source: dbnomics
   id: IMF/DOT/M.CO.TBG_USD.W00
   alias: e_co_trade_balance_goods
-  name: Colombia goods trade balance (USD)
+  name: Colombia goods trade balance (USD millions)
   frequency: M
   attrs:
     region: CO
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: imf
   id: IMF.STA,LS/COL.U.PT.M
   alias: e_co_unemployment
@@ -2395,10 +2413,11 @@
   attrs:
     region: CO
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2025-12 (checked 2026-10-08)"
 - source: worldbank
   id: SL.UEM.1524.ZS/COL
   alias: e_co_unemployment_youth
-  name: Colombia youth unemployment rate (15-24, %)
+  name: Colombia youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: CO
@@ -2406,7 +2425,7 @@
 - source: eurostat
   id: irt_lt_mcby_m/M.MCBY.CZ
   alias: e_cz_10y
-  name: Czechia 10Y govt bond yield
+  name: Czechia 10Y govt bond yield (% p.a.)
   frequency: M
   attrs:
     region: CZ
@@ -2431,7 +2450,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/CZE.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_cz_business_confidence
-  name: Czechia business confidence (OECD BCI)
+  name: Czechia business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: CZ
@@ -2439,7 +2458,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/CZE.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_cz_consumer_confidence
-  name: Czechia consumer confidence (OECD CCI)
+  name: Czechia consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: CZ
@@ -2448,7 +2467,7 @@
 - source: imf
   id: IMF.STA,CPI/CZE.HICP._T.SRP_IX.M
   alias: e_cz_hicp
-  name: Czechia HICP (all items, index)
+  name: Czechia HICP, all items (index)
   frequency: M
   attrs:
     region: CZ
@@ -2457,7 +2476,7 @@
 - source: imf
   id: IMF.STA,CPI/CZE.CPI._T.SRP_IX.M
   alias: e_cz_cpi
-  name: Czechia CPI (all items, index)
+  name: Czechia CPI, all items (index)
   frequency: M
   attrs:
     region: CZ
@@ -2481,7 +2500,7 @@
 - source: eurostat
   id: ei_bssi_m_r2/M.BS-ESI-I.SA.CZ
   alias: e_cz_econ_sentiment
-  name: Czechia economic sentiment indicator (ESI)
+  name: Czechia economic sentiment indicator, ESI (index, long-term average = 100)
   frequency: M
   attrs:
     region: CZ
@@ -2554,12 +2573,13 @@
 - source: dbnomics
   id: IMF/DOT/A.CZ.TMG_CIF_USD.W00
   alias: e_cz_imports_goods
-  name: Czechia goods imports, CIF (USD)
+  name: Czechia goods imports, CIF (USD millions)
   frequency: A
   attrs:
     region: CZ
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.IMP.GNFS.CD/CZE
   alias: e_cz_imports_gs
@@ -2580,7 +2600,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/CZE.M.MANM.IX._Z.N._Z._Z.N
   alias: e_cz_m1
-  name: Czechia narrow money M1 (index, SA)
+  name: Czechia narrow money M1 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: CZ
@@ -2597,7 +2617,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/CZE.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_cz_pmi_mfg
-  name: Czechia manufacturing business confidence (PMI proxy)
+  name: "Czechia manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: CZ
@@ -2605,7 +2625,7 @@
 - source: bis
   id: WS_CBPOL/M.CZ
   alias: e_cz_policy_rate
-  name: Czechia central-bank policy rate
+  name: Czechia central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: CZ
@@ -2613,7 +2633,7 @@
 - source: imf
   id: IMF.STA,PPI/CZE.PPI.IX.M
   alias: e_cz_ppi
-  name: Czechia producer price index
+  name: Czechia producer price index (index)
   frequency: M
   attrs:
     region: CZ
@@ -2660,6 +2680,7 @@
   attrs:
     region: CZ
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.CZ
   alias: e_cz_unemployment_harmonised
@@ -2679,7 +2700,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/CZE
   alias: e_cz_unemployment_youth
-  name: Czechia youth unemployment rate (15-24, %)
+  name: Czechia youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: CZ
@@ -2687,7 +2708,7 @@
 - source: eurostat
   id: irt_lt_mcby_m/M.MCBY.DE
   alias: e_de_10y
-  name: Germany 10Y govt bond yield
+  name: Germany 10Y govt bond yield (% p.a.)
   frequency: M
   attrs:
     region: DE
@@ -2703,7 +2724,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/DEU.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_de_business_confidence
-  name: Germany business confidence (OECD BCI)
+  name: Germany business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: DE
@@ -2711,7 +2732,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/DEU.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_de_consumer_confidence
-  name: Germany consumer confidence (OECD CCI)
+  name: Germany consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: DE
@@ -2720,7 +2741,7 @@
 - source: imf
   id: IMF.STA,CPI/DEU.HICP._T.IX.M
   alias: e_de_hicp
-  name: Germany HICP (all items, index)
+  name: Germany HICP, all items (index)
   frequency: M
   attrs:
     region: DE
@@ -2729,7 +2750,7 @@
 - source: imf
   id: IMF.STA,CPI/DEU.CPI._T.SRP_IX.M
   alias: e_de_cpi
-  name: Germany CPI (all items, index)
+  name: Germany CPI, all items (index)
   frequency: M
   attrs:
     region: DE
@@ -2753,7 +2774,7 @@
 - source: eurostat
   id: ei_bssi_m_r2/M.BS-ESI-I.SA.DE
   alias: e_de_econ_sentiment
-  name: Germany economic sentiment indicator (ESI)
+  name: Germany economic sentiment indicator, ESI (index, long-term average = 100)
   frequency: M
   attrs:
     region: DE
@@ -2775,15 +2796,14 @@
   attrs:
     region: DE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.DE.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.DE.EUR.E
   alias: e_de_fx_usd
-  name: Germany FX rate (LCU per USD)
+  name: Germany FX rate, euro per USD (LCU per USD; before 1999 the Deutsche mark rate at its euro conversion rate)
   frequency: M
   attrs:
     region: DE
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/DEU
   alias: e_de_gdp_growth
@@ -2811,7 +2831,7 @@
 - source: eurostat
   id: namq_10_gdp/Q.CLV20_MEUR.SCA.B1GQ.DE
   alias: e_de_gdp_real_q
-  name: Germany real GDP (q, CLV)
+  name: Germany real GDP, chain-linked 2020 volumes (EUR millions)
   frequency: Q
   attrs:
     region: DE
@@ -2869,7 +2889,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/DEU.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_de_pmi_mfg
-  name: Germany manufacturing business confidence (PMI proxy)
+  name: "Germany manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: DE
@@ -2877,19 +2897,21 @@
 - source: bis
   id: WS_CBPOL/M.DE
   alias: e_de_policy_rate
-  name: Germany central-bank policy rate
+  name: Germany central-bank policy rate, ends 1998 with the euro (% p.a.)
   frequency: M
   attrs:
     region: DE
     commercial_ok: restricted
+    stale: "2026-10: the national central bank's rate ends 1998-12, when the ECB took over (checked 2026-10-08); the euro area's rate is e_ecb_rate"
 - source: imf
   id: IMF.STA,PPI/DEU.PPI.IX.M
   alias: e_de_ppi
-  name: Germany producer price index
+  name: Germany producer price index (index)
   frequency: M
   attrs:
     region: DE
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.DE
   alias: e_de_reer
@@ -2933,6 +2955,7 @@
     region: DE
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 3.1e-02 over 219 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.DE
   alias: e_de_unemployment_harmonised
@@ -2952,7 +2975,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/DEU
   alias: e_de_unemployment_youth
-  name: Germany youth unemployment rate (15-24, %)
+  name: Germany youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: DE
@@ -2960,7 +2983,7 @@
 - source: eurostat
   id: irt_lt_mcby_m/M.MCBY.DK
   alias: e_dk_10y
-  name: Denmark 10Y govt bond yield
+  name: Denmark 10Y govt bond yield (% p.a.)
   frequency: M
   attrs:
     region: DK
@@ -2968,7 +2991,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/DNK.M.MABM.IX._Z.N._Z._Z.N
   alias: e_dk_broad_money
-  name: Denmark broad money M3 (index, SA)
+  name: Denmark broad money M3 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: DK
@@ -2985,7 +3008,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/DNK.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_dk_business_confidence
-  name: Denmark business confidence (OECD BCI)
+  name: Denmark business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: DK
@@ -2993,7 +3016,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/DNK.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_dk_consumer_confidence
-  name: Denmark consumer confidence (OECD CCI)
+  name: Denmark consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: DK
@@ -3002,7 +3025,7 @@
 - source: imf
   id: IMF.STA,CPI/DNK.HICP._T.SRP_IX.M
   alias: e_dk_hicp
-  name: Denmark HICP (all items, index)
+  name: Denmark HICP, all items (index)
   frequency: M
   attrs:
     region: DK
@@ -3011,7 +3034,7 @@
 - source: imf
   id: IMF.STA,CPI/DNK.CPI._T.IX.M
   alias: e_dk_cpi
-  name: Denmark CPI (all items, index)
+  name: Denmark CPI, all items (index)
   frequency: M
   attrs:
     region: DK
@@ -3036,7 +3059,7 @@
 - source: eurostat
   id: ei_bssi_m_r2/M.BS-ESI-I.SA.DK
   alias: e_dk_econ_sentiment
-  name: Denmark economic sentiment indicator (ESI)
+  name: Denmark economic sentiment indicator, ESI (index, long-term average = 100)
   frequency: M
   attrs:
     region: DK
@@ -3135,7 +3158,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/DNK.M.MANM.IX._Z.N._Z._Z.N
   alias: e_dk_m1
-  name: Denmark narrow money M1 (index, SA)
+  name: Denmark narrow money M1 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: DK
@@ -3152,7 +3175,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/DNK.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_dk_pmi_mfg
-  name: Denmark manufacturing business confidence (PMI proxy)
+  name: "Denmark manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: DK
@@ -3160,7 +3183,7 @@
 - source: bis
   id: WS_CBPOL/M.DK
   alias: e_dk_policy_rate
-  name: Denmark central-bank policy rate
+  name: Denmark central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: DK
@@ -3168,11 +3191,12 @@
 - source: imf
   id: IMF.STA,PPI/DNK.PPI.IX.M
   alias: e_dk_ppi
-  name: Denmark producer price index
+  name: Denmark producer price index (index)
   frequency: M
   attrs:
     region: DK
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.DK
   alias: e_dk_reer
@@ -3184,12 +3208,13 @@
 - source: dbnomics
   id: IMF/IFS/M.DK.RAFA_USD
   alias: e_dk_reserves
-  name: Denmark FX reserves (USD)
+  name: Denmark FX reserves (USD millions)
   frequency: M
   attrs:
     region: DK
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF IFS published it; the family's other series are in USD
 - source: eurostat
   id: sts_trtu_m/M.VOL_SLS.G47.SCA.I21.DK
   alias: e_dk_retail_sales
@@ -3216,6 +3241,7 @@
     region: DK
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 507 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.DK
   alias: e_dk_unemployment_harmonised
@@ -3235,7 +3261,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/DNK
   alias: e_dk_unemployment_youth
-  name: Denmark youth unemployment rate (15-24, %)
+  name: Denmark youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: DK
@@ -3243,7 +3269,7 @@
 - source: eurostat
   id: irt_lt_mcby_m/M.MCBY.ES
   alias: e_es_10y
-  name: Spain 10Y govt bond yield
+  name: Spain 10Y govt bond yield (% p.a.)
   frequency: M
   attrs:
     region: ES
@@ -3259,7 +3285,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/ESP.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_es_business_confidence
-  name: Spain business confidence (OECD BCI)
+  name: Spain business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: ES
@@ -3267,7 +3293,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/ESP.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_es_consumer_confidence
-  name: Spain consumer confidence (OECD CCI)
+  name: Spain consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: ES
@@ -3276,7 +3302,7 @@
 - source: imf
   id: IMF.STA,CPI/ESP.HICP._T.SRP_IX.M
   alias: e_es_hicp
-  name: Spain HICP (all items, index)
+  name: Spain HICP, all items (index)
   frequency: M
   attrs:
     region: ES
@@ -3284,7 +3310,7 @@
 - source: imf
   id: IMF.STA,CPI/ESP.CPI._T.SRP_IX.M
   alias: e_es_cpi
-  name: Spain CPI (all items, index)
+  name: Spain CPI, all items (index)
   frequency: M
   attrs:
     region: ES
@@ -3308,7 +3334,7 @@
 - source: eurostat
   id: ei_bssi_m_r2/M.BS-ESI-I.SA.ES
   alias: e_es_econ_sentiment
-  name: Spain economic sentiment indicator (ESI)
+  name: Spain economic sentiment indicator, ESI (index, long-term average = 100)
   frequency: M
   attrs:
     region: ES
@@ -3316,12 +3342,13 @@
 - source: dbnomics
   id: IMF/DOT/A.ES.TXG_FOB_USD.W00
   alias: e_es_exports_goods
-  name: Spain goods exports, FOB (USD)
+  name: Spain goods exports, FOB (USD millions)
   frequency: A
   attrs:
     region: ES
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.EXP.GNFS.CD/ESP
   alias: e_es_exports_gs
@@ -3330,15 +3357,14 @@
   attrs:
     region: ES
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.ES.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.ES.EUR.E
   alias: e_es_fx_usd
-  name: Spain FX rate (LCU per USD)
+  name: Spain FX rate, euro per USD (LCU per USD; before 1999 the peseta rate at its euro conversion rate)
   frequency: M
   attrs:
     region: ES
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/ESP
   alias: e_es_gdp_growth
@@ -3366,7 +3392,7 @@
 - source: eurostat
   id: namq_10_gdp/Q.CLV20_MEUR.SCA.B1GQ.ES
   alias: e_es_gdp_real_q
-  name: Spain real GDP (q, CLV)
+  name: Spain real GDP, chain-linked 2020 volumes (EUR millions)
   frequency: Q
   attrs:
     region: ES
@@ -3424,7 +3450,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/ESP.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_es_pmi_mfg
-  name: Spain manufacturing business confidence (PMI proxy)
+  name: "Spain manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: ES
@@ -3432,20 +3458,22 @@
 - source: bis
   id: WS_CBPOL/M.ES
   alias: e_es_policy_rate
-  name: Spain central-bank policy rate
+  name: Spain central-bank policy rate, ends 1998 with the euro (% p.a.)
   frequency: M
   attrs:
     region: ES
     commercial_ok: restricted
+    stale: "2026-10: the national central bank's rate ends 1998-12, when the ECB took over (checked 2026-10-08); the euro area's rate is e_ecb_rate"
 - source: imf
   id: IMF.STA,PPI/ESP.PPI.IX.M
   alias: e_es_ppi
-  name: Spain producer price index
+  name: Spain producer price index (index)
   frequency: M
   attrs:
     region: ES
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 5.7e-16, 90th percentile 2.9e-15 over 616 periods"
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.ES
   alias: e_es_reer
@@ -3489,6 +3517,7 @@
     region: ES
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 469 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.ES
   alias: e_es_unemployment_harmonised
@@ -3508,7 +3537,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/ESP
   alias: e_es_unemployment_youth
-  name: Spain youth unemployment rate (15-24, %)
+  name: Spain youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: ES
@@ -3516,7 +3545,7 @@
 - source: ecb
   id: FM/B.U2.EUR.4F.KR.MRR_FR.LEV
   alias: e_ecb_rate
-  name: ECB main refi rate
+  name: ECB main refinancing rate (% p.a.)
   frequency: D
   attrs:
     region: EZ
@@ -3524,7 +3553,7 @@
 - source: eurostat
   id: irt_lt_mcby_m/M.MCBY.EA
   alias: e_ez_10y
-  name: Euro area 10Y govt bond yield
+  name: Euro area 10Y govt bond yield (% p.a.)
   frequency: M
   attrs:
     region: EZ
@@ -3548,12 +3577,13 @@
 - source: dbnomics
   id: IMF/DOT/A.U2.TXG_FOB_USD.W00
   alias: e_ez_exports_goods
-  name: Euro area goods exports, FOB (USD)
+  name: Euro area goods exports, FOB (USD millions)
   frequency: A
   attrs:
     region: EZ
     commercial_ok: restricted
     stale: "2026-10: no candidate"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.EXP.GNFS.CD/EMU
   alias: e_ez_exports_gs
@@ -3562,15 +3592,14 @@
   attrs:
     region: EZ
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.U2.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.XM.EUR.E
   alias: e_ez_fx_usd
-  name: Euro area FX rate (LCU per USD)
+  name: Euro area FX rate, euro per USD (LCU per USD)
   frequency: M
   attrs:
     region: EZ
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/EMU
   alias: e_ez_gdp_growth
@@ -3598,19 +3627,20 @@
 - source: eurostat
   id: namq_10_gdp/Q.CLV20_MEUR.SCA.B1GQ.EA20
   alias: e_ez_gdp_real_q
-  name: Euro area real GDP (q, CLV)
+  name: Euro area real GDP, chain-linked 2020 volumes (EUR millions)
   frequency: Q
   attrs:
     region: EZ
     commercial_ok: 'yes'
-- source: eurostat
-  id: prc_hicp_midx/M.I15.CP00.EA
+- source: imf
+  id: IMF.STA,CPI/G163.HICP._T.IX.M
   alias: e_ez_hicp
-  name: Euro-area HICP
+  name: Euro area HICP, all items (index)
   frequency: M
   attrs:
     region: EZ
-    commercial_ok: unverified
+    commercial_ok: restricted
+    close_match: "2026-10: replaces Eurostat's prc_hicp_midx (2015=100), which ends 2025-12; the IMF's index is 7.0e-04 to 9.4e-04 above it over 2025"
 - source: bis
   id: WS_SPP/Q.XM.N.628
   alias: e_ez_house_prices
@@ -3622,12 +3652,13 @@
 - source: dbnomics
   id: IMF/DOT/A.U2.TMG_CIF_USD.W00
   alias: e_ez_imports_goods
-  name: Euro area goods imports, CIF (USD)
+  name: Euro area goods imports, CIF (USD millions)
   frequency: A
   attrs:
     region: EZ
     commercial_ok: restricted
     stale: "2026-10: no candidate"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.IMP.GNFS.CD/EMU
   alias: e_ez_imports_gs
@@ -3656,7 +3687,7 @@
 - source: dbnomics
   id: IMF/IFS/M.U2.PPPI_IX
   alias: e_ez_ppi
-  name: Euro area producer price index
+  name: Euro area producer price index (index)
   frequency: M
   attrs:
     region: EZ
@@ -3673,25 +3704,27 @@
 - source: dbnomics
   id: IMF/IFS/M.U2.RAFA_USD
   alias: e_ez_reserves
-  name: Euro area FX reserves (USD)
+  name: Euro area FX reserves (USD millions)
   frequency: M
   attrs:
     region: EZ
     commercial_ok: restricted
     stale: "2026-10: no candidate"
+    units_differ: USD millions, as the retired IMF IFS published it; the family's other series are in USD
 - source: dbnomics
   id: IMF/DOT/M.U2.TBG_USD.W00
   alias: e_ez_trade_balance_goods
-  name: Euro area goods trade balance (USD)
+  name: Euro area goods trade balance (USD millions)
   frequency: M
   attrs:
     region: EZ
     commercial_ok: restricted
     stale: "2026-10: no candidate"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: SL.UEM.1524.ZS/EMU
   alias: e_ez_unemployment_youth
-  name: Euro area youth unemployment rate (15-24, %)
+  name: Euro area youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: EZ
@@ -3699,7 +3732,7 @@
 - source: eurostat
   id: irt_lt_mcby_m/M.MCBY.FI
   alias: e_fi_10y
-  name: Finland 10Y govt bond yield
+  name: Finland 10Y govt bond yield (% p.a.)
   frequency: M
   attrs:
     region: FI
@@ -3715,7 +3748,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/FIN.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_fi_business_confidence
-  name: Finland business confidence (OECD BCI)
+  name: Finland business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: FI
@@ -3723,7 +3756,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/FIN.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_fi_consumer_confidence
-  name: Finland consumer confidence (OECD CCI)
+  name: Finland consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: FI
@@ -3732,7 +3765,7 @@
 - source: imf
   id: IMF.STA,CPI/FIN.HICP._T.SRP_IX.M
   alias: e_fi_hicp
-  name: Finland HICP (all items, index)
+  name: Finland HICP, all items (index)
   frequency: M
   attrs:
     region: FI
@@ -3740,7 +3773,7 @@
 - source: imf
   id: IMF.STA,CPI/FIN.CPI._T.SRP_IX.M
   alias: e_fi_cpi
-  name: Finland CPI (all items, index)
+  name: Finland CPI, all items (index)
   frequency: M
   attrs:
     region: FI
@@ -3765,7 +3798,7 @@
 - source: eurostat
   id: ei_bssi_m_r2/M.BS-ESI-I.SA.FI
   alias: e_fi_econ_sentiment
-  name: Finland economic sentiment indicator (ESI)
+  name: Finland economic sentiment indicator, ESI (index, long-term average = 100)
   frequency: M
   attrs:
     region: FI
@@ -3787,15 +3820,14 @@
   attrs:
     region: FI
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.FI.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.FI.EUR.E
   alias: e_fi_fx_usd
-  name: Finland FX rate (LCU per USD)
+  name: Finland FX rate, euro per USD (LCU per USD; before 1999 the markka rate at its euro conversion rate)
   frequency: M
   attrs:
     region: FI
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/FIN
   alias: e_fi_gdp_growth
@@ -3873,7 +3905,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/FIN.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_fi_pmi_mfg
-  name: Finland manufacturing business confidence (PMI proxy)
+  name: "Finland manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: FI
@@ -3881,7 +3913,7 @@
 - source: dbnomics
   id: IMF/IFS/M.FI.PPPI_IX
   alias: e_fi_ppi
-  name: Finland producer price index
+  name: Finland producer price index (index)
   frequency: M
   attrs:
     region: FI
@@ -3929,6 +3961,7 @@
   attrs:
     region: FI
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.FI
   alias: e_fi_unemployment_harmonised
@@ -3948,7 +3981,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/FIN
   alias: e_fi_unemployment_youth
-  name: Finland youth unemployment rate (15-24, %)
+  name: Finland youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: FI
@@ -3956,7 +3989,7 @@
 - source: eurostat
   id: irt_lt_mcby_m/M.MCBY.FR
   alias: e_fr_10y
-  name: France 10Y govt bond yield
+  name: France 10Y govt bond yield (% p.a.)
   frequency: M
   attrs:
     region: FR
@@ -3972,7 +4005,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/FRA.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_fr_business_confidence
-  name: France business confidence (OECD BCI)
+  name: France business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: FR
@@ -3980,7 +4013,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/FRA.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_fr_consumer_confidence
-  name: France consumer confidence (OECD CCI)
+  name: France consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: FR
@@ -3989,7 +4022,7 @@
 - source: imf
   id: IMF.STA,CPI/FRA.HICP._T.SRP_IX.M
   alias: e_fr_hicp
-  name: France HICP (all items, index)
+  name: France HICP, all items (index)
   frequency: M
   attrs:
     region: FR
@@ -3997,7 +4030,7 @@
 - source: imf
   id: IMF.STA,CPI/FRA.CPI._T.IX.M
   alias: e_fr_cpi
-  name: France CPI (all items, index)
+  name: France CPI, all items (index)
   frequency: M
   attrs:
     region: FR
@@ -4022,20 +4055,20 @@
 - source: eurostat
   id: ei_bssi_m_r2/M.BS-ESI-I.SA.FR
   alias: e_fr_econ_sentiment
-  name: France economic sentiment indicator (ESI)
+  name: France economic sentiment indicator, ESI (index, long-term average = 100)
   frequency: M
   attrs:
     region: FR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.FR.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/FRA.XG.FOB_USD.A
   alias: e_fr_exports_goods
   name: France goods exports, FOB (USD)
   frequency: A
   attrs:
     region: FR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 7.4e-03, 90th percentile 2.2e-02 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/FRA
   alias: e_fr_exports_gs
@@ -4044,15 +4077,14 @@
   attrs:
     region: FR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.FR.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.FR.EUR.E
   alias: e_fr_fx_usd
-  name: France FX rate (LCU per USD)
+  name: France FX rate, euro per USD (LCU per USD; before 1999 the French franc rate at its euro conversion rate)
   frequency: M
   attrs:
     region: FR
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/FRA
   alias: e_fr_gdp_growth
@@ -4080,7 +4112,7 @@
 - source: eurostat
   id: namq_10_gdp/Q.CLV20_MEUR.SCA.B1GQ.FR
   alias: e_fr_gdp_real_q
-  name: France real GDP (q, CLV)
+  name: France real GDP, chain-linked 2020 volumes (EUR millions)
   frequency: Q
   attrs:
     region: FR
@@ -4101,15 +4133,15 @@
   attrs:
     region: FR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.FR.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/FRA.MG.CIF_USD.A
   alias: e_fr_imports_goods
   name: France goods imports, CIF (USD)
   frequency: A
   attrs:
     region: FR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.0e-03, 90th percentile 5.7e-03 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/FRA
   alias: e_fr_imports_gs
@@ -4138,7 +4170,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/FRA.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_fr_pmi_mfg
-  name: France manufacturing business confidence (PMI proxy)
+  name: "France manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: FR
@@ -4146,15 +4178,16 @@
 - source: bis
   id: WS_CBPOL/M.FR
   alias: e_fr_policy_rate
-  name: France central-bank policy rate
+  name: France central-bank policy rate, ends 1998 with the euro (% p.a.)
   frequency: M
   attrs:
     region: FR
     commercial_ok: restricted
+    stale: "2026-10: the national central bank's rate ends 1998-12, when the ECB took over (checked 2026-10-08); the euro area's rate is e_ecb_rate"
 - source: dbnomics
   id: IMF/IFS/M.FR.PPPI_IX
   alias: e_fr_ppi
-  name: France producer price index
+  name: France producer price index (index)
   frequency: M
   attrs:
     region: FR
@@ -4203,6 +4236,7 @@
     region: FR
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 267 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.FR
   alias: e_fr_unemployment_harmonised
@@ -4222,7 +4256,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/FRA
   alias: e_fr_unemployment_youth
-  name: France youth unemployment rate (15-24, %)
+  name: France youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: FR
@@ -4230,7 +4264,7 @@
 - source: eurostat
   id: irt_lt_mcby_m/M.MCBY.EL
   alias: e_gr_10y
-  name: Greece 10Y govt bond yield
+  name: Greece 10Y govt bond yield (% p.a.)
   frequency: M
   attrs:
     region: GR
@@ -4246,7 +4280,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/GRC.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_gr_business_confidence
-  name: Greece business confidence (OECD BCI)
+  name: Greece business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: GR
@@ -4254,7 +4288,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/GRC.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_gr_consumer_confidence
-  name: Greece consumer confidence (OECD CCI)
+  name: Greece consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: GR
@@ -4263,7 +4297,7 @@
 - source: imf
   id: IMF.STA,CPI/GRC.HICP._T.SRP_IX.M
   alias: e_gr_hicp
-  name: Greece HICP (all items, index)
+  name: Greece HICP, all items (index)
   frequency: M
   attrs:
     region: GR
@@ -4271,7 +4305,7 @@
 - source: imf
   id: IMF.STA,CPI/GRC.CPI._T.SRP_IX.M
   alias: e_gr_cpi
-  name: Greece CPI (all items, index)
+  name: Greece CPI, all items (index)
   frequency: M
   attrs:
     region: GR
@@ -4296,20 +4330,20 @@
 - source: eurostat
   id: ei_bssi_m_r2/M.BS-ESI-I.SA.EL
   alias: e_gr_econ_sentiment
-  name: Greece economic sentiment indicator (ESI)
+  name: Greece economic sentiment indicator, ESI (index, long-term average = 100)
   frequency: M
   attrs:
     region: GR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.GR.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/GRC.XG.FOB_USD.A
   alias: e_gr_exports_goods
   name: Greece goods exports, FOB (USD)
   frequency: A
   attrs:
     region: GR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 8.2e-04, 90th percentile 1.8e-03 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/GRC
   alias: e_gr_exports_gs
@@ -4318,15 +4352,14 @@
   attrs:
     region: GR
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.GR.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.GR.EUR.E
   alias: e_gr_fx_usd
-  name: Greece FX rate (LCU per USD)
+  name: Greece FX rate, euro per USD (LCU per USD; before 2001 the drachma rate at its euro conversion rate)
   frequency: M
   attrs:
     region: GR
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 2000-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/GRC
   alias: e_gr_gdp_growth
@@ -4367,15 +4400,15 @@
   attrs:
     region: GR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.GR.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/GRC.MG.CIF_USD.A
   alias: e_gr_imports_goods
   name: Greece goods imports, CIF (USD)
   frequency: A
   attrs:
     region: GR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.3e-03, 90th percentile 1.6e-02 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/GRC
   alias: e_gr_imports_gs
@@ -4404,7 +4437,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/GRC.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_gr_pmi_mfg
-  name: Greece manufacturing business confidence (PMI proxy)
+  name: "Greece manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: GR
@@ -4412,19 +4445,21 @@
 - source: bis
   id: WS_CBPOL/M.GR
   alias: e_gr_policy_rate
-  name: Greece central-bank policy rate
+  name: Greece central-bank policy rate, ends 2000 with the euro (% p.a.)
   frequency: M
   attrs:
     region: GR
     commercial_ok: restricted
+    stale: "2026-10: the national central bank's rate ends 2000-12, when the ECB took over (checked 2026-10-08); the euro area's rate is e_ecb_rate"
 - source: imf
   id: IMF.STA,PPI/GRC.PPI.IX.M
   alias: e_gr_ppi
-  name: Greece producer price index
+  name: Greece producer price index (index)
   frequency: M
   attrs:
     region: GR
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.GR
   alias: e_gr_reer
@@ -4468,6 +4503,7 @@
     region: GR
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 324 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.EL
   alias: e_gr_unemployment_harmonised
@@ -4487,7 +4523,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/GRC
   alias: e_gr_unemployment_youth
-  name: Greece youth unemployment rate (15-24, %)
+  name: Greece youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: GR
@@ -4503,7 +4539,7 @@
 - source: imf
   id: IMF.STA,CPI/HKG.CPI._T.SRP_IX.M
   alias: e_hk_cpi
-  name: Hong Kong CPI (all items, index)
+  name: Hong Kong CPI, all items (index)
   frequency: M
   attrs:
     region: HK
@@ -4524,15 +4560,15 @@
   attrs:
     region: HK
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.HK.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/HKG.XG.FOB_USD.A
   alias: e_hk_exports_goods
   name: Hong Kong goods exports, FOB (USD)
   frequency: A
   attrs:
     region: HK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 3.1e-03, 90th percentile 1.4e-02 over the last 10 years (10 of 76 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/HKG
   alias: e_hk_exports_gs
@@ -4589,15 +4625,15 @@
   attrs:
     region: HK
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.HK.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/HKG.MG.CIF_USD.A
   alias: e_hk_imports_goods
   name: Hong Kong goods imports, CIF (USD)
   frequency: A
   attrs:
     region: HK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 2.0e-03, 90th percentile 2.8e-03 over the last 10 years (10 of 76 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/HKG
   alias: e_hk_imports_gs
@@ -4617,7 +4653,7 @@
 - source: bis
   id: WS_CBPOL/M.HK
   alias: e_hk_policy_rate
-  name: Hong Kong central-bank policy rate
+  name: Hong Kong central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: HK
@@ -4642,7 +4678,7 @@
 - source: imf
   id: IMF.STA,MFS_IR/HKG.GSTBILY_RT_PT_A_PT.M
   alias: e_hk_short_rate
-  name: Hong Kong short-term interest rate
+  name: "Hong Kong short-term interest rate: Treasury bill yield (% p.a.)"
   frequency: M
   attrs:
     region: HK
@@ -4668,7 +4704,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/HKG
   alias: e_hk_unemployment_youth
-  name: Hong Kong youth unemployment rate (15-24, %)
+  name: Hong Kong youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: HK
@@ -4676,7 +4712,7 @@
 - source: eurostat
   id: irt_lt_mcby_m/M.MCBY.HU
   alias: e_hu_10y
-  name: Hungary 10Y govt bond yield
+  name: Hungary 10Y govt bond yield (% p.a.)
   frequency: M
   attrs:
     region: HU
@@ -4701,7 +4737,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/HUN.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_hu_business_confidence
-  name: Hungary business confidence (OECD BCI)
+  name: Hungary business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: HU
@@ -4709,7 +4745,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/HUN.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_hu_consumer_confidence
-  name: Hungary consumer confidence (OECD CCI)
+  name: Hungary consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: HU
@@ -4718,7 +4754,7 @@
 - source: imf
   id: IMF.STA,CPI/HUN.HICP._T.SRP_IX.M
   alias: e_hu_hicp
-  name: Hungary HICP (all items, index)
+  name: Hungary HICP, all items (index)
   frequency: M
   attrs:
     region: HU
@@ -4726,7 +4762,7 @@
 - source: imf
   id: IMF.STA,CPI/HUN.CPI._T.IX.M
   alias: e_hu_cpi
-  name: Hungary CPI (all items, index)
+  name: Hungary CPI, all items (index)
   frequency: M
   attrs:
     region: HU
@@ -4751,20 +4787,20 @@
 - source: eurostat
   id: ei_bssi_m_r2/M.BS-ESI-I.SA.HU
   alias: e_hu_econ_sentiment
-  name: Hungary economic sentiment indicator (ESI)
+  name: Hungary economic sentiment indicator, ESI (index, long-term average = 100)
   frequency: M
   attrs:
     region: HU
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.HU.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/HUN.XG.FOB_USD.A
   alias: e_hu_exports_goods
   name: Hungary goods exports, FOB (USD)
   frequency: A
   attrs:
     region: HU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 7.4e-05, 90th percentile 2.6e-02 over the last 10 years (10 of 63 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/HUN
   alias: e_hu_exports_gs
@@ -4821,15 +4857,15 @@
   attrs:
     region: HU
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.HU.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/HUN.MG.CIF_USD.A
   alias: e_hu_imports_goods
   name: Hungary goods imports, CIF (USD)
   frequency: A
   attrs:
     region: HU
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 3.2e-04, 90th percentile 1.2e-02 over the last 10 years (10 of 63 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/HUN
   alias: e_hu_imports_gs
@@ -4867,7 +4903,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/HUN.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_hu_pmi_mfg
-  name: Hungary manufacturing business confidence (PMI proxy)
+  name: "Hungary manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: HU
@@ -4875,7 +4911,7 @@
 - source: bis
   id: WS_CBPOL/M.HU
   alias: e_hu_policy_rate
-  name: Hungary central-bank policy rate
+  name: Hungary central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: HU
@@ -4883,11 +4919,12 @@
 - source: imf
   id: IMF.STA,PPI/HUN.PPI.IX.M
   alias: e_hu_ppi
-  name: Hungary producer price index
+  name: Hungary producer price index (index)
   frequency: M
   attrs:
     region: HU
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.HU
   alias: e_hu_reer
@@ -4930,6 +4967,7 @@
   attrs:
     region: HU
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.HU
   alias: e_hu_unemployment_harmonised
@@ -4949,7 +4987,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/HUN
   alias: e_hu_unemployment_youth
-  name: Hungary youth unemployment rate (15-24, %)
+  name: Hungary youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: HU
@@ -4957,7 +4995,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/IDN.M.MABM.IX._Z.N._Z._Z.N
   alias: e_id_broad_money
-  name: Indonesia broad money M3 (index, SA)
+  name: Indonesia broad money M3 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: ID
@@ -4974,7 +5012,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/IDN.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_id_business_confidence
-  name: Indonesia business confidence (OECD BCI)
+  name: Indonesia business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: ID
@@ -4982,7 +5020,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/IDN.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_id_consumer_confidence
-  name: Indonesia consumer confidence (OECD CCI)
+  name: Indonesia consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: ID
@@ -4991,7 +5029,7 @@
 - source: imf
   id: IMF.STA,CPI/IDN.CPI._T.SRP_IX.M
   alias: e_id_cpi
-  name: Indonesia CPI (all items, index)
+  name: Indonesia CPI, all items (index)
   frequency: M
   attrs:
     region: ID
@@ -5012,15 +5050,15 @@
   attrs:
     region: ID
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.ID.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/IDN.XG.FOB_USD.A
   alias: e_id_exports_goods
   name: Indonesia goods exports, FOB (USD)
   frequency: A
   attrs:
     region: ID
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 7.0e-04, 90th percentile 6.8e-03 over the last 10 years (10 of 75 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/IDN
   alias: e_id_exports_gs
@@ -5077,15 +5115,15 @@
   attrs:
     region: ID
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.ID.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/IDN.MG.CIF_USD.A
   alias: e_id_imports_goods
   name: Indonesia goods imports, CIF (USD)
   frequency: A
   attrs:
     region: ID
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 8.3e-04, 90th percentile 7.3e-03 over the last 10 years (10 of 75 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/IDN
   alias: e_id_imports_gs
@@ -5123,7 +5161,7 @@
 - source: bis
   id: WS_CBPOL/M.ID
   alias: e_id_policy_rate
-  name: Indonesia central-bank policy rate
+  name: Indonesia central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: ID
@@ -5145,15 +5183,15 @@
     region: ID
     commercial_ok: restricted
     close_match: "2026-10: other units; relative gap to the mirror: median 4.5e-05, 90th percentile 1.5e-04 over 224 periods"
-- source: dbnomics
-  id: IMF/IFS/M.ID.FIMM_PA
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/IDN.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_id_short_rate
-  name: Indonesia short-term interest rate
+  name: "Indonesia short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: ID
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 2017-02)"
+    stale: "2026-10: last period at the publisher 2025-12 (checked 2026-10-08)"
 - source: imf
   id: IMF.STA,IMTS/IDN.TBG_USD.G001.M
   alias: e_id_trade_balance_goods
@@ -5166,7 +5204,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/IDN
   alias: e_id_unemployment_youth
-  name: Indonesia youth unemployment rate (15-24, %)
+  name: Indonesia youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: ID
@@ -5174,7 +5212,7 @@
 - source: eurostat
   id: irt_lt_mcby_m/M.MCBY.IE
   alias: e_ie_10y
-  name: Ireland 10Y govt bond yield
+  name: Ireland 10Y govt bond yield (% p.a.)
   frequency: M
   attrs:
     region: IE
@@ -5190,7 +5228,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/IRL.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_ie_business_confidence
-  name: Ireland business confidence (OECD BCI)
+  name: Ireland business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: IE
@@ -5198,7 +5236,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/IRL.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_ie_consumer_confidence
-  name: Ireland consumer confidence (OECD CCI)
+  name: Ireland consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: IE
@@ -5207,7 +5245,7 @@
 - source: imf
   id: IMF.STA,CPI/IRL.HICP._T.SRP_IX.M
   alias: e_ie_hicp
-  name: Ireland HICP (all items, index)
+  name: Ireland HICP, all items (index)
   frequency: M
   attrs:
     region: IE
@@ -5216,7 +5254,7 @@
 - source: imf
   id: IMF.STA,CPI/IRL.CPI._T.SRP_IX.M
   alias: e_ie_cpi
-  name: Ireland CPI (all items, index)
+  name: Ireland CPI, all items (index)
   frequency: M
   attrs:
     region: IE
@@ -5241,7 +5279,7 @@
 - source: eurostat
   id: ei_bssi_m_r2/M.BS-ESI-I.SA.IE
   alias: e_ie_econ_sentiment
-  name: Ireland economic sentiment indicator (ESI)
+  name: Ireland economic sentiment indicator, ESI (index, long-term average = 100)
   frequency: M
   attrs:
     region: IE
@@ -5263,15 +5301,14 @@
   attrs:
     region: IE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.IE.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.IE.EUR.E
   alias: e_ie_fx_usd
-  name: Ireland FX rate (LCU per USD)
+  name: Ireland FX rate, euro per USD (LCU per USD; before 1999 the Irish pound rate at its euro conversion rate)
   frequency: M
   attrs:
     region: IE
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/IRL
   alias: e_ie_gdp_growth
@@ -5349,7 +5386,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/IRL.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_ie_pmi_mfg
-  name: Ireland manufacturing business confidence (PMI proxy)
+  name: "Ireland manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: IE
@@ -5357,11 +5394,12 @@
 - source: imf
   id: IMF.STA,PPI/IRL.PPI.IX.M
   alias: e_ie_ppi
-  name: Ireland producer price index
+  name: Ireland producer price index (index)
   frequency: M
   attrs:
     region: IE
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.IE
   alias: e_ie_reer
@@ -5405,6 +5443,7 @@
     region: IE
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 509 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.IE
   alias: e_ie_unemployment_harmonised
@@ -5424,7 +5463,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/IRL
   alias: e_ie_unemployment_youth
-  name: Ireland youth unemployment rate (15-24, %)
+  name: Ireland youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: IE
@@ -5449,7 +5488,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/ISR.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_il_business_confidence
-  name: Israel business confidence (OECD BCI)
+  name: Israel business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: IL
@@ -5457,7 +5496,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/ISR.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_il_consumer_confidence
-  name: Israel consumer confidence (OECD CCI)
+  name: Israel consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: IL
@@ -5466,7 +5505,7 @@
 - source: imf
   id: IMF.STA,CPI/ISR.CPI._T.SRP_IX.M
   alias: e_il_cpi
-  name: Israel CPI (all items, index)
+  name: Israel CPI, all items (index)
   frequency: M
   attrs:
     region: IL
@@ -5552,15 +5591,15 @@
   attrs:
     region: IL
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.IL.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/ISR.MG.CIF_USD.A
   alias: e_il_imports_goods
   name: Israel goods imports, CIF (USD)
   frequency: A
   attrs:
     region: IL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.1e-03, 90th percentile 1.3e-02 over the last 10 years (10 of 76 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/ISR
   alias: e_il_imports_gs
@@ -5569,15 +5608,14 @@
   attrs:
     region: IL
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.IL.AIP_IX
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_INDSERV/ISR.M.PRVM.IX.BTE.N._Z._Z.N
   alias: e_il_ind_prod
   name: Israel industrial production (index)
   frequency: M
   attrs:
     region: IL
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/ISR.M.MANM.IX._Z.Y._Z._Z.N
   alias: e_il_m1
@@ -5598,7 +5636,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/ISR.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_il_pmi_mfg
-  name: Israel manufacturing business confidence (PMI proxy)
+  name: "Israel manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: IL
@@ -5606,7 +5644,7 @@
 - source: bis
   id: WS_CBPOL/M.IL
   alias: e_il_policy_rate
-  name: Israel central-bank policy rate
+  name: Israel central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: IL
@@ -5614,7 +5652,7 @@
 - source: dbnomics
   id: IMF/IFS/M.IL.PPPI_IX
   alias: e_il_ppi
-  name: Israel producer price index
+  name: Israel producer price index (index)
   frequency: M
   attrs:
     region: IL
@@ -5637,15 +5675,14 @@
     region: IL
     commercial_ok: restricted
     close_match: "2026-10: other units; relative gap to the mirror: median 6.5e-04, 90th percentile 4.7e-03 over 227 periods"
-- source: dbnomics
-  id: IMF/IFS/M.IL.FITB_PA
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/ISR.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_il_short_rate
-  name: Israel short-term interest rate
+  name: "Israel short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: IL
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 2024-12)"
 - source: imf
   id: IMF.STA,IMTS/ISR.TBG_USD.G001.M
   alias: e_il_trade_balance_goods
@@ -5663,10 +5700,11 @@
   attrs:
     region: IL
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2024-12 (checked 2026-10-08)"
 - source: worldbank
   id: SL.UEM.1524.ZS/ISR
   alias: e_il_unemployment_youth
-  name: Israel youth unemployment rate (15-24, %)
+  name: Israel youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: IL
@@ -5674,7 +5712,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/IND.M.MABM.IX._Z.N._Z._Z.N
   alias: e_in_broad_money
-  name: India broad money M3 (index, SA)
+  name: India broad money M3 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: IN
@@ -5691,15 +5729,16 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/IND.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_in_business_confidence
-  name: India business confidence (OECD BCI)
+  name: India business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: IN
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: imf
   id: IMF.STA,CPI/IND.CPI._T.SRP_IX.M
   alias: e_in_cpi
-  name: India CPI (all items, index)
+  name: India CPI, all items (index)
   frequency: M
   attrs:
     region: IN
@@ -5721,15 +5760,15 @@
   attrs:
     region: IN
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.IN.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/IND.XG.FOB_USD.A
   alias: e_in_exports_goods
   name: India goods exports, FOB (USD)
   frequency: A
   attrs:
     region: IN
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 3.0e-03, 90th percentile 1.0e-02 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/IND
   alias: e_in_exports_gs
@@ -5789,12 +5828,13 @@
 - source: dbnomics
   id: IMF/DOT/A.IN.TMG_CIF_USD.W00
   alias: e_in_imports_goods
-  name: India goods imports, CIF (USD)
+  name: India goods imports, CIF (USD millions)
   frequency: A
   attrs:
     region: IN
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.IMP.GNFS.CD/IND
   alias: e_in_imports_gs
@@ -5815,7 +5855,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/IND.M.MANM.IX._Z.N._Z._Z.N
   alias: e_in_m1
-  name: India narrow money M1 (index, SA)
+  name: India narrow money M1 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: IN
@@ -5832,7 +5872,7 @@
 - source: bis
   id: WS_CBPOL/M.IN
   alias: e_in_policy_rate
-  name: India central-bank policy rate
+  name: India central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: IN
@@ -5840,7 +5880,7 @@
 - source: dbnomics
   id: IMF/IFS/M.IN.PPPI_IX
   alias: e_in_ppi
-  name: India producer price index
+  name: India producer price index (index)
   frequency: M
   attrs:
     region: IN
@@ -5863,15 +5903,14 @@
     region: IN
     commercial_ok: restricted
     close_match: "2026-10: other units; relative gap to the mirror: median 9.4e-04, 90th percentile 3.3e-02 over 39 periods"
-- source: dbnomics
-  id: IMF/IFS/M.IN.FIMM_PA
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/IND.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_in_short_rate
-  name: India short-term interest rate
+  name: "India short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: IN
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
 - source: imf
   id: IMF.STA,IMTS/IND.TBG_USD.G001.M
   alias: e_in_trade_balance_goods
@@ -5884,7 +5923,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/IND
   alias: e_in_unemployment_youth
-  name: India youth unemployment rate (15-24, %)
+  name: India youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: IN
@@ -5892,7 +5931,7 @@
 - source: eurostat
   id: irt_lt_mcby_m/M.MCBY.IT
   alias: e_it_10y
-  name: Italy 10Y govt bond yield
+  name: Italy 10Y govt bond yield (% p.a.)
   frequency: M
   attrs:
     region: IT
@@ -5908,7 +5947,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/ITA.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_it_business_confidence
-  name: Italy business confidence (OECD BCI)
+  name: Italy business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: IT
@@ -5916,7 +5955,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/ITA.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_it_consumer_confidence
-  name: Italy consumer confidence (OECD CCI)
+  name: Italy consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: IT
@@ -5925,7 +5964,7 @@
 - source: imf
   id: IMF.STA,CPI/ITA.HICP._T.SRP_IX.M
   alias: e_it_hicp
-  name: Italy HICP (all items, index)
+  name: Italy HICP, all items (index)
   frequency: M
   attrs:
     region: IT
@@ -5933,7 +5972,7 @@
 - source: imf
   id: IMF.STA,CPI/ITA.CPI._T.SRP_IX.M
   alias: e_it_cpi
-  name: Italy CPI (all items, index)
+  name: Italy CPI, all items (index)
   frequency: M
   attrs:
     region: IT
@@ -5957,7 +5996,7 @@
 - source: eurostat
   id: ei_bssi_m_r2/M.BS-ESI-I.SA.IT
   alias: e_it_econ_sentiment
-  name: Italy economic sentiment indicator (ESI)
+  name: Italy economic sentiment indicator, ESI (index, long-term average = 100)
   frequency: M
   attrs:
     region: IT
@@ -5979,15 +6018,14 @@
   attrs:
     region: IT
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.IT.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.IT.EUR.E
   alias: e_it_fx_usd
-  name: Italy FX rate (LCU per USD)
+  name: Italy FX rate, euro per USD (LCU per USD; before 1999 the lira rate at its euro conversion rate)
   frequency: M
   attrs:
     region: IT
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/ITA
   alias: e_it_gdp_growth
@@ -6015,7 +6053,7 @@
 - source: eurostat
   id: namq_10_gdp/Q.CLV20_MEUR.SCA.B1GQ.IT
   alias: e_it_gdp_real_q
-  name: Italy real GDP (q, CLV)
+  name: Italy real GDP, chain-linked 2020 volumes (EUR millions)
   frequency: Q
   attrs:
     region: IT
@@ -6073,7 +6111,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/ITA.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_it_pmi_mfg
-  name: Italy manufacturing business confidence (PMI proxy)
+  name: "Italy manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: IT
@@ -6081,19 +6119,21 @@
 - source: bis
   id: WS_CBPOL/M.IT
   alias: e_it_policy_rate
-  name: Italy central-bank policy rate
+  name: Italy central-bank policy rate, ends 1998 with the euro (% p.a.)
   frequency: M
   attrs:
     region: IT
     commercial_ok: restricted
+    stale: "2026-10: the national central bank's rate ends 1998-12, when the ECB took over (checked 2026-10-08); the euro area's rate is e_ecb_rate"
 - source: imf
   id: IMF.STA,PPI/ITA.PPI.IX.M
   alias: e_it_ppi
-  name: Italy producer price index
+  name: Italy producer price index (index)
   frequency: M
   attrs:
     region: IT
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.IT
   alias: e_it_reer
@@ -6122,11 +6162,12 @@
 - source: imf
   id: IMF.STA,MFS_IR/ITA.GSTBILY_RT_PT_A_PT.M
   alias: e_it_short_rate
-  name: Italy short-term interest rate
+  name: "Italy short-term interest rate: Treasury bill yield (% p.a.)"
   frequency: M
   attrs:
     region: IT
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-03 (checked 2026-10-08)"
 - source: imf
   id: IMF.STA,IMTS/ITA.TBG_USD.G001.M
   alias: e_it_trade_balance_goods
@@ -6144,6 +6185,7 @@
   attrs:
     region: IT
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.IT
   alias: e_it_unemployment_harmonised
@@ -6163,20 +6205,20 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/ITA
   alias: e_it_unemployment_youth
-  name: Italy youth unemployment rate (15-24, %)
+  name: Italy youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: IT
     commercial_ok: 'yes'
 - source: oecd
-  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/JPN.M.MABM.XDC._Z.Y._Z._Z.N
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/JPN.M.MABM.IX._Z.Y._Z._Z.N
   alias: e_jp_broad_money
   name: Japan broad money M3 (index, SA)
   frequency: M
   attrs:
     region: JP
     commercial_ok: restricted
-    close_match: "2026-10: rebased; relative gap to the mirror: median 6.6e-16, 90th percentile 8.3e-05 over 405 periods"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 4.5e-08, 90th percentile 3.7e-05 over 525 periods"
 - source: imf
   id: IMF.RES,WEO/JPN.GGXCNL_NGDP.A
   alias: e_jp_budget_balance_gdp
@@ -6188,7 +6230,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/JPN.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_jp_business_confidence
-  name: Japan business confidence (OECD BCI)
+  name: Japan business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: JP
@@ -6196,7 +6238,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/JPN.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_jp_consumer_confidence
-  name: Japan consumer confidence (OECD CCI)
+  name: Japan consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: JP
@@ -6205,7 +6247,7 @@
 - source: imf
   id: IMF.STA,CPI/JPN.CPI._T.SRP_IX.M
   alias: e_jp_cpi
-  name: Japan CPI (all items, index)
+  name: Japan CPI, all items (index)
   frequency: M
   attrs:
     region: JP
@@ -6291,15 +6333,16 @@
   attrs:
     region: JP
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.JP.TMG_CIF_USD.W00
+    stale: "2026-10: last period at the publisher 2025-Q4 (checked 2026-10-08)"
+- source: imf
+  id: IMF.STA,ITG/JPN.MG.CIF_USD.A
   alias: e_jp_imports_goods
   name: Japan goods imports, CIF (USD)
   frequency: A
   attrs:
     region: JP
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.4e-03, 90th percentile 3.2e-03 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/JPN
   alias: e_jp_imports_gs
@@ -6318,14 +6361,14 @@
     commercial_ok: restricted
     close_match: "2026-10: rebased; relative gap to the mirror: median 1.9e-07, 90th percentile 2.0e-04 over 407 periods"
 - source: oecd
-  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/JPN.M.MANM.XDC._Z.Y._Z._Z.N
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/JPN.M.MANM.IX._Z.Y._Z._Z.N
   alias: e_jp_m1
   name: Japan narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: JP
     commercial_ok: restricted
-    close_match: "2026-10: rebased; relative gap to the mirror: median 3.9e-08, 90th percentile 1.3e-04 over 405 periods"
+    close_match: "2026-10: same units; relative gap to the mirror: median 7.3e-08, 90th percentile 3.8e-07 over 825 periods"
 - source: bis
   id: WS_EER/M.N.B.JP
   alias: e_jp_neer
@@ -6337,7 +6380,7 @@
 - source: bis
   id: WS_CBPOL/M.JP
   alias: e_jp_policy_rate
-  name: Japan central-bank policy rate
+  name: Japan central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: JP
@@ -6345,7 +6388,7 @@
 - source: dbnomics
   id: IMF/IFS/M.JP.PPPI_IX
   alias: e_jp_ppi
-  name: Japan producer price index
+  name: Japan producer price index (index)
   frequency: M
   attrs:
     region: JP
@@ -6368,15 +6411,15 @@
     region: JP
     commercial_ok: restricted
     close_match: "2026-10: other units; relative gap to the mirror: median 1.3e-06, 90th percentile 9.8e-04 over 26 periods"
-- source: dbnomics
-  id: IMF/IFS/M.JP.FITB_PA
+    stale: "2026-10: last period at the publisher 2026-03 (checked 2026-10-08)"
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/JPN.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_jp_short_rate
-  name: Japan short-term interest rate
+  name: "Japan short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: JP
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 2017-06)"
 - source: imf
   id: IMF.STA,IMTS/JPN.TBG_USD.G001.M
   alias: e_jp_trade_balance_goods
@@ -6395,10 +6438,11 @@
     region: JP
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 688 periods"
+    stale: "2026-10: last period at the publisher 2026-03 (checked 2026-10-08)"
 - source: worldbank
   id: SL.UEM.1524.ZS/JPN
   alias: e_jp_unemployment_youth
-  name: Japan youth unemployment rate (15-24, %)
+  name: Japan youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: JP
@@ -6423,7 +6467,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/KOR.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_kr_business_confidence
-  name: South Korea business confidence (OECD BCI)
+  name: South Korea business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: KR
@@ -6431,7 +6475,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/KOR.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_kr_consumer_confidence
-  name: South Korea consumer confidence (OECD CCI)
+  name: South Korea consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: KR
@@ -6440,7 +6484,7 @@
 - source: imf
   id: IMF.STA,CPI/KOR.CPI._T.SRP_IX.M
   alias: e_kr_cpi
-  name: South Korea CPI (all items, index)
+  name: South Korea CPI, all items (index)
   frequency: M
   attrs:
     region: KR
@@ -6572,7 +6616,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/KOR.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_kr_pmi_mfg
-  name: South Korea manufacturing business confidence (PMI proxy)
+  name: "South Korea manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: KR
@@ -6580,7 +6624,7 @@
 - source: bis
   id: WS_CBPOL/M.KR
   alias: e_kr_policy_rate
-  name: South Korea central-bank policy rate
+  name: South Korea central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: KR
@@ -6588,7 +6632,7 @@
 - source: dbnomics
   id: IMF/IFS/M.KR.PPPI_IX
   alias: e_kr_ppi
-  name: South Korea producer price index
+  name: South Korea producer price index (index)
   frequency: M
   attrs:
     region: KR
@@ -6614,20 +6658,20 @@
 - source: imf
   id: IMF.STA,MFS_IR/KOR.MMRT_RT_PT_A_PT.M
   alias: e_kr_short_rate
-  name: South Korea short-term interest rate
+  name: "South Korea short-term interest rate: money-market rate (% p.a.)"
   frequency: M
   attrs:
     region: KR
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/M.KR.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/KOR.TBG_USD.G001.M
   alias: e_kr_trade_balance_goods
   name: South Korea goods trade balance (USD)
   frequency: M
   attrs:
     region: KR
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 0.0e+00, 90th percentile 1.9e-16 over the last 10 years (113 of 776 common periods)"
 - source: imf
   id: IMF.STA,LS/KOR.U.PT.M
   alias: e_kr_unemployment
@@ -6637,10 +6681,11 @@
     region: KR
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 505 periods"
+    stale: "2026-10: last period at the publisher 2026-03 (checked 2026-10-08)"
 - source: worldbank
   id: SL.UEM.1524.ZS/KOR
   alias: e_kr_unemployment_youth
-  name: South Korea youth unemployment rate (15-24, %)
+  name: South Korea youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: KR
@@ -6648,7 +6693,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/MEX.M.MABM.IX._Z.N._Z._Z.N
   alias: e_mx_broad_money
-  name: Mexico broad money M3 (index, SA)
+  name: Mexico broad money M3 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: MX
@@ -6665,7 +6710,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/MEX.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_mx_business_confidence
-  name: Mexico business confidence (OECD BCI)
+  name: Mexico business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: MX
@@ -6673,7 +6718,7 @@
 - source: banxico
   id: SF60633
   alias: e_mx_cetes28
-  name: MX Cetes 28d
+  name: MX Cetes 28-day yield (% p.a.)
   frequency: D
   attrs:
     region: MX
@@ -6681,7 +6726,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/MEX.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_mx_consumer_confidence
-  name: Mexico consumer confidence (OECD CCI)
+  name: Mexico consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: MX
@@ -6703,15 +6748,15 @@
   attrs:
     region: MX
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.MX.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/MEX.XG.FOB_USD.A
   alias: e_mx_exports_goods
   name: Mexico goods exports, FOB (USD)
   frequency: A
   attrs:
     region: MX
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.0e-05, 90th percentile 1.5e-05 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/MEX
   alias: e_mx_exports_gs
@@ -6756,12 +6801,13 @@
 - source: dbnomics
   id: IMF/DOT/A.MX.TMG_CIF_USD.W00
   alias: e_mx_imports_goods
-  name: Mexico goods imports, CIF (USD)
+  name: Mexico goods imports, CIF (USD millions)
   frequency: A
   attrs:
     region: MX
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.IMP.GNFS.CD/MEX
   alias: e_mx_imports_gs
@@ -6773,7 +6819,7 @@
 - source: banxico
   id: SP1
   alias: e_mx_inpc
-  name: MX INPC (headline CPI)
+  name: MX INPC, headline CPI (index)
   frequency: M
   attrs:
     region: MX
@@ -6798,7 +6844,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/MEX.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_mx_pmi_mfg
-  name: Mexico manufacturing business confidence (PMI proxy)
+  name: "Mexico manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: MX
@@ -6806,7 +6852,7 @@
 - source: dbnomics
   id: IMF/IFS/M.MX.PPPI_IX
   alias: e_mx_ppi
-  name: Mexico producer price index
+  name: Mexico producer price index (index)
   frequency: M
   attrs:
     region: MX
@@ -6823,15 +6869,16 @@
 - source: banxico
   id: SF43707
   alias: e_mx_reserves
-  name: MX intl reserves
+  name: MX international reserves, Banxico weekly (USD millions)
   frequency: W
   attrs:
     region: MX
     commercial_ok: unverified
+    units_differ: USD millions, as Banxico publishes it; the family's other series are in USD
 - source: banxico
   id: SF61745
   alias: e_mx_target_rate
-  name: MX target rate
+  name: MX target rate (% p.a.)
   frequency: D
   attrs:
     region: MX
@@ -6839,7 +6886,7 @@
 - source: banxico
   id: SF60648
   alias: e_mx_tiie28
-  name: MX TIIE 28d
+  name: MX TIIE 28-day (% p.a.)
   frequency: D
   attrs:
     region: MX
@@ -6856,7 +6903,7 @@
 - source: inegi
   id: '6200093973'
   alias: e_mx_unemployed_persons
-  name: Mexico unemployed population 15+ (persons, ENOE)
+  name: Mexico unemployed population 15+, ENOE (persons)
   frequency: Q
   bank: BISE
   attrs:
@@ -6865,7 +6912,7 @@
 - source: fred
   id: LRHUTTTTMXM156S
   alias: e_mx_unemployment
-  name: MX unemployment rate (OECD harmonised)
+  name: MX unemployment rate, OECD harmonised (%)
   frequency: M
   attrs:
     region: MX
@@ -6873,7 +6920,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/MEX
   alias: e_mx_unemployment_youth
-  name: Mexico youth unemployment rate (15-24, %)
+  name: Mexico youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: MX
@@ -6881,7 +6928,7 @@
 - source: banxico
   id: SF43718
   alias: e_mx_usdmxn_fix
-  name: USD/MXN FIX
+  name: USD/MXN FIX (MXN per USD)
   frequency: D
   attrs:
     region: MX
@@ -6897,7 +6944,7 @@
 - source: imf
   id: IMF.STA,CPI/MYS.CPI._T.SRP_IX.M
   alias: e_my_cpi
-  name: Malaysia CPI (all items, index)
+  name: Malaysia CPI, all items (index)
   frequency: M
   attrs:
     region: MY
@@ -7020,7 +7067,7 @@
 - source: bis
   id: WS_CBPOL/M.MY
   alias: e_my_policy_rate
-  name: Malaysia central-bank policy rate
+  name: Malaysia central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: MY
@@ -7028,7 +7075,7 @@
 - source: dbnomics
   id: IMF/IFS/M.MY.PPPI_IX
   alias: e_my_ppi
-  name: Malaysia producer price index
+  name: Malaysia producer price index (index)
   frequency: M
   attrs:
     region: MY
@@ -7051,15 +7098,14 @@
     region: MY
     commercial_ok: restricted
     close_match: "2026-10: other units; relative gap to the mirror: median 2.7e-04, 90th percentile 2.4e-03 over 304 periods"
-- source: dbnomics
-  id: IMF/IFS/M.MY.FITB_PA
+- source: imf
+  id: IMF.STA,MFS_IR/MYS.MMRT_RT_PT_A_PT.M
   alias: e_my_short_rate
-  name: Malaysia short-term interest rate
+  name: "Malaysia short-term interest rate: money-market rate (% p.a.)"
   frequency: M
   attrs:
     region: MY
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 2016-12)"
 - source: imf
   id: IMF.STA,IMTS/MYS.TBG_USD.G001.M
   alias: e_my_trade_balance_goods
@@ -7081,7 +7127,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/MYS
   alias: e_my_unemployment_youth
-  name: Malaysia youth unemployment rate (15-24, %)
+  name: Malaysia youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: MY
@@ -7089,7 +7135,7 @@
 - source: eurostat
   id: irt_lt_mcby_m/M.MCBY.NL
   alias: e_nl_10y
-  name: Netherlands 10Y govt bond yield
+  name: Netherlands 10Y govt bond yield (% p.a.)
   frequency: M
   attrs:
     region: NL
@@ -7105,7 +7151,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/NLD.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_nl_business_confidence
-  name: Netherlands business confidence (OECD BCI)
+  name: Netherlands business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: NL
@@ -7113,7 +7159,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/NLD.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_nl_consumer_confidence
-  name: Netherlands consumer confidence (OECD CCI)
+  name: Netherlands consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: NL
@@ -7122,7 +7168,7 @@
 - source: imf
   id: IMF.STA,CPI/NLD.HICP._T.SRP_IX.M
   alias: e_nl_hicp
-  name: Netherlands HICP (all items, index)
+  name: Netherlands HICP, all items (index)
   frequency: M
   attrs:
     region: NL
@@ -7131,7 +7177,7 @@
 - source: imf
   id: IMF.STA,CPI/NLD.CPI._T.IX.M
   alias: e_nl_cpi
-  name: Netherlands CPI (all items, index)
+  name: Netherlands CPI, all items (index)
   frequency: M
   attrs:
     region: NL
@@ -7156,7 +7202,7 @@
 - source: eurostat
   id: ei_bssi_m_r2/M.BS-ESI-I.SA.NL
   alias: e_nl_econ_sentiment
-  name: Netherlands economic sentiment indicator (ESI)
+  name: Netherlands economic sentiment indicator, ESI (index, long-term average = 100)
   frequency: M
   attrs:
     region: NL
@@ -7164,12 +7210,13 @@
 - source: dbnomics
   id: IMF/DOT/A.NL.TXG_FOB_USD.W00
   alias: e_nl_exports_goods
-  name: Netherlands goods exports, FOB (USD)
+  name: Netherlands goods exports, FOB (USD millions)
   frequency: A
   attrs:
     region: NL
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.EXP.GNFS.CD/NLD
   alias: e_nl_exports_gs
@@ -7178,15 +7225,14 @@
   attrs:
     region: NL
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.NL.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.NL.EUR.E
   alias: e_nl_fx_usd
-  name: Netherlands FX rate (LCU per USD)
+  name: Netherlands FX rate, euro per USD (LCU per USD; before 1999 the guilder rate at its euro conversion rate)
   frequency: M
   attrs:
     region: NL
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/NLD
   alias: e_nl_gdp_growth
@@ -7214,7 +7260,7 @@
 - source: eurostat
   id: namq_10_gdp/Q.CLV20_MEUR.SCA.B1GQ.NL
   alias: e_nl_gdp_real_q
-  name: Netherlands real GDP (q, CLV)
+  name: Netherlands real GDP, chain-linked 2020 volumes (EUR millions)
   frequency: Q
   attrs:
     region: NL
@@ -7235,15 +7281,15 @@
   attrs:
     region: NL
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.NL.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/NLD.MG.CIF_USD.A
   alias: e_nl_imports_goods
   name: Netherlands goods imports, CIF (USD)
   frequency: A
   attrs:
     region: NL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 6.5e-03, 90th percentile 7.7e-03 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/NLD
   alias: e_nl_imports_gs
@@ -7272,7 +7318,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/NLD.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_nl_pmi_mfg
-  name: Netherlands manufacturing business confidence (PMI proxy)
+  name: "Netherlands manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: NL
@@ -7280,15 +7326,16 @@
 - source: bis
   id: WS_CBPOL/M.NL
   alias: e_nl_policy_rate
-  name: Netherlands central-bank policy rate
+  name: Netherlands central-bank policy rate, ends 1998 with the euro (% p.a.)
   frequency: M
   attrs:
     region: NL
     commercial_ok: restricted
+    stale: "2026-10: the national central bank's rate ends 1998-12, when the ECB took over (checked 2026-10-08); the euro area's rate is e_ecb_rate"
 - source: imf
   id: IMF.STA,PPI/NLD.PPI.IX.M
   alias: e_nl_ppi
-  name: Netherlands producer price index
+  name: Netherlands producer price index (index)
   frequency: M
   attrs:
     region: NL
@@ -7336,6 +7383,7 @@
   attrs:
     region: NL
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.NL
   alias: e_nl_unemployment_harmonised
@@ -7355,7 +7403,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/NLD
   alias: e_nl_unemployment_youth
-  name: Netherlands youth unemployment rate (15-24, %)
+  name: Netherlands youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: NL
@@ -7380,7 +7428,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/NOR.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_no_business_confidence
-  name: Norway business confidence (OECD BCI)
+  name: Norway business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: 'NO'
@@ -7388,7 +7436,7 @@
 - source: imf
   id: IMF.STA,CPI/NOR.HICP._T.IX.M
   alias: e_no_hicp
-  name: Norway HICP (all items, index)
+  name: Norway HICP, all items (index)
   frequency: M
   attrs:
     region: 'NO'
@@ -7397,7 +7445,7 @@
 - source: imf
   id: IMF.STA,CPI/NOR.CPI._T.SRP_IX.M
   alias: e_no_cpi
-  name: Norway CPI (all items, index)
+  name: Norway CPI, all items (index)
   frequency: M
   attrs:
     region: 'NO'
@@ -7513,7 +7561,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/NOR.M.MANM.IX._Z.N._Z._Z.N
   alias: e_no_m1
-  name: Norway narrow money M1 (index, SA)
+  name: Norway narrow money M1 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: 'NO'
@@ -7530,7 +7578,7 @@
 - source: bis
   id: WS_CBPOL/M.NO
   alias: e_no_policy_rate
-  name: Norway central-bank policy rate
+  name: Norway central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: 'NO'
@@ -7538,12 +7586,13 @@
 - source: imf
   id: IMF.STA,PPI/NOR.PPI.IX.M
   alias: e_no_ppi
-  name: Norway producer price index
+  name: Norway producer price index (index)
   frequency: M
   attrs:
     region: 'NO'
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 7.7e-16, 90th percentile 2.6e-15 over 581 periods"
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.NO
   alias: e_no_reer
@@ -7572,7 +7621,7 @@
 - source: imf
   id: IMF.STA,MFS_IR/NOR.MMRT_RT_PT_A_PT.M
   alias: e_no_short_rate
-  name: Norway short-term interest rate
+  name: "Norway short-term interest rate: money-market rate (% p.a.)"
   frequency: M
   attrs:
     region: 'NO'
@@ -7596,6 +7645,7 @@
     region: 'NO'
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 436 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.NO
   alias: e_no_unemployment_harmonised
@@ -7615,7 +7665,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/NOR
   alias: e_no_unemployment_youth
-  name: Norway youth unemployment rate (15-24, %)
+  name: Norway youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: 'NO'
@@ -7623,7 +7673,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/NZL.M.MABM.IX._Z.N._Z._Z.N
   alias: e_nz_broad_money
-  name: New Zealand broad money M3 (index, SA)
+  name: New Zealand broad money M3 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: NZ
@@ -7640,7 +7690,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/NZL.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_nz_business_confidence
-  name: New Zealand business confidence (OECD BCI)
+  name: New Zealand business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: NZ
@@ -7648,7 +7698,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/NZL.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_nz_consumer_confidence
-  name: New Zealand consumer confidence (OECD CCI)
+  name: New Zealand consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: NZ
@@ -7657,7 +7707,7 @@
 - source: imf
   id: IMF.STA,CPI/NZL.CPI._T.SRP_IX.Q
   alias: e_nz_cpi
-  name: New Zealand CPI (all items, index)
+  name: New Zealand CPI, all items (index)
   frequency: Q
   attrs:
     region: NZ
@@ -7743,15 +7793,15 @@
   attrs:
     region: NZ
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.NZ.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/NZL.MG.CIF_USD.A
   alias: e_nz_imports_goods
   name: New Zealand goods imports, CIF (USD)
   frequency: A
   attrs:
     region: NZ
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 8.2e-03, 90th percentile 1.4e-02 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/NZL
   alias: e_nz_imports_gs
@@ -7763,7 +7813,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/NZL.M.MANM.IX._Z.N._Z._Z.N
   alias: e_nz_m1
-  name: New Zealand narrow money M1 (index, SA)
+  name: New Zealand narrow money M1 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: NZ
@@ -7780,7 +7830,7 @@
 - source: bis
   id: WS_CBPOL/M.NZ
   alias: e_nz_policy_rate
-  name: New Zealand central-bank policy rate
+  name: New Zealand central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: NZ
@@ -7805,7 +7855,7 @@
 - source: imf
   id: IMF.STA,MFS_IR/NZL.GSTBILY_RT_PT_A_PT.M
   alias: e_nz_short_rate
-  name: New Zealand short-term interest rate
+  name: "New Zealand short-term interest rate: Treasury bill yield (% p.a.)"
   frequency: M
   attrs:
     region: NZ
@@ -7827,10 +7877,11 @@
   attrs:
     region: NZ
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2025-09 (checked 2026-10-08)"
 - source: worldbank
   id: SL.UEM.1524.ZS/NZL
   alias: e_nz_unemployment_youth
-  name: New Zealand youth unemployment rate (15-24, %)
+  name: New Zealand youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: NZ
@@ -7846,7 +7897,7 @@
 - source: imf
   id: IMF.STA,CPI/PER.CPI._T.SRP_IX.M
   alias: e_pe_cpi
-  name: Peru CPI (all items, index)
+  name: Peru CPI, all items (index)
   frequency: M
   attrs:
     region: PE
@@ -7862,12 +7913,13 @@
 - source: dbnomics
   id: IMF/DOT/A.PE.TXG_FOB_USD.W00
   alias: e_pe_exports_goods
-  name: Peru goods exports, FOB (USD)
+  name: Peru goods exports, FOB (USD millions)
   frequency: A
   attrs:
     region: PE
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.EXP.GNFS.CD/PER
   alias: e_pe_exports_gs
@@ -7927,12 +7979,13 @@
 - source: dbnomics
   id: IMF/DOT/A.PE.TMG_CIF_USD.W00
   alias: e_pe_imports_goods
-  name: Peru goods imports, CIF (USD)
+  name: Peru goods imports, CIF (USD millions)
   frequency: A
   attrs:
     region: PE
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.IMP.GNFS.CD/PER
   alias: e_pe_imports_gs
@@ -7961,7 +8014,7 @@
 - source: bis
   id: WS_CBPOL/M.PE
   alias: e_pe_policy_rate
-  name: Peru central-bank policy rate
+  name: Peru central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: PE
@@ -7977,16 +8030,17 @@
 - source: dbnomics
   id: IMF/IFS/M.PE.RAFA_USD
   alias: e_pe_reserves
-  name: Peru FX reserves (USD)
+  name: Peru FX reserves (USD millions)
   frequency: M
   attrs:
     region: PE
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF IFS published it; the family's other series are in USD
 - source: dbnomics
   id: IMF/IFS/M.PE.FIMM_PA
   alias: e_pe_short_rate
-  name: Peru short-term interest rate
+  name: "Peru short-term interest rate: money-market rate (% p.a.)"
   frequency: M
   attrs:
     region: PE
@@ -7995,12 +8049,13 @@
 - source: dbnomics
   id: IMF/DOT/M.PE.TBG_USD.W00
   alias: e_pe_trade_balance_goods
-  name: Peru goods trade balance (USD)
+  name: Peru goods trade balance (USD millions)
   frequency: M
   attrs:
     region: PE
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: dbnomics
   id: IMF/IFS/M.PE.LUR_PT
   alias: e_pe_unemployment
@@ -8013,7 +8068,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/PER
   alias: e_pe_unemployment_youth
-  name: Peru youth unemployment rate (15-24, %)
+  name: Peru youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: PE
@@ -8029,7 +8084,7 @@
 - source: imf
   id: IMF.STA,CPI/PHL.CPI._T.SRP_IX.M
   alias: e_ph_cpi
-  name: Philippines CPI (all items, index)
+  name: Philippines CPI, all items (index)
   frequency: M
   attrs:
     region: PH
@@ -8045,12 +8100,13 @@
 - source: dbnomics
   id: IMF/DOT/A.PH.TXG_FOB_USD.W00
   alias: e_ph_exports_goods
-  name: Philippines goods exports, FOB (USD)
+  name: Philippines goods exports, FOB (USD millions)
   frequency: A
   attrs:
     region: PH
     commercial_ok: restricted
     stale: "2026-10: only 17 periods in common"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.EXP.GNFS.CD/PHL
   alias: e_ph_exports_gs
@@ -8110,12 +8166,13 @@
 - source: dbnomics
   id: IMF/DOT/A.PH.TMG_CIF_USD.W00
   alias: e_ph_imports_goods
-  name: Philippines goods imports, CIF (USD)
+  name: Philippines goods imports, CIF (USD millions)
   frequency: A
   attrs:
     region: PH
     commercial_ok: restricted
     stale: "2026-10: only 17 periods in common"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.IMP.GNFS.CD/PHL
   alias: e_ph_imports_gs
@@ -8132,7 +8189,7 @@
   attrs:
     region: PH
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    stale: "2026-10: no data: the mirror holds no values; the OECD (DF_INDSERV) has no Philippine industrial production (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.N.B.PH
   alias: e_ph_neer
@@ -8144,7 +8201,7 @@
 - source: bis
   id: WS_CBPOL/M.PH
   alias: e_ph_policy_rate
-  name: Philippines central-bank policy rate
+  name: Philippines central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: PH
@@ -8152,7 +8209,7 @@
 - source: dbnomics
   id: IMF/IFS/M.PH.PPPI_IX
   alias: e_ph_ppi
-  name: Philippines producer price index
+  name: Philippines producer price index (index)
   frequency: M
   attrs:
     region: PH
@@ -8178,7 +8235,7 @@
 - source: imf
   id: IMF.STA,MFS_IR/PHL.GSTBILY_RT_PT_A_PT.M
   alias: e_ph_short_rate
-  name: Philippines short-term interest rate
+  name: "Philippines short-term interest rate: Treasury bill yield (% p.a.)"
   frequency: M
   attrs:
     region: PH
@@ -8204,7 +8261,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/PHL
   alias: e_ph_unemployment_youth
-  name: Philippines youth unemployment rate (15-24, %)
+  name: Philippines youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: PH
@@ -8212,7 +8269,7 @@
 - source: eurostat
   id: irt_lt_mcby_m/M.MCBY.PL
   alias: e_pl_10y
-  name: Poland 10Y govt bond yield
+  name: Poland 10Y govt bond yield (% p.a.)
   frequency: M
   attrs:
     region: PL
@@ -8220,7 +8277,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/POL.M.MABM.IX._Z.N._Z._Z.N
   alias: e_pl_broad_money
-  name: Poland broad money M3 (index, SA)
+  name: Poland broad money M3 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: PL
@@ -8237,7 +8294,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/POL.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_pl_business_confidence
-  name: Poland business confidence (OECD BCI)
+  name: Poland business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: PL
@@ -8245,7 +8302,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/POL.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_pl_consumer_confidence
-  name: Poland consumer confidence (OECD CCI)
+  name: Poland consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: PL
@@ -8254,7 +8311,7 @@
 - source: imf
   id: IMF.STA,CPI/POL.HICP._T.IX.M
   alias: e_pl_hicp
-  name: Poland HICP (all items, index)
+  name: Poland HICP, all items (index)
   frequency: M
   attrs:
     region: PL
@@ -8263,7 +8320,7 @@
 - source: imf
   id: IMF.STA,CPI/POL.CPI._T.IX.M
   alias: e_pl_cpi
-  name: Poland CPI (all items, index)
+  name: Poland CPI, all items (index)
   frequency: M
   attrs:
     region: PL
@@ -8288,20 +8345,20 @@
 - source: eurostat
   id: ei_bssi_m_r2/M.BS-ESI-I.SA.PL
   alias: e_pl_econ_sentiment
-  name: Poland economic sentiment indicator (ESI)
+  name: Poland economic sentiment indicator, ESI (index, long-term average = 100)
   frequency: M
   attrs:
     region: PL
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.PL.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/POL.XG.FOB_USD.A
   alias: e_pl_exports_goods
   name: Poland goods exports, FOB (USD)
   frequency: A
   attrs:
     region: PL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 4.0e-03, 90th percentile 7.5e-03 over the last 10 years (10 of 63 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/POL
   alias: e_pl_exports_gs
@@ -8358,15 +8415,15 @@
   attrs:
     region: PL
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.PL.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/POL.MG.CIF_USD.A
   alias: e_pl_imports_goods
   name: Poland goods imports, CIF (USD)
   frequency: A
   attrs:
     region: PL
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 4.7e-03, 90th percentile 7.5e-03 over the last 10 years (10 of 63 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/POL
   alias: e_pl_imports_gs
@@ -8387,7 +8444,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/POL.M.MANM.IX._Z.N._Z._Z.N
   alias: e_pl_m1
-  name: Poland narrow money M1 (index, SA)
+  name: Poland narrow money M1 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: PL
@@ -8404,7 +8461,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/POL.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_pl_pmi_mfg
-  name: Poland manufacturing business confidence (PMI proxy)
+  name: "Poland manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: PL
@@ -8412,7 +8469,7 @@
 - source: bis
   id: WS_CBPOL/M.PL
   alias: e_pl_policy_rate
-  name: Poland central-bank policy rate
+  name: Poland central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: PL
@@ -8420,12 +8477,13 @@
 - source: imf
   id: IMF.STA,PPI/POL.PPI.IX.M
   alias: e_pl_ppi
-  name: Poland producer price index
+  name: Poland producer price index (index)
   frequency: M
   attrs:
     region: PL
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 5.4e-16, 90th percentile 2.7e-15 over 479 periods"
+    stale: "2026-10: last period at the publisher 2025-10 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.PL
   alias: e_pl_reer
@@ -8451,15 +8509,14 @@
   attrs:
     region: PL
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.PL.FITB_PA
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/POL.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_pl_short_rate
-  name: Poland short-term interest rate
+  name: "Poland short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: PL
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 2017-02)"
 - source: imf
   id: IMF.STA,IMTS/POL.TBG_USD.G001.M
   alias: e_pl_trade_balance_goods
@@ -8478,6 +8535,7 @@
     region: PL
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 0.0e+00, 90th percentile 0.0e+00 over 359 periods"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.PL
   alias: e_pl_unemployment_harmonised
@@ -8497,7 +8555,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/POL
   alias: e_pl_unemployment_youth
-  name: Poland youth unemployment rate (15-24, %)
+  name: Poland youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: PL
@@ -8505,7 +8563,7 @@
 - source: eurostat
   id: irt_lt_mcby_m/M.MCBY.PT
   alias: e_pt_10y
-  name: Portugal 10Y govt bond yield
+  name: Portugal 10Y govt bond yield (% p.a.)
   frequency: M
   attrs:
     region: PT
@@ -8521,7 +8579,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/PRT.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_pt_business_confidence
-  name: Portugal business confidence (OECD BCI)
+  name: Portugal business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: PT
@@ -8529,7 +8587,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/PRT.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_pt_consumer_confidence
-  name: Portugal consumer confidence (OECD CCI)
+  name: Portugal consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: PT
@@ -8538,7 +8596,7 @@
 - source: imf
   id: IMF.STA,CPI/PRT.HICP._T.SRP_IX.M
   alias: e_pt_hicp
-  name: Portugal HICP (all items, index)
+  name: Portugal HICP, all items (index)
   frequency: M
   attrs:
     region: PT
@@ -8546,7 +8604,7 @@
 - source: imf
   id: IMF.STA,CPI/PRT.CPI._T.SRP_IX.M
   alias: e_pt_cpi
-  name: Portugal CPI (all items, index)
+  name: Portugal CPI, all items (index)
   frequency: M
   attrs:
     region: PT
@@ -8570,7 +8628,7 @@
 - source: eurostat
   id: ei_bssi_m_r2/M.BS-ESI-I.SA.PT
   alias: e_pt_econ_sentiment
-  name: Portugal economic sentiment indicator (ESI)
+  name: Portugal economic sentiment indicator, ESI (index, long-term average = 100)
   frequency: M
   attrs:
     region: PT
@@ -8578,12 +8636,13 @@
 - source: dbnomics
   id: IMF/DOT/A.PT.TXG_FOB_USD.W00
   alias: e_pt_exports_goods
-  name: Portugal goods exports, FOB (USD)
+  name: Portugal goods exports, FOB (USD millions)
   frequency: A
   attrs:
     region: PT
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.EXP.GNFS.CD/PRT
   alias: e_pt_exports_gs
@@ -8592,15 +8651,14 @@
   attrs:
     region: PT
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/IFS/M.PT.ENDE_XDC_USD_RATE
+- source: bis
+  id: WS_XRU/M.PT.EUR.E
   alias: e_pt_fx_usd
-  name: Portugal FX rate (LCU per USD)
+  name: Portugal FX rate, euro per USD (LCU per USD; before 1999 the escudo rate at its euro conversion rate)
   frequency: M
   attrs:
     region: PT
     commercial_ok: restricted
-    stale: "2026-10: publisher has nothing newer (last 1998-12)"
 - source: worldbank
   id: NY.GDP.MKTP.KD.ZG/PRT
   alias: e_pt_gdp_growth
@@ -8678,7 +8736,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/PRT.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_pt_pmi_mfg
-  name: Portugal manufacturing business confidence (PMI proxy)
+  name: "Portugal manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: PT
@@ -8686,20 +8744,22 @@
 - source: bis
   id: WS_CBPOL/M.PT
   alias: e_pt_policy_rate
-  name: Portugal central-bank policy rate
+  name: Portugal central-bank policy rate, ends 1998 with the euro (% p.a.)
   frequency: M
   attrs:
     region: PT
     commercial_ok: restricted
+    stale: "2026-10: the national central bank's rate ends 1998-12, when the ECB took over (checked 2026-10-08); the euro area's rate is e_ecb_rate"
 - source: imf
   id: IMF.STA,PPI/PRT.PPI.IX.M
   alias: e_pt_ppi
-  name: Portugal producer price index
+  name: Portugal producer price index (index)
   frequency: M
   attrs:
     region: PT
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 2.9e-16, 90th percentile 2.1e-15 over 305 periods"
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.PT
   alias: e_pt_reer
@@ -8742,6 +8802,7 @@
   attrs:
     region: PT
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.PT
   alias: e_pt_unemployment_harmonised
@@ -8761,7 +8822,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/PRT
   alias: e_pt_unemployment_youth
-  name: Portugal youth unemployment rate (15-24, %)
+  name: Portugal youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: PT
@@ -8786,15 +8847,16 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/RUS.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_ru_business_confidence
-  name: Russia business confidence (OECD BCI)
+  name: Russia business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: RU
     commercial_ok: restricted
+    stale: "2026-10: the OECD has no period from 2025-06 on (checked 2026-10-08)"
 - source: dbnomics
   id: OECD/MEI/RUS.CSCICP03.IXNSA.M
   alias: e_ru_consumer_confidence
-  name: Russia consumer confidence (OECD CCI)
+  name: Russia consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: RU
@@ -8803,7 +8865,7 @@
 - source: imf
   id: IMF.STA,CPI/RUS.CPI._T.IX.M
   alias: e_ru_cpi
-  name: Russia CPI (all items, index)
+  name: Russia CPI, all items (index)
   frequency: M
   attrs:
     region: RU
@@ -8828,12 +8890,13 @@
 - source: dbnomics
   id: IMF/DOT/A.RU.TXG_FOB_USD.W00
   alias: e_ru_exports_goods
-  name: Russia goods exports, FOB (USD)
+  name: Russia goods exports, FOB (USD millions)
   frequency: A
   attrs:
     region: RU
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.EXP.GNFS.CD/RUS
   alias: e_ru_exports_gs
@@ -8893,12 +8956,13 @@
 - source: dbnomics
   id: IMF/DOT/A.RU.TMG_CIF_USD.W00
   alias: e_ru_imports_goods
-  name: Russia goods imports, CIF (USD)
+  name: Russia goods imports, CIF (USD millions)
   frequency: A
   attrs:
     region: RU
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.IMP.GNFS.CD/RUS
   alias: e_ru_imports_gs
@@ -8936,15 +9000,16 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/RUS.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_ru_pmi_mfg
-  name: Russia manufacturing business confidence (PMI proxy)
+  name: "Russia manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: RU
     commercial_ok: restricted
+    stale: "2026-10: the OECD has no period from 2025-06 on (checked 2026-10-08)"
 - source: bis
   id: WS_CBPOL/M.RU
   alias: e_ru_policy_rate
-  name: Russia central-bank policy rate
+  name: Russia central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: RU
@@ -8952,11 +9017,12 @@
 - source: imf
   id: IMF.STA,PPI/RUS.PPI.IX.M
   alias: e_ru_ppi
-  name: Russia producer price index
+  name: Russia producer price index (index)
   frequency: M
   attrs:
     region: RU
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2025-10 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.RU
   alias: e_ru_reer
@@ -8977,7 +9043,7 @@
 - source: dbnomics
   id: IMF/IFS/M.RU.FIMM_PA
   alias: e_ru_short_rate
-  name: Russia short-term interest rate
+  name: "Russia short-term interest rate: money-market rate (% p.a.)"
   frequency: M
   attrs:
     region: RU
@@ -8986,12 +9052,13 @@
 - source: dbnomics
   id: IMF/DOT/M.RU.TBG_USD.W00
   alias: e_ru_trade_balance_goods
-  name: Russia goods trade balance (USD)
+  name: Russia goods trade balance (USD millions)
   frequency: M
   attrs:
     region: RU
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: imf
   id: IMF.STA,LS/RUS.U.PT.M
   alias: e_ru_unemployment
@@ -9003,7 +9070,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/RUS
   alias: e_ru_unemployment_youth
-  name: Russia youth unemployment rate (15-24, %)
+  name: Russia youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: RU
@@ -9019,7 +9086,7 @@
 - source: imf
   id: IMF.STA,CPI/SAU.CPI._T.SRP_IX.M
   alias: e_sa_cpi
-  name: Saudi Arabia CPI (all items, index)
+  name: Saudi Arabia CPI, all items (index)
   frequency: M
   attrs:
     region: SA
@@ -9044,12 +9111,13 @@
 - source: dbnomics
   id: IMF/DOT/A.SA.TXG_FOB_USD.W00
   alias: e_sa_exports_goods
-  name: Saudi Arabia goods exports, FOB (USD)
+  name: Saudi Arabia goods exports, FOB (USD millions)
   frequency: A
   attrs:
     region: SA
     commercial_ok: restricted
     stale: "2026-10: only 19 periods in common"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.EXP.GNFS.CD/SAU
   alias: e_sa_exports_gs
@@ -9101,12 +9169,13 @@
 - source: dbnomics
   id: IMF/DOT/A.SA.TMG_CIF_USD.W00
   alias: e_sa_imports_goods
-  name: Saudi Arabia goods imports, CIF (USD)
+  name: Saudi Arabia goods imports, CIF (USD millions)
   frequency: A
   attrs:
     region: SA
     commercial_ok: restricted
     stale: "2026-10: only 19 periods in common"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.IMP.GNFS.CD/SAU
   alias: e_sa_imports_gs
@@ -9126,7 +9195,7 @@
 - source: bis
   id: WS_CBPOL/M.SA
   alias: e_sa_policy_rate
-  name: Saudi Arabia central-bank policy rate
+  name: Saudi Arabia central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: SA
@@ -9151,7 +9220,7 @@
 - source: dbnomics
   id: IMF/IFS/M.SA.FITB_PA
   alias: e_sa_short_rate
-  name: Saudi Arabia short-term interest rate
+  name: "Saudi Arabia short-term interest rate: Treasury bill rate (% p.a.)"
   frequency: M
   attrs:
     region: SA
@@ -9160,12 +9229,13 @@
 - source: dbnomics
   id: IMF/DOT/M.SA.TBG_USD.W00
   alias: e_sa_trade_balance_goods
-  name: Saudi Arabia goods trade balance (USD)
+  name: Saudi Arabia goods trade balance (USD millions)
   frequency: M
   attrs:
     region: SA
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: dbnomics
   id: IMF/IFS/M.SA.LUR_PT
   alias: e_sa_unemployment
@@ -9178,7 +9248,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/SAU
   alias: e_sa_unemployment_youth
-  name: Saudi Arabia youth unemployment rate (15-24, %)
+  name: Saudi Arabia youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: SA
@@ -9186,7 +9256,7 @@
 - source: eurostat
   id: irt_lt_mcby_m/M.MCBY.SE
   alias: e_se_10y
-  name: Sweden 10Y govt bond yield
+  name: Sweden 10Y govt bond yield (% p.a.)
   frequency: M
   attrs:
     region: SE
@@ -9194,7 +9264,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/SWE.M.MABM.IX._Z.N._Z._Z.N
   alias: e_se_broad_money
-  name: Sweden broad money M3 (index, SA)
+  name: Sweden broad money M3 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: SE
@@ -9211,7 +9281,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/SWE.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_se_business_confidence
-  name: Sweden business confidence (OECD BCI)
+  name: Sweden business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: SE
@@ -9219,7 +9289,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/SWE.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_se_consumer_confidence
-  name: Sweden consumer confidence (OECD CCI)
+  name: Sweden consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: SE
@@ -9228,7 +9298,7 @@
 - source: imf
   id: IMF.STA,CPI/SWE.HICP._T.SRP_IX.M
   alias: e_se_hicp
-  name: Sweden HICP (all items, index)
+  name: Sweden HICP, all items (index)
   frequency: M
   attrs:
     region: SE
@@ -9236,7 +9306,7 @@
 - source: imf
   id: IMF.STA,CPI/SWE.CPI._T.SRP_IX.M
   alias: e_se_cpi
-  name: Sweden CPI (all items, index)
+  name: Sweden CPI, all items (index)
   frequency: M
   attrs:
     region: SE
@@ -9261,20 +9331,20 @@
 - source: eurostat
   id: ei_bssi_m_r2/M.BS-ESI-I.SA.SE
   alias: e_se_econ_sentiment
-  name: Sweden economic sentiment indicator (ESI)
+  name: Sweden economic sentiment indicator, ESI (index, long-term average = 100)
   frequency: M
   attrs:
     region: SE
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.SE.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/SWE.XG.FOB_USD.A
   alias: e_se_exports_goods
   name: Sweden goods exports, FOB (USD)
   frequency: A
   attrs:
     region: SE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 7.8e-03, 90th percentile 1.2e-02 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/SWE
   alias: e_se_exports_gs
@@ -9331,15 +9401,15 @@
   attrs:
     region: SE
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/A.SE.TMG_CIF_USD.W00
+- source: imf
+  id: IMF.STA,ITG/SWE.MG.CIF_USD.A
   alias: e_se_imports_goods
   name: Sweden goods imports, CIF (USD)
   frequency: A
   attrs:
     region: SE
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 7.2e-04, 90th percentile 2.8e-03 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.IMP.GNFS.CD/SWE
   alias: e_se_imports_gs
@@ -9360,7 +9430,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/SWE.M.MANM.IX._Z.N._Z._Z.N
   alias: e_se_m1
-  name: Sweden narrow money M1 (index, SA)
+  name: Sweden narrow money M1 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: SE
@@ -9377,7 +9447,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/SWE.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_se_pmi_mfg
-  name: Sweden manufacturing business confidence (PMI proxy)
+  name: "Sweden manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: SE
@@ -9385,7 +9455,7 @@
 - source: bis
   id: WS_CBPOL/M.SE
   alias: e_se_policy_rate
-  name: Sweden central-bank policy rate
+  name: Sweden central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: SE
@@ -9393,11 +9463,12 @@
 - source: imf
   id: IMF.STA,PPI/SWE.PPI.IX.M
   alias: e_se_ppi
-  name: Sweden producer price index
+  name: Sweden producer price index (index)
   frequency: M
   attrs:
     region: SE
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-04 (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.SE
   alias: e_se_reer
@@ -9409,12 +9480,13 @@
 - source: dbnomics
   id: IMF/IFS/M.SE.RAFA_USD
   alias: e_se_reserves
-  name: Sweden FX reserves (USD)
+  name: Sweden FX reserves (USD millions)
   frequency: M
   attrs:
     region: SE
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF IFS published it; the family's other series are in USD
 - source: eurostat
   id: sts_trtu_m/M.VOL_SLS.G47.SCA.I21.SE
   alias: e_se_retail_sales
@@ -9440,6 +9512,7 @@
   attrs:
     region: SE
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: eurostat
   id: une_rt_m/M.SA.TOTAL.PC_ACT.T.SE
   alias: e_se_unemployment_harmonised
@@ -9459,7 +9532,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/SWE
   alias: e_se_unemployment_youth
-  name: Sweden youth unemployment rate (15-24, %)
+  name: Sweden youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: SE
@@ -9475,7 +9548,7 @@
 - source: imf
   id: IMF.STA,CPI/THA.CPI._T.SRP_IX.M
   alias: e_th_cpi
-  name: Thailand CPI (all items, index)
+  name: Thailand CPI, all items (index)
   frequency: M
   attrs:
     region: TH
@@ -9500,12 +9573,13 @@
 - source: dbnomics
   id: IMF/DOT/A.TH.TXG_FOB_USD.W00
   alias: e_th_exports_goods
-  name: Thailand goods exports, FOB (USD)
+  name: Thailand goods exports, FOB (USD millions)
   frequency: A
   attrs:
     region: TH
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.EXP.GNFS.CD/THA
   alias: e_th_exports_gs
@@ -9590,7 +9664,7 @@
 - source: bis
   id: WS_CBPOL/M.TH
   alias: e_th_policy_rate
-  name: Thailand central-bank policy rate
+  name: Thailand central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: TH
@@ -9598,7 +9672,7 @@
 - source: imf
   id: IMF.STA,PPI/THA.PPI.IX.M
   alias: e_th_ppi
-  name: Thailand producer price index
+  name: Thailand producer price index (index)
   frequency: M
   attrs:
     region: TH
@@ -9624,7 +9698,7 @@
 - source: imf
   id: IMF.STA,MFS_IR/THA.GSTBILY_RT_PT_A_PT.M
   alias: e_th_short_rate
-  name: Thailand short-term interest rate
+  name: "Thailand short-term interest rate: Treasury bill yield (% p.a.)"
   frequency: M
   attrs:
     region: TH
@@ -9649,7 +9723,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/THA
   alias: e_th_unemployment_youth
-  name: Thailand youth unemployment rate (15-24, %)
+  name: Thailand youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: TH
@@ -9657,7 +9731,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/TUR.M.MABM.IX._Z.N._Z._Z.N
   alias: e_tr_broad_money
-  name: Turkey broad money M3 (index, SA)
+  name: Turkey broad money M3 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: TR
@@ -9674,7 +9748,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/TUR.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_tr_business_confidence
-  name: Turkey business confidence (OECD BCI)
+  name: Turkey business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: TR
@@ -9682,7 +9756,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/TUR.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_tr_consumer_confidence
-  name: Turkey consumer confidence (OECD CCI)
+  name: Turkey consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: TR
@@ -9691,15 +9765,16 @@
 - source: imf
   id: IMF.STA,CPI/TUR.HICP._T.SRP_IX.M
   alias: e_tr_hicp
-  name: Turkey HICP (all items, index)
+  name: Turkey HICP, all items (index)
   frequency: M
   attrs:
     region: TR
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2025-12 (checked 2026-10-08)"
 - source: imf
   id: IMF.STA,CPI/TUR.CPI._T.SRP_IX.M
   alias: e_tr_cpi
-  name: Turkey CPI (all items, index)
+  name: Turkey CPI, all items (index)
   frequency: M
   attrs:
     region: TR
@@ -9831,7 +9906,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/TUR.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_tr_pmi_mfg
-  name: Turkey manufacturing business confidence (PMI proxy)
+  name: "Turkey manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: TR
@@ -9839,7 +9914,7 @@
 - source: bis
   id: WS_CBPOL/M.TR
   alias: e_tr_policy_rate
-  name: Turkey central-bank policy rate
+  name: Turkey central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: TR
@@ -9847,7 +9922,7 @@
 - source: dbnomics
   id: IMF/IFS/M.TR.PPPI_IX
   alias: e_tr_ppi
-  name: Turkey producer price index
+  name: Turkey producer price index (index)
   frequency: M
   attrs:
     region: TR
@@ -9873,12 +9948,12 @@
 - source: dbnomics
   id: IMF/IFS/M.TR.FITB_PA
   alias: e_tr_short_rate
-  name: Turkey short-term interest rate
+  name: "Turkey short-term interest rate: Treasury bill rate (% p.a.)"
   frequency: M
   attrs:
     region: TR
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    stale: "2026-10: no data: the mirror holds no values; neither the IMF (MFS_IR) nor the OECD (IR3TIB) has a Turkish money-market or bill rate (checked 2026-10-08)"
 - source: imf
   id: IMF.STA,IMTS/TUR.TBG_USD.G001.M
   alias: e_tr_trade_balance_goods
@@ -9896,22 +9971,24 @@
   attrs:
     region: TR
     commercial_ok: restricted
+    stale: "2026-10: last period at the publisher 2026-01 (checked 2026-10-08)"
 - source: worldbank
   id: SL.UEM.1524.ZS/TUR
   alias: e_tr_unemployment_youth
-  name: Turkey youth unemployment rate (15-24, %)
+  name: Turkey youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: TR
     commercial_ok: 'yes'
-- source: eurostat
-  id: irt_lt_mcby_m/M.MCBY.UK
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/GBR.M.IRLT.PA._Z._Z._Z._Z.N
   alias: e_uk_10y
-  name: United Kingdom 10Y govt bond yield
+  name: United Kingdom 10Y govt bond yield, OECD (% p.a.)
   frequency: M
   attrs:
     region: UK
-    commercial_ok: 'yes'
+    commercial_ok: restricted
+    close_match: "2026-10: replaces Eurostat's irt_lt_mcby_m UK, which ends 2025-04; gap to it: median 0.05, max 0.14 percentage points over 71 months"
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/GBR.M.MABM.IX._Z.Y._Z._Z.N
   alias: e_uk_broad_money
@@ -9932,7 +10009,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/GBR.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_uk_business_confidence
-  name: United Kingdom business confidence (OECD BCI)
+  name: United Kingdom business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: UK
@@ -9940,7 +10017,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/GBR.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_uk_consumer_confidence
-  name: United Kingdom consumer confidence (OECD CCI)
+  name: United Kingdom consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: UK
@@ -9949,16 +10026,16 @@
 - source: dbnomics
   id: IMF/IFS/M.GB.PCPIHA_IX
   alias: e_uk_hicp
-  name: United Kingdom HICP (all items, index)
+  name: United Kingdom HICP, all items (index)
   frequency: M
   attrs:
     region: UK
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 8.6e-04)"
+    stale: "2026-10: the mirror ends 2020-11 and the IMF has no UK HICP from 2024-06 on (checked 2026-10-08); e_uk_cpi is the ONS CPI, compiled to the HICP methodology"
 - source: imf
   id: IMF.STA,CPI/GBR.CPI._T.SRP_IX.M
   alias: e_uk_cpi
-  name: United Kingdom CPI (all items, index)
+  name: United Kingdom CPI, all items (index)
   frequency: M
   attrs:
     region: UK
@@ -9982,12 +10059,13 @@
 - source: dbnomics
   id: IMF/DOT/A.GB.TXG_FOB_USD.W00
   alias: e_uk_exports_goods
-  name: United Kingdom goods exports, FOB (USD)
+  name: United Kingdom goods exports, FOB (USD millions)
   frequency: A
   attrs:
     region: UK
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.EXP.GNFS.CD/GBR
   alias: e_uk_exports_gs
@@ -10047,12 +10125,13 @@
 - source: dbnomics
   id: IMF/DOT/A.GB.TMG_CIF_USD.W00
   alias: e_uk_imports_goods
-  name: United Kingdom goods imports, CIF (USD)
+  name: United Kingdom goods imports, CIF (USD millions)
   frequency: A
   attrs:
     region: UK
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.IMP.GNFS.CD/GBR
   alias: e_uk_imports_gs
@@ -10090,7 +10169,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/GBR.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_uk_pmi_mfg
-  name: United Kingdom manufacturing business confidence (PMI proxy)
+  name: "United Kingdom manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: UK
@@ -10098,7 +10177,7 @@
 - source: bis
   id: WS_CBPOL/M.GB
   alias: e_uk_policy_rate
-  name: United Kingdom central-bank policy rate
+  name: United Kingdom central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: UK
@@ -10106,12 +10185,13 @@
 - source: imf
   id: IMF.STA,PPI/GBR.PPI.IX.M
   alias: e_uk_ppi
-  name: United Kingdom producer price index
+  name: United Kingdom producer price index (index)
   frequency: M
   attrs:
     region: UK
     commercial_ok: restricted
     close_match: "2026-10: same units; relative gap to the mirror: median 5.1e-16, 90th percentile 4.3e-15 over 792 periods"
+    stale: "2026-10: the IMF has no period from 2024-01 on (checked 2026-10-08)"
 - source: bis
   id: WS_EER/M.R.B.GB
   alias: e_uk_reer
@@ -10123,21 +10203,22 @@
 - source: dbnomics
   id: IMF/IFS/M.GB.RAFA_USD
   alias: e_uk_reserves
-  name: United Kingdom FX reserves (USD)
+  name: United Kingdom FX reserves (USD millions)
   frequency: M
   attrs:
     region: UK
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
-- source: dbnomics
-  id: IMF/IFS/M.GB.FITB_PA
+    units_differ: USD millions, as the retired IMF IFS published it; the family's other series are in USD
+- source: oecd
+  id: OECD.SDD.STES,DSD_STES@DF_FINMARK/GBR.M.IR3TIB.PA._Z._Z._Z._Z.N
   alias: e_uk_short_rate
-  name: United Kingdom short-term interest rate
+  name: "United Kingdom short-term interest rate: 3-month interbank rate, OECD (% p.a.)"
   frequency: M
   attrs:
     region: UK
     commercial_ok: restricted
-    stale: "2026-10: no candidate"
+    stale: "2026-10: last period at the publisher 2026-02 (checked 2026-10-08)"
 - source: imf
   id: IMF.STA,IMTS/GBR.TBG_USD.G001.M
   alias: e_uk_trade_balance_goods
@@ -10156,18 +10237,19 @@
     region: UK
     commercial_ok: restricted
     stale: "2026-10: publisher has nothing newer (last 2020-09)"
-- source: eurostat
-  id: une_rt_m/M.SA.TOTAL.PC_ACT.T.UK
+- source: oecd
+  id: OECD.SDD.TPS,DSD_LFS@DF_IALFS_UNE_M/GBR.UNE_LF_M.PT_LF_SUB._Z.Y._T.Y_GE15._Z.M
   alias: e_uk_unemployment_harmonised
-  name: United Kingdom unemployment rate, harmonised SA (%)
+  name: United Kingdom unemployment rate, OECD harmonised SA (%)
   frequency: M
   attrs:
     region: UK
-    commercial_ok: 'yes'
+    commercial_ok: restricted
+    close_match: "2026-10: replaces Eurostat's une_rt_m UK, which ends 2020-09; gap to it: median 0.2, max 0.4 percentage points over 16 months"
 - source: worldbank
   id: SL.UEM.1524.ZS/GBR
   alias: e_uk_unemployment_youth
-  name: United Kingdom youth unemployment rate (15-24, %)
+  name: United Kingdom youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: UK
@@ -10175,7 +10257,7 @@
 - source: fred
   id: DGS10
   alias: e_us_10y
-  name: US 10Y Treasury
+  name: US 10Y Treasury yield (% p.a.)
   frequency: D
   attrs:
     region: US
@@ -10183,7 +10265,7 @@
 - source: fred
   id: DGS2
   alias: e_us_2y
-  name: US 2Y Treasury
+  name: US 2Y Treasury yield (% p.a.)
   frequency: D
   attrs:
     region: US
@@ -10191,7 +10273,7 @@
 - source: fred
   id: T10Y2Y
   alias: e_us_2y10y_spread
-  name: US 10Y-2Y term spread
+  name: US 10Y-2Y Treasury term spread (percentage points)
   frequency: D
   attrs:
     region: US
@@ -10199,7 +10281,7 @@
 - source: fred
   id: DGS30
   alias: e_us_30y
-  name: US 30Y Treasury
+  name: US 30Y Treasury yield (% p.a.)
   frequency: D
   attrs:
     region: US
@@ -10207,7 +10289,7 @@
 - source: fred
   id: DGS3MO
   alias: e_us_3m
-  name: US 3M Treasury
+  name: US 3M Treasury yield (% p.a.)
   frequency: D
   attrs:
     region: US
@@ -10215,20 +10297,20 @@
 - source: fred
   id: DGS5
   alias: e_us_5y
-  name: US 5Y Treasury
+  name: US 5Y Treasury yield (% p.a.)
   frequency: D
   attrs:
     region: US
     commercial_ok: 'no'
 - source: oecd
-  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/USA.M.MABM.XDC._Z.Y._Z._Z.N
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/USA.M.MABM.IX._Z.Y._Z._Z.N
   alias: e_us_broad_money
   name: United States broad money M3 (index, SA)
   frequency: M
   attrs:
     region: US
     commercial_ok: restricted
-    close_match: "2026-10: rebased; relative gap to the mirror: median 1.0e-03, 90th percentile 2.0e-03 over 405 periods"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 1.4e-04, 90th percentile 2.5e-03 over 777 periods"
 - source: imf
   id: IMF.RES,WEO/USA.GGXCNL_NGDP.A
   alias: e_us_budget_balance_gdp
@@ -10240,7 +10322,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/USA.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_us_business_confidence
-  name: United States business confidence (OECD BCI)
+  name: United States business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: US
@@ -10248,7 +10330,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/USA.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_us_consumer_confidence
-  name: United States consumer confidence (OECD CCI)
+  name: United States consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: US
@@ -10257,7 +10339,7 @@
 - source: fred
   id: CPILFESL
   alias: e_us_core_cpi
-  name: US core CPI
+  name: US core CPI, less food and energy (index)
   frequency: M
   attrs:
     region: US
@@ -10265,7 +10347,7 @@
 - source: fred
   id: PCEPILFE
   alias: e_us_core_pce
-  name: US core PCE price index
+  name: US core PCE price index (index)
   frequency: M
   attrs:
     region: US
@@ -10273,7 +10355,7 @@
 - source: fred
   id: CPIAUCSL
   alias: e_us_cpi
-  name: US CPI (all items)
+  name: US CPI, all items (index)
   frequency: M
   attrs:
     region: US
@@ -10294,15 +10376,15 @@
   attrs:
     region: US
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.US.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/USA.XG.FOB_USD.A
   alias: e_us_exports_goods
   name: United States goods exports, FOB (USD)
   frequency: A
   attrs:
     region: US
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 1.1e-03, 90th percentile 2.0e-03 over the last 10 years (10 of 77 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/USA
   alias: e_us_exports_gs
@@ -10314,7 +10396,7 @@
 - source: fred
   id: FEDFUNDS
   alias: e_us_fed_funds
-  name: US fed funds rate
+  name: US effective fed funds rate (% p.a.)
   frequency: M
   attrs:
     region: US
@@ -10322,7 +10404,7 @@
 - source: fred
   id: GDPC1
   alias: e_us_gdp
-  name: US real GDP
+  name: US real GDP, chained 2017 dollars (USD billions, SAAR)
   frequency: Q
   attrs:
     region: US
@@ -10338,11 +10420,12 @@
 - source: fred
   id: GDP
   alias: e_us_gdp_nominal
-  name: US nominal GDP
+  name: US nominal GDP (USD billions, SAAR)
   frequency: Q
   attrs:
     region: US
     commercial_ok: 'no'
+    units_differ: USD billions at a seasonally adjusted annual rate, as FRED publishes it; the family's other series are annual, in current USD
 - source: imf
   id: IMF.RES,WEO/USA.GGXWDG_NGDP.A
   alias: e_us_govt_debt_gdp
@@ -10362,7 +10445,7 @@
 - source: fred
   id: HOUST
   alias: e_us_housing_starts
-  name: US housing starts
+  name: US housing starts (thousands, SAAR)
   frequency: M
   attrs:
     region: US
@@ -10387,7 +10470,7 @@
 - source: fred
   id: INDPRO
   alias: e_us_ind_prod
-  name: US industrial production
+  name: US industrial production (index)
   frequency: M
   attrs:
     region: US
@@ -10395,24 +10478,24 @@
 - source: fred
   id: ICSA
   alias: e_us_initial_claims
-  name: US initial jobless claims
+  name: US initial jobless claims (persons, SA)
   frequency: W
   attrs:
     region: US
     commercial_ok: 'no'
 - source: oecd
-  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/USA.M.MANM.XDC._Z.Y._Z._Z.N
+  id: OECD.SDD.STES,DSD_STES@DF_MONAGG/USA.M.MANM.IX._Z.Y._Z._Z.N
   alias: e_us_m1
   name: United States narrow money M1 (index, SA)
   frequency: M
   attrs:
     region: US
     commercial_ok: restricted
-    close_match: "2026-10: rebased; relative gap to the mirror: median 1.2e-15, 90th percentile 6.2e-03 over 405 periods"
+    close_match: "2026-10: rebased; relative gap to the mirror: median 8.3e-08, 90th percentile 4.0e-03 over 777 periods"
 - source: fred
   id: M2SL
   alias: e_us_m2
-  name: US M2
+  name: US M2 money stock (USD billions, SA)
   frequency: M
   attrs:
     region: US
@@ -10428,7 +10511,7 @@
 - source: fred
   id: PAYEMS
   alias: e_us_payrolls
-  name: US nonfarm payrolls
+  name: US nonfarm payrolls (thousands, SA)
   frequency: M
   attrs:
     region: US
@@ -10436,7 +10519,7 @@
 - source: fred
   id: PCEPI
   alias: e_us_pce
-  name: US PCE price index
+  name: US PCE price index (index)
   frequency: M
   attrs:
     region: US
@@ -10444,7 +10527,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_BTS/USA.M.BCICP.PB.C.Y._Z._Z.N
   alias: e_us_pmi_mfg
-  name: United States manufacturing business confidence (PMI proxy)
+  name: "United States manufacturing business confidence: OECD survey balance, not a PMI (% balance)"
   frequency: M
   attrs:
     region: US
@@ -10452,7 +10535,7 @@
 - source: fred
   id: PPIACO
   alias: e_us_ppi
-  name: US PPI (all commodities)
+  name: US PPI, all commodities (index)
   frequency: M
   attrs:
     region: US
@@ -10468,7 +10551,7 @@
 - source: fred
   id: RSAFS
   alias: e_us_retail
-  name: US retail sales
+  name: US retail and food services sales (USD millions, SA)
   frequency: M
   attrs:
     region: US
@@ -10476,7 +10559,7 @@
 - source: fred
   id: SOFR
   alias: e_us_sofr
-  name: US SOFR overnight rate
+  name: US SOFR overnight rate (% p.a.)
   frequency: D
   attrs:
     region: US
@@ -10484,7 +10567,7 @@
 - source: fred
   id: BOPGSTB
   alias: e_us_trade_balance
-  name: US trade balance (goods & svcs)
+  name: US trade balance, goods & services (USD millions, SA)
   frequency: M
   attrs:
     region: US
@@ -10501,7 +10584,7 @@
 - source: fred
   id: UNRATE
   alias: e_us_unemployment
-  name: US unemployment
+  name: US unemployment rate (%)
   frequency: M
   attrs:
     region: US
@@ -10509,7 +10592,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/USA
   alias: e_us_unemployment_youth
-  name: United States youth unemployment rate (15-24, %)
+  name: United States youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: US
@@ -10534,7 +10617,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/ZAF.M.BCICP.IX._Z.AA.IX._Z.H
   alias: e_za_business_confidence
-  name: South Africa business confidence (OECD BCI)
+  name: South Africa business confidence, OECD BCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: ZA
@@ -10542,7 +10625,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_CLI/ZAF.M.CCICP.IX._Z.AA.IX._Z.H
   alias: e_za_consumer_confidence
-  name: South Africa consumer confidence (OECD CCI)
+  name: South Africa consumer confidence, OECD CCI (index, long-term average = 100)
   frequency: M
   attrs:
     region: ZA
@@ -10551,7 +10634,7 @@
 - source: imf
   id: IMF.STA,CPI/ZAF.CPI._T.IX.M
   alias: e_za_cpi
-  name: South Africa CPI (all items, index)
+  name: South Africa CPI, all items (index)
   frequency: M
   attrs:
     region: ZA
@@ -10573,15 +10656,15 @@
   attrs:
     region: ZA
     commercial_ok: 'yes'
-- source: dbnomics
-  id: IMF/DOT/A.ZA.TXG_FOB_USD.W00
+- source: imf
+  id: IMF.STA,ITG/ZAF.XG.FOB_USD.A
   alias: e_za_exports_goods
   name: South Africa goods exports, FOB (USD)
   frequency: A
   attrs:
     region: ZA
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 5.9e-03, 90th percentile 1.5e-02 over the last 10 years (10 of 27 common periods)"
 - source: worldbank
   id: NE.EXP.GNFS.CD/ZAF
   alias: e_za_exports_gs
@@ -10641,12 +10724,13 @@
 - source: dbnomics
   id: IMF/DOT/A.ZA.TMG_CIF_USD.W00
   alias: e_za_imports_goods
-  name: South Africa goods imports, CIF (USD)
+  name: South Africa goods imports, CIF (USD millions)
   frequency: A
   attrs:
     region: ZA
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF DOT published it; the family's other series are in USD
 - source: worldbank
   id: NE.IMP.GNFS.CD/ZAF
   alias: e_za_imports_gs
@@ -10667,7 +10751,7 @@
 - source: oecd
   id: OECD.SDD.STES,DSD_STES@DF_MONAGG/ZAF.M.MANM.IX._Z.N._Z._Z.N
   alias: e_za_m1
-  name: South Africa narrow money M1 (index, SA)
+  name: South Africa narrow money M1 (index, not seasonally adjusted)
   frequency: M
   attrs:
     region: ZA
@@ -10684,7 +10768,7 @@
 - source: bis
   id: WS_CBPOL/M.ZA
   alias: e_za_policy_rate
-  name: South Africa central-bank policy rate
+  name: South Africa central-bank policy rate (% p.a.)
   frequency: M
   attrs:
     region: ZA
@@ -10692,7 +10776,7 @@
 - source: dbnomics
   id: IMF/IFS/M.ZA.PPPI_IX
   alias: e_za_ppi
-  name: South Africa producer price index
+  name: South Africa producer price index (index)
   frequency: M
   attrs:
     region: ZA
@@ -10709,29 +10793,30 @@
 - source: dbnomics
   id: IMF/IFS/M.ZA.RAFA_USD
   alias: e_za_reserves
-  name: South Africa FX reserves (USD)
+  name: South Africa FX reserves (USD millions)
   frequency: M
   attrs:
     region: ZA
     commercial_ok: restricted
     stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    units_differ: USD millions, as the retired IMF IFS published it; the family's other series are in USD
 - source: imf
   id: IMF.STA,MFS_IR/ZAF.GSTBILY_RT_PT_A_PT.M
   alias: e_za_short_rate
-  name: South Africa short-term interest rate
+  name: "South Africa short-term interest rate: Treasury bill yield (% p.a.)"
   frequency: M
   attrs:
     region: ZA
     commercial_ok: restricted
-- source: dbnomics
-  id: IMF/DOT/M.ZA.TBG_USD.W00
+- source: imf
+  id: IMF.STA,IMTS/ZAF.TBG_USD.G001.M
   alias: e_za_trade_balance_goods
   name: South Africa goods trade balance (USD)
   frequency: M
   attrs:
     region: ZA
     commercial_ok: restricted
-    stale: "2026-10: values differ (max relative gap 1.0e+00)"
+    close_match: "2026-10: other units; relative gap to the mirror: median 5.2e-07, 90th percentile 3.8e-05 over the last 10 years (113 of 329 common periods)"
 - source: dbnomics
   id: IMF/IFS/M.ZA.LUR_PT
   alias: e_za_unemployment
@@ -10744,7 +10829,7 @@
 - source: worldbank
   id: SL.UEM.1524.ZS/ZAF
   alias: e_za_unemployment_youth
-  name: South Africa youth unemployment rate (15-24, %)
+  name: South Africa youth unemployment rate, ages 15-24 (%)
   frequency: A
   attrs:
     region: ZA
