@@ -103,6 +103,19 @@ def test_held_periods_carry_the_values_of_the_columns_named():
     assert held_periods(frame, ("partner",)) == {("A", "2024", ""), ("M", "2026-05", "")}  # a column it lacks
 
 
+def test_a_column_named_with_a_function_carries_what_the_function_reads_once_per_value():
+    frame = pd.DataFrame([row(), row(product="87"), row(product="2709"), row("USA", period="2026-05")])
+    read = []
+
+    def width(code):
+        read.append(code)
+        return str(len(code))
+
+    held = held_periods(frame, ("reporter", ("product", width)))
+    assert held == {("A", "2024", "MEX", "2"), ("A", "2024", "MEX", "4"), ("M", "2026-05", "USA", "2")}
+    assert sorted(read) == ["27", "2709", "87"]  # once each, though 27 is in two periods
+
+
 def test_a_source_that_names_its_held_by_columns_gets_their_values(tmp_path):
     source, http = setup()
     source.held_by = ("reporter",)

@@ -74,12 +74,16 @@ is translated with the same map.
 | `date` | Last day of the period |
 | `value_usd` | Trade value |
 | `weight_kg` | Net weight; missing when not reported, including a weight of 0 on a row with trade |
-| `level` | HS level the row was asked at (`AG2`, `AG4`, `AG6`) |
 | `fetched_at`, `published_at` | As for series |
 
 Key columns: `reporter, partner, flow, product, frequency, period`. Value columns: `value_usd,
-weight_kg`. Attribute column: `level` (stored, never compared). A table written before `level`
-existed reads it as missing.
+weight_kg`.
+
+The HS level of a row is not stored: it is read from the digits of its product code, 2 at
+`AG2`, 4 at `AG4`, 6 at `AG6`, Comtrade's codes for goods not specified by kind (`99`, `9999`,
+`999999`) included. Any other code, such as `TOTAL` (every product, which a query by level never
+brings), has no level. Every row so has its real level, whenever it was stored. A table that a
+build of this change stored with a `level` column keeps it on disk; `Store.table` leaves it out.
 
 The append-only rule of the base spec applies on the key: a received row is appended when the
 key is not stored or when any value column differs from the latest stored row (both missing
@@ -92,9 +96,10 @@ customs procedure and second partner; those rows are discarded.
 ## What a sync asks for
 
 There is no "since" for a table. For each reporter the source receives the `(frequency, period)`
-pairs already stored, each with its partner, flow and level (`held_by`), and works out, for
-each partner, what to ask. A period counts as stored for a partner when every chosen flow has it
-at the chosen level; a row stored before the level was recorded counts as the chosen level.
+pairs already stored, each with its partner, flow and level (`held_by`: sync reads each distinct
+product code as its level, so `held` stays as small as the periods are), and works out, for each
+partner, what to ask. A period counts as stored for a partner when every chosen flow has it at
+the chosen level; a code without a level never counts.
 
 - annual: every year from `annual_from` to last year that is not stored, plus the last 2 years;
 - monthly: every one of the last `months` closed months that is not stored, plus the last 12.
@@ -103,8 +108,8 @@ So a run cut after the first partner's calls (quota, a failed call), or an entry
 partner or flow, asks the partners and flows left for their whole history on the next run. A
 partner and flow with no trade in a period are asked for it again on every run.
 
-A table holds one HS level. When the stored rows carry another level than the entry's `level`,
-the reporter fails with `SOURCE_ERROR` before any call, and the message says how to proceed
+A table holds one HS level. When the stored product codes are of another level than the entry's
+`level`, the reporter fails with `SOURCE_ERROR` before any call, and the message says how to proceed
 (set `level` back, or delete the table to load the new level from the start).
 
 Periods are asked for 12 at a time, the API's limit; one such query is one call and one batch,
@@ -134,7 +139,7 @@ and refuses a change of level before any call, as a normal sync does.
 - `model`: `TableData` (entry, key, rows, key columns, value columns, name, default staleness
   threshold), `FetchBatch.tables`, and `Request.held`, the `(frequency, period)` pairs already
   stored for a table entry, each followed by its values in the columns the source names in
-  `held_by` (Comtrade: partner, flow, level), and `Request.full`, set by a full sync, which
+  `held_by` (Comtrade: partner, flow, and the level of the product code), and `Request.full`, set by a full sync, which
   still sends what is held.
 - `storage`: `read_table` and `write_table`, and an append-only merge for any key and value
   columns. `latest` and `as_of` take the key columns as an argument. The series code path is

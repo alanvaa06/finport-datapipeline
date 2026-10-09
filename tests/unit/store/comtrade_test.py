@@ -16,6 +16,7 @@ from data_pipeline.store.sources.comtrade import (
     Comtrade,
     Query,
     closed_months,
+    hs_level,
     is_total,
     queries,
     reporter_codes,
@@ -146,8 +147,29 @@ def test_a_period_missing_from_the_store_is_asked_for_again():
     assert [len(query.periods) for query in monthly] == [12, 1]
 
 
-def test_sync_tells_the_source_what_it_holds_by_partner_flow_and_level():
-    assert Comtrade.held_by == ("partner", "flow", "level")
+def test_sync_tells_the_source_what_it_holds_by_partner_flow_and_the_level_of_the_product():
+    assert Comtrade.held_by == ("partner", "flow", ("product", hs_level))
+
+
+@pytest.mark.parametrize(
+    ("product", "level"),
+    [
+        ("27", "AG2"),
+        ("2709", "AG4"),
+        ("270900", "AG6"),
+        ("99", "AG2"),  # goods not specified by kind, at each level
+        ("9999", "AG4"),
+        ("999999", "AG6"),
+        ("TOTAL", ""),  # every product: no HS level
+        ("", ""),
+        ("270", ""),
+        ("27090011", ""),
+        ("27A9", ""),
+        (chr(0xFF12) + chr(0xFF17), ""),  # full-width 2 and 7: digits, but not ASCII
+    ],
+)
+def test_a_product_code_gives_its_hs_level_by_its_digits(product, level):
+    assert hs_level(product) == level
 
 
 def test_a_partner_the_store_does_not_hold_is_asked_for_its_whole_history():
@@ -164,9 +186,9 @@ def test_a_flow_the_store_does_not_hold_is_asked_for_its_whole_history():
     assert {(query.frequency.value, period) for query in asked for period in query.periods} == EVERY_PERIOD
 
 
-def test_a_row_stored_before_the_level_was_recorded_counts_as_the_entrys_level():
+def test_a_period_held_only_in_codes_without_a_level_is_asked_for_again():
     chosen = settings(reporter())
-    assert queries(stored(level=""), chosen, TODAY) == queries(stored(), chosen, TODAY)
+    assert queries(stored(level=""), chosen, TODAY) == queries(frozenset(), chosen, TODAY)
 
 
 def test_a_change_of_level_is_refused_before_any_call_and_the_next_reporter_goes_on():
@@ -270,7 +292,7 @@ def test_each_call_is_one_batch_with_the_rows_of_the_recorded_answer():
     table = annual.tables[0]
     assert (table.key, table.key_columns, table.value_columns) == ("comtrade:MEX", KEY_COLUMNS, VALUE_COLUMNS)
     assert table.stale_after_days == 190
-    assert table.attribute_columns == ("level",)
+    assert table.attribute_columns == ()  # the level is read from the product code, never stored
     assert table.name == "Goods trade of MEX by HS product (AG2)"
     assert [(row["flow"], row["product"], row["value_usd"]) for row in table.rows] == [
         ("M", "06", 198635735.0),
@@ -279,7 +301,7 @@ def test_each_call_is_one_batch_with_the_rows_of_the_recorded_answer():
     ]
     first = table.rows[0]
     assert (first["reporter"], first["partner"], first["frequency"], first["period"]) == ("MEX", "WLD", "A", "2024")
-    assert first["level"] == "AG2"
+    assert "level" not in first
     assert first["date"] == datetime.date(2024, 12, 31)
     assert math.isnan(table.rows[2]["weight_kg"])  # null weight is missing, never zero
     month = monthly.tables[0].rows[0]
@@ -424,7 +446,7 @@ def test_a_run_stopped_after_the_world_asks_the_next_partner_for_its_whole_histo
     run(recorded, NOW + datetime.timedelta(days=1))
     assert asked == [("0", "2024,2025"), ("842", "2020,2021,2022,2023,2024,2025")]
     table = Storage(tmp_path).read_table("comtrade", "MEX")
-    assert set(table["level"]) == {"AG2"}
+    assert set(table["product"]) == {"27"}
 
 
 def rows_asked(request, product="27"):
@@ -456,3 +478,45 @@ def test_a_full_sync_after_a_change_of_level_is_refused_without_a_call(tmp_path)
     assert key == "comtrade:MEX"
     assert "the stored table holds HS level AG2, not AG4" in reason
     assert len(Storage(tmp_path).read_table("comtrade", "MEX")) == len(before)
+
+
+def as_stored_before_this_change(tmp_path, level):
+    """Rewrite the MEX table as an older version stored it: without a `level` column (None), or
+    with one holding `level` on every row."""
+    storage = Storage(tmp_path)
+    table = storage.read_table("comtrade", "MEX").drop(columns="level", errors="ignore")
+    if level is not None:
+        table = table.assign(level=level)
+    table.to_parquet(storage.table_path("comtrade", "MEX"))
+
+
+@pytest.mark.parametrize("level", [None, ""])
+def test_rows_stored_before_this_change_refuse_a_change_of_level_by_their_codes(tmp_path, level):
+    # an upgrade that switches AG2 -> AG4: the old rows have no level, or an empty one
+    sync_comtrade(tmp_path, [reporter(months=0, annual_from=2023)], rows_asked)
+    as_stored_before_this_change(tmp_path, level)
+    calls = []
+
+    def recorded(request):
+        calls.append(request)
+        return rows_asked(request, product="2709")
+
+    later = NOW + datetime.timedelta(days=1)
+    report = sync_comtrade(tmp_path, [reporter(level="AG4", months=0, annual_from=2023)], recorded, later)
+    assert calls == []
+    assert "the stored table holds HS level AG2, not AG4" in report.sources[0].failed[0][1]
+
+
+@pytest.mark.parametrize("level", [None, "", "AG2"])
+def test_rows_stored_before_this_change_are_held_at_the_level_of_their_codes(tmp_path, level):
+    sync_comtrade(tmp_path, [reporter(months=0, annual_from=2020)], rows_asked)
+    as_stored_before_this_change(tmp_path, level)
+    asked = []
+
+    def recorded(request):
+        asked.append(request.url.params["period"])
+        return rows_asked(request)
+
+    report = sync_comtrade(tmp_path, [reporter(months=0, annual_from=2020)], recorded, NOW + datetime.timedelta(days=1))
+    assert (asked, report.exit_code) == (["2024,2025"], 0)  # only the revision window
+    assert Storage(tmp_path).table_schema("comtrade").attribute_columns == ()

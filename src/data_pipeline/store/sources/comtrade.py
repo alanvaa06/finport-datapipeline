@@ -1,8 +1,12 @@
 """UN Comtrade: goods trade by HS product. Key in the `Ocp-Apim-Subscription-Key` header.
 
 One catalog id is one reporting country, written as ISO 3166 alpha-3 (`MEX`). Its table holds
-value and weight by partner, flow, product and period, annual and monthly, and the HS level
-of each row.
+value and weight by partner, flow, product and period, annual and monthly.
+
+The HS level of a row is read from its product code, never stored (see hs_level): 2 digits at
+AG2, 4 at AG4, 6 at AG6. So every row has its real level, whenever it was stored. A code with
+no level (`TOTAL`, which a query by level never brings) is left out of the level check and
+never counts as held.
 
 A table has no "since". Each request carries the periods already stored with their partner,
 flow and level, and the source asks each partner for what it is missing (a period counts as
@@ -46,7 +50,7 @@ from data_pipeline.store.errors import (
 from data_pipeline.store.http import Client
 from data_pipeline.store.model import CatalogEntry, Failure, FetchBatch, Frequency, Kind, Outcome, Request, TableData
 from data_pipeline.store.periods import read_period
-from data_pipeline.store.sources.base import failures, missing_key, number, reject_params, utc_today
+from data_pipeline.store.sources.base import HeldBy, failures, missing_key, number, reject_params, utc_today
 
 URL = "https://comtradeapi.un.org/data/v1/get/C/{frequency}/HS"
 KEY_HEADER = "Ocp-Apim-Subscription-Key"
@@ -54,6 +58,7 @@ REPORTERS_FILE = "comtrade_reporters.json"
 WORLD = "WLD"
 WORLD_CODE = "0"
 LEVELS: Mapping[str, int] = {"AG2": 12, "AG4": 12, "AG6": 4}  # level -> periods in one call
+HS_DIGITS: Mapping[int, str] = {2: "AG2", 4: "AG4", 6: "AG6"}  # digits of a product code -> its level
 FLOWS = ("X", "M")
 FIELDS = ("level", "partners", "flows", "annual_from", "months")
 DEFAULT_LEVEL = "AG2"
@@ -66,8 +71,6 @@ MAX_ROWS = 100_000
 STALE_AFTER_DAYS = 190  # Comtrade publishes a month two to five months late
 KEY_COLUMNS = ("reporter", "partner", "flow", "product", "frequency", "period")
 VALUE_COLUMNS = ("value_usd", "weight_kg")
-ATTRIBUTE_COLUMNS = ("level",)
-HELD_BY = ("partner", "flow", "level")  # what sync adds to each stored (frequency, period)
 # The total of a key, not its breakdowns by mode of transport, customs procedure or second partner.
 TOTAL_ONLY: Mapping[str, str] = {"motCode": "0", "customsCode": "C00", "partner2Code": "0"}
 OK = 200
@@ -158,20 +161,28 @@ def closed_months(today: datetime.date, count: int) -> list[str]:
     return [f"{number // MONTHS_IN_YEAR:04d}-{number % MONTHS_IN_YEAR + 1:02d}" for number in numbers]
 
 
+def hs_level(product: str) -> str:
+    """The HS level of a product code, read from its digits: 2 for a chapter (`27`), 4 for a
+    heading (`2709`), 6 for a subheading (`270900`), Comtrade's codes for goods not specified by
+    kind (`99`, `9999`, `999999`) included. Any other code, such as `TOTAL` (every product), has
+    no level: ""."""
+    return HS_DIGITS.get(len(product), "") if product.isascii() and product.isdigit() else ""
+
+
 def held_by_partner(held: Collection[tuple[str, ...]], chosen: Settings, partner: str) -> set[tuple[str, str]]:
     """The (frequency, period) pairs the store holds for `partner` in every chosen flow, at the
-    chosen level. `held` is what sync sends: (frequency, period, partner, flow, level). A row
-    stored before the level was recorded has an empty level and counts as the chosen one."""
+    chosen level. `held` is what sync sends: (frequency, period, partner, flow, level), the level
+    read from the product codes; a code without a level never counts as held."""
     by_flow: dict[str, set[tuple[str, str]]] = {flow: set() for flow in chosen.flows}
     for frequency, period, owner, flow, level in held:
-        if owner == partner and flow in by_flow and level in (chosen.level, ""):
+        if owner == partner and flow in by_flow and level == chosen.level:
             by_flow[flow].add((frequency, period))
     first, *others = by_flow.values()
     return first.intersection(*others)
 
 
 def stored_levels(held: Collection[tuple[str, ...]]) -> set[str]:
-    """The HS levels recorded in the rows of a stored table."""
+    """The HS levels of the product codes of a stored table."""
     return {level for *_, level in held if level}
 
 
@@ -238,7 +249,6 @@ def read_rows(payload: Mapping[str, Any], reporter: str, query: Query, chosen: S
                 "date": day,
                 "value_usd": number(item.get("primaryValue")),
                 "weight_kg": weight(item),
-                "level": chosen.level,
             }
         )
     return tuple(rows)
@@ -249,7 +259,7 @@ class Comtrade:
     kind = Kind.TABLE
     requests_per_minute = 30
     daily_budget: int | None = 450  # the free tier allows 500 calls a day
-    held_by = HELD_BY
+    held_by: HeldBy = ("partner", "flow", ("product", hs_level))  # sync sends each product as its level
 
     def __init__(
         self,
@@ -307,7 +317,6 @@ class Comtrade:
                 key_columns=KEY_COLUMNS,
                 value_columns=VALUE_COLUMNS,
                 stale_after_days=STALE_AFTER_DAYS if chosen.months else None,
-                attribute_columns=ATTRIBUTE_COLUMNS,
             )
             yield FetchBatch(tables=(table,))
 

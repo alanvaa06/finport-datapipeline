@@ -39,6 +39,10 @@ DECLARE_FREQUENCY = "the source does not report a frequency: declare `frequency`
 
 _CLOCK: contextvars.ContextVar[Callable[[], datetime.datetime] | None] = contextvars.ContextVar("clock", default=None)
 
+# What a table source tells its stored rows apart by (see Request.held): column names, each one
+# sent as stored, or (column, read) to send what `read` makes of each stored value instead.
+HeldBy = tuple[str | tuple[str, Callable[[str], str]], ...]
+
 
 def utc_today() -> datetime.date:
     """Today in UTC by the clock of the sync that is running (Store(clock=...)), else the system's."""

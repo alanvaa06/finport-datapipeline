@@ -100,18 +100,25 @@ def test_sync_stores_a_table_per_reporter(store, services):
 def test_table_returns_the_key_columns_the_date_and_the_values(store):
     table = store.table("comtrade", "MEX")
     assert list(table.columns) == [
-        "reporter", "partner", "flow", "product", "frequency", "period", "date", "value_usd", "weight_kg", "level",
+        "reporter", "partner", "flow", "product", "frequency", "period", "date", "value_usd", "weight_kg",
     ]  # fmt: skip
     assert list(table["period"]) == ["2024", "2024", "2025", "2026-04", "2026-05"]
 
 
-def test_a_table_written_before_a_column_existed_reads_it_as_missing(store, tmp_path):
+def test_a_table_written_with_a_column_the_source_no_longer_has_reads_and_syncs_without_it(
+    store, tmp_path, clock, services
+):
     storage = Storage(tmp_path / "store")
-    older = storage.read_table("comtrade", "USA").drop(columns="level")  # as stored before `level` existed
-    older.to_parquet(storage.table_path("comtrade", "USA"))
-    both = store.table("comtrade")
-    assert list(both["level"].isna()) == [False] * 5 + [True]
-    assert list(store.table("comtrade", level="AG2")["reporter"].unique()) == ["MEX"]
+    older = storage.read_table("comtrade", "MEX").assign(level="AG2")  # as a build that recorded `level` stored it
+    older.to_parquet(storage.table_path("comtrade", "MEX"))
+    assert "level" not in store.table("comtrade", "MEX").columns
+    services.values[("MEX", "2025", "X", "27")] = 111.0
+    clock["now"] = LATER
+    report = store.sync()
+    assert (report.exit_code, report.sources[0].revised) == (0, 1)
+    table = store.table("comtrade", "MEX")
+    assert (len(table), "level" in table.columns) == (5, False)
+    assert table.loc[table["period"] == "2025", "value_usd"].tolist() == [111.0]
 
 
 def test_a_key_column_a_table_lacks_reads_as_missing_and_its_filter_keeps_none_of_its_rows(store, tmp_path):
@@ -188,8 +195,8 @@ def test_show_prints_the_citation_and_the_newest_rows_of_a_table(store, tmp_path
     lines = result.output.splitlines()
     assert lines[0] == "[UN Comtrade: MEX, 2026-05, fetched 2026-06-06]"
     assert lines[1] == "Goods trade of MEX by HS product (AG2) | 5 rows"
-    assert lines[2] == "reporter  partner  flow  product  frequency  period  value_usd  weight_kg  level"
-    assert lines[-1] == "MEX  WLD  X  27  M  2026-05  10.0  1.0  AG2"
+    assert lines[2] == "reporter  partner  flow  product  frequency  period  value_usd  weight_kg"
+    assert lines[-1] == "MEX  WLD  X  27  M  2026-05  10.0  1.0"
     assert len(lines) == 8
 
 

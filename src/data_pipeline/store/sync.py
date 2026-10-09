@@ -42,7 +42,7 @@ from data_pipeline.store.model import (
     SeriesData,
     TableData,
 )
-from data_pipeline.store.sources.base import Source, clock_of_sync
+from data_pipeline.store.sources.base import HeldBy, Source, clock_of_sync
 from data_pipeline.store.storage import (
     INDEX_DTYPES,
     KEY,
@@ -372,13 +372,23 @@ def _failed_row(entry: CatalogEntry, previous: Row | None, reason: str, kind: st
     }
 
 
-def held_periods(table: pd.DataFrame, by: Sequence[str] = ()) -> frozenset[tuple[str, ...]]:
+def held_periods(table: pd.DataFrame, by: HeldBy = ()) -> frozenset[tuple[str, ...]]:
     """The (frequency, period) pairs a stored table holds, whatever their version, each followed
-    by its values in the columns `by` ("" for a missing value or a column the table lacks)."""
+    by its values in the columns `by` names ("" for a missing value or a column the table lacks).
+    A column named with a function gives what the function reads in its value, asked once per
+    distinct value: Comtrade reads each product code as its HS level, so `held` stays as small
+    as the periods are, however many products the table has."""
     if table.empty or "frequency" not in table.columns or "period" not in table.columns:
         return frozenset()
-    distinct = table.reindex(columns=["frequency", "period", *by]).drop_duplicates().fillna("").astype(str)
-    return frozenset(distinct.itertuples(index=False, name=None))
+    readers: list[tuple[str, Callable[[str], str] | None]] = [
+        (column, None) if isinstance(column, str) else column for column in by
+    ]
+    columns = ["frequency", "period", *(column for column, _ in readers)]
+    distinct = table.reindex(columns=columns).drop_duplicates().fillna("").astype(str)
+    for column, read in readers:
+        if read is not None:
+            distinct[column] = distinct[column].map({value: read(value) for value in distinct[column].unique()})
+    return frozenset(distinct.drop_duplicates().itertuples(index=False, name=None))
 
 
 def _table_row(table: TableData, previous: Row | None, stored: pd.DataFrame, now: datetime.datetime) -> Row:
@@ -433,7 +443,7 @@ def _sync_tables(
     """Sync a source of kind table. There is no `since`: each request carries what is stored, also
     when the sync is full, so a source can refuse an entry the stored table cannot take."""
     name = source.name
-    by: Sequence[str] = getattr(source, "held_by", ())  # columns a source tells its stored rows apart by
+    by: HeldBy = getattr(source, "held_by", ())  # what a source tells its stored rows apart by
     requests = [
         Request(entry, held=held_periods(storage.read_table(name, entry.source_id), by), full=full)
         for entry in wanted
