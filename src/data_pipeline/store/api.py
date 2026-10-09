@@ -312,8 +312,8 @@ class Store:
 
         Columns: `id`, the columns of the list (`group`, `date`, `file`, `role`, `url`, `size`,
         `sha256`, `fetched_at` and the source's own, such as `form`) and `path`, the file on
-        disk. Oldest document first. `as_of` keeps what had been published by that day;
-        `filters` keep the rows whose column equals the value.
+        disk. Oldest document first. `as_of` keeps what had been published by then, each document
+        known from the end of its day; `filters` keep the rows whose column equals the value.
         """
         names = self._storage.document_names(source)
         if id is not None and id not in names:
@@ -340,7 +340,9 @@ class Store:
         for column, value in filters.items():
             found = found[found[column] == value]
         if as_of is not None:
-            found = found[found["date"] <= st.to_moment(as_of).tz_localize(None)]
+            # a document gives the day it was published, not the hour: known from the end of that day
+            known_at = found["date"] + pd.Timedelta(days=1) - pd.Timedelta(microseconds=1)
+            found = found[known_at <= st.to_moment(as_of).tz_localize(None)]
         return found.sort_values(["date", "id", "group", "role", "file"], kind="stable").reset_index(drop=True)
 
     def revisions(self, key: str) -> pd.DataFrame:

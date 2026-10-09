@@ -6,11 +6,14 @@ row, so you can read a series **as it was known on a past date**. That is what a
 to avoid look-ahead bias. How far back that works depends on the source: see
 [Reading as of a past date](#reading-as-of-a-past-date).
 
-- **Macro:** a bundled catalog of **1,293 curated series across 44 economies**. It covers rates,
-  money and credit, prices, activity, sentiment, labour and the external sector. Every series
-  has a stable `e_*` name, like `e_us_cpi` or `e_mx_target_rate`.
+- **Macro:** a bundled catalog of **1,293 curated series across 44 economies**, 61 indicators. It
+  covers rates, money and credit, prices, activity, sentiment, labour and the external sector.
+  Every series has a stable `e_*` name, like `e_us_cpi` or `e_mx_target_rate`. See
+  [The macro catalog](#the-macro-catalog).
 - **Sources, read directly from each publisher:** FRED, BLS, Banxico SIE, INEGI, the World Bank,
-  the BIS, the ECB, Eurostat, the OECD and the IMF. DBnomics covers what has no direct id yet.
+  the BIS, the ECB, Eurostat, the OECD and the IMF: 1,197 of the catalog's series, 861 of them
+  through SDMX. The other 96 come from DBnomics, a frozen mirror of datasets their publisher
+  retired.
 - **Tables:** goods trade from UN Comtrade, and the XBRL facts that companies report to the SEC.
   Each version of a fact is dated with the day it was filed.
 - **Documents:** SEC filings (10-K, 10-Q, 8-K with their exhibits, 20-F, 40-F), stored as the
@@ -79,6 +82,12 @@ the store keeps what it already had; after three requests in a row fail, the res
 are not asked in that run and fail with `network_error`. A source that breaks (an unexpected answer, a damaged file)
 fails its own series and the run goes on with the next source.
 
+`status` gives each series a state: `ok`, `stale`, `missing` or `failed`, and exits with 1
+unless every one is `ok`. A series is stale when its last period ended more than 10 days ago for
+a daily series, 28 for a weekly one, 124 monthly, 183 quarterly and 730 annual; an entry's
+`stale_after_days` sets its own limit. `catalog` marks with `[stale]` the series whose entry says
+the publisher stopped updating them (`attrs.stale`).
+
 ## Python
 
 ```python
@@ -110,12 +119,20 @@ refused with an error (exit 2 for `show --as-of`).
   ALFRED's first vintage, years before your first sync. `store.revisions(...)` lists each one.
   FRED gives the day, not the hour, so a vintage counts as known from the end of that day (UTC):
   `as_of="2026-10-02"` sees what came out that day, `as_of="2026-10-02T12:00Z"` does not.
-- **SEC XBRL facts:** each version is dated with the day the filing was received, and also
-  counts as known from the end of that day.
+- **SEC XBRL facts and SEC filings:** each version of a fact, and each filing, is dated with the
+  day the SEC received it, and also counts as known from the end of that day.
 - **Every other source,** and FRED series that ALFRED does not keep (such as `SP500`): the
   source does not say when a value was published, so the store dates it by its own fetch. On
   those, `as_of` sees nothing before your first sync, and point-in-time history starts that day.
   Keep syncing regularly: each run records what changed.
+
+`date` is the last day of a value's period, not the day the value came out: September's CPI is
+dated 2026-09-30 and published in mid-October. Without `as_of`, `series` and `frame` also give
+each period its latest revision. Lined up on market dates as they are, or carried forward, they
+put a value on days before anyone knew it. For a backtest, read with `as_of` set to each day you
+simulate, or build the history from `store.revisions(...)`: a version is known from its
+`published_at`, or from its `fetched_at` when the source gives no publication day. `frame` never
+carries a value forward: a gap stays empty, and so do the later dates of a series that stopped.
 
 To download from Python, give the store a catalog, or add entries for the session:
 
@@ -125,6 +142,28 @@ store.add("fred", ["UNRATE"])
 report = store.sync()
 ```
 
+## The macro catalog
+
+`data-pipeline catalog` lists it. Each entry's name ends with the unit of its values, such as
+`(USD)`, `(index)` or `(% p.a.)`, and the series of one indicator (the alias without its country)
+share it. The 38 exceptions carry `attrs.units_differ`: goods trade and reserves still on the
+DBnomics mirror, and Banxico's reserves, are in millions of USD where the IMF series of the same
+indicator are in USD; FRED's nominal GDP is in billions at an annual rate.
+
+Some indicators are only as uniform as their publishers allow:
+
+- `short_rate` is the 3-month interbank rate (OECD) for ten economies, a money-market rate, a
+  Treasury bill yield or rate for most others, and the deposit rate for Switzerland. The name of
+  each says which.
+- `pmi_mfg` is the OECD's manufacturing confidence balance: a percent balance around 0, not a
+  purchasing managers' index around 50.
+
+`attrs.stale` marks 158 series that are not current, with the reason: the 96 on DBnomics, and
+62 whose publisher was, when checked on 2026-10-08, more than one period behind the store's
+staleness threshold: the euro members' national policy rates, which end in 1998, the IMF's
+unemployment rates and producer prices, published months late, and a few more. `catalog` shows
+them with `[stale]`.
+
 ## Data terms
 
 This library ships code, not data. Each user brings their own keys, and the data goes to that
@@ -132,8 +171,11 @@ user's own disk. Each source has its own terms of use. Every catalog entry has a
 flag:
 
 - `yes`: Eurostat, the World Bank.
-- `restricted`: the IMF, the BIS, the OECD.
+- `restricted`: the IMF, the BIS, the OECD, and DBnomics, which mirrors IMF and OECD data under
+  their terms.
 - `no`: FRED.
+- `unverified`: Banxico, INEGI and the ECB. Their terms have not been reviewed for this flag;
+  read them before a commercial use.
 
 FRED limits redistribution of large datasets and the use of its data to train machine-learning
 models. Check those terms before you build a commercial product on it.
