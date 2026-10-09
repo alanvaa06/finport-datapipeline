@@ -100,7 +100,7 @@ def _keep_out_of_git(env_file: pathlib.Path) -> None:
 @cli.command("setup")
 @click.option("--no-check", is_flag=True, help="Save without asking each source whether the key works.")
 def setup_command(*, no_check: bool) -> None:
-    """Fill the nearest .env of this project with the keys you choose, checking each one."""
+    """Fill the .env of this project (the nearest one, else a new one at its root) with the keys you choose."""
     env_file: pathlib.Path = credentials.target_env_file()
     echo(f"Keys are saved in {env_file}")
     # The search never leaves the project, but a parent folder's file is still not the one in

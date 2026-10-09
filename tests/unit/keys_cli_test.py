@@ -123,6 +123,23 @@ def test_setup_asks_before_writing_to_the_env_file_of_a_parent_folder(tmp_path, 
     assert not (root / "notebooks" / ".env").exists()
 
 
+def test_setup_from_a_subfolder_creates_the_env_file_at_the_project_root(tmp_path, monkeypatch):
+    monkeypatch.setattr(keys_check, "check", checker({}))
+    root = tmp_path / "project"
+    (root / "notebooks").mkdir(parents=True)
+    (root / "scripts").mkdir()
+    (root / "pyproject.toml").write_text("", encoding="utf-8")
+    monkeypatch.chdir(root / "notebooks")
+    result = CliRunner().invoke(cli, ["setup"], input="y\n1\nfred\n")
+    assert result.exit_code == 0, result.output
+    assert f"Keys are saved in {root.resolve() / '.env'}" in result.output
+    assert (root / ".env").read_text(encoding="utf-8") == "FRED_API_KEY=fred\n"
+    assert not (root / "notebooks" / ".env").exists()
+    monkeypatch.chdir(root / "scripts")  # another subfolder finds it
+    listed = CliRunner().invoke(cli, ["keys"])
+    assert next(line for line in listed.output.splitlines() if "FRED_API_KEY" in line).startswith("[ok]")
+
+
 @pytest.mark.parametrize(
     ("before", "after"),
     [

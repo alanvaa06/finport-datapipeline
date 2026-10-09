@@ -8,7 +8,7 @@ import time
 import pytest
 
 from data_pipeline import credentials
-from data_pipeline.credentials import Credentials, find_env_file, resolve, save, target_env_file
+from data_pipeline.credentials import Credentials, find_env_file, project_root, resolve, save, target_env_file
 
 
 @pytest.fixture(autouse=True)
@@ -95,7 +95,7 @@ def test_the_search_stops_at_the_root_of_the_project(tmp_path, marker):
     notebooks = root / "notebooks"
     notebooks.mkdir()
     assert find_env_file(notebooks) is None
-    assert target_env_file(notebooks) == notebooks.resolve() / ".env"
+    assert target_env_file(notebooks) == root.resolve() / ".env"  # a new .env goes to the root
     assert resolve(environ={}, start=notebooks).get("FRED_API_KEY") is None
 
 
@@ -106,6 +106,25 @@ def test_the_root_of_a_repository_wins_over_a_package_inside_it(tmp_path):
     (package / "src").mkdir()
     assert find_env_file(package / "src") == repo / ".env"
     assert resolve(environ={}, start=package / "src").get("FRED_API_KEY") == "repo"
+    (repo / ".env").unlink()
+    assert target_env_file(package / "src") == repo.resolve() / ".env"
+
+
+def test_a_new_env_file_goes_to_the_project_root_and_is_found_from_any_subfolder(tmp_path):
+    root = project(tmp_path / "project")
+    (root / "notebooks").mkdir()
+    (root / "src" / "pkg").mkdir(parents=True)
+    target = target_env_file(root / "notebooks")
+    assert target == root.resolve() / ".env"
+    save(target, {"FRED_API_KEY": "fred"})
+    for folder in (root, root / "notebooks", root / "src" / "pkg"):
+        assert resolve(environ={}, start=folder).get("FRED_API_KEY") == "fred"
+
+
+def test_outside_a_project_a_new_env_file_goes_to_the_folder_itself(tmp_path):
+    work = tmp_path / "work"
+    work.mkdir()
+    assert target_env_file(work) == work.resolve() / ".env"
 
 
 def test_a_git_folder_above_the_home_folder_never_wins(tmp_path, monkeypatch):
@@ -367,6 +386,20 @@ def test_a_test_never_finds_an_env_file_outside_its_temp_folder(tmp_path):
     assert confined(bound / "work") == (bound / ".env").resolve()
 
 
+def test_a_test_never_takes_a_project_root_outside_its_temp_folder(tmp_path):
+    from tests.unit.conftest import confine_project_root
+
+    outside = project(tmp_path / "outside")  # a repository the temp folder happens to be inside
+    bound = outside / "tmp"
+    (bound / "work").mkdir(parents=True)
+    inner = project(bound / "inner")
+    confined = confine_project_root(project_root, bound)
+    assert project_root(bound / "work") == outside.resolve()  # the real search does take it
+    assert confined(bound / "work") is None
+    assert confined(inner) == inner.resolve()
+
+
 def test_the_autouse_fixture_confines_the_module_search_and_clears_the_keys(monkeypatch):
     assert credentials.find_env_file is not find_env_file  # the module attribute is the confined wrapper
+    assert credentials.project_root is not project_root
     assert not any(name in os.environ for name in credentials.NAMES)

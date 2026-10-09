@@ -199,8 +199,12 @@ def find_env_file(start: pathlib.Path | None = None) -> pathlib.Path | None:
 
 
 def target_env_file(start: pathlib.Path | None = None) -> pathlib.Path:
-    """Where to save: the nearest `.env`, or a new one in `start` (default: the current folder)."""
-    return find_env_file(start) or (start or pathlib.Path.cwd()).resolve() / ENV_FILE_NAME
+    """Where to save: the nearest `.env`, else a new one at the root of the project.
+
+    Outside a project the new `.env` goes in `start` (default: the current folder) itself.
+    """
+    folder = (start or pathlib.Path.cwd()).resolve()
+    return find_env_file(folder) or (project_root(folder) or folder) / ENV_FILE_NAME
 
 
 def resolve(
