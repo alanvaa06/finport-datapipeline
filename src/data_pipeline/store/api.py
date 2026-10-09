@@ -276,7 +276,8 @@ class Store:
 
         One row per key, in its latest version or as it was known at `as_of`. `filters` keep the
         rows whose column equals the value: `table("comtrade", "MEX", flow="X", frequency="A")`.
-        They apply to that version, so `form="10-K"` leaves out a 10-K value a 10-K/A replaced.
+        They apply to that version, so `form="10-K"` leaves out a 10-K value a 10-K/A replaced
+        (a filter on a key column is applied first, since it keeps or drops a key whole).
         Columns: the key columns, `date`, the value columns, the attribute columns.
         """
         names = self._storage.table_names(source)
@@ -294,14 +295,21 @@ class Store:
             msg = f"unknown column(s) for a {source} table: {', '.join(unknown)} (columns: {', '.join(columns)})"
             raise StoreError(msg)
         order = [*(column for column in key if column != "period"), "date"]
+        # Every version of a key shares its key columns, so a filter on them drops whole keys and
+        # can go first, before the work of choosing versions. Any other filter goes after the
+        # version is chosen: never revive a replaced one.
+        on_key = {column: value for column, value in filters.items() if column in key}
+        on_version = {column: value for column, value in filters.items() if column not in key}
         parts = []
         for name in names if id is None else [id]:
             stored = self._storage.read_table(source, name)
+            for column, value in on_key.items():
+                stored = stored[stored[column] == value]
             if as_of is None:
                 current = st.latest(stored, key, order, by_publication=schema.versioned)
             else:
                 current = st.as_of(stored, st.to_moment(as_of), key, order)
-            for column, value in filters.items():  # after the version is chosen: never revive a replaced one
+            for column, value in on_version.items():
                 current = current[current[column] == value]
             parts.append(current[columns].reset_index(drop=True))
         filled = [part for part in parts if not part.empty] or parts[:1]
