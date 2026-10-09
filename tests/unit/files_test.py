@@ -132,6 +132,41 @@ def test_a_target_that_stays_open_is_refused_and_keeps_its_content(tmp_path, mon
     assert sorted(item.name for item in tmp_path.iterdir()) == ["data.json"]
 
 
+def test_prepare_sees_the_written_temporary_file_before_it_is_flushed_and_replaces_the_target(tmp_path, monkeypatch):
+    path = tmp_path / ".env"
+    path.write_bytes(b"old")
+    events = []
+    real_fsync = os.fsync
+
+    def prepare(descriptor, target):
+        events.append(("prepare", os.fstat(descriptor).st_size, target, target.read_bytes()))
+
+    monkeypatch.setattr(_files.os, "fsync", lambda descriptor: events.append("fsync") or real_fsync(descriptor))
+    write_atomic(path, b"KEY=1\n", prepare=prepare)
+    assert events[:2] == [("prepare", 6, path, b"old"), "fsync"]
+    assert path.read_bytes() == b"KEY=1\n"
+
+
+def test_a_prepare_that_fails_leaves_the_target_and_no_temporary_file(tmp_path):
+    path = tmp_path / ".env"
+    path.write_bytes(b"old")
+
+    def prepare(_descriptor, _target):
+        raise PermissionError(errno.EPERM, "Operation not permitted")  # say fchown to a group we are not in
+
+    with pytest.raises(PermissionError):
+        write_atomic(path, b"new", prepare=prepare)
+    assert path.read_bytes() == b"old"
+    assert sorted(item.name for item in tmp_path.iterdir()) == [".env"]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="file modes are POSIX")
+def test_what_prepare_sets_on_the_temporary_file_is_what_the_target_gets(tmp_path):
+    path = tmp_path / ".env"
+    write_atomic(path, b"KEY=1\n", mode=0o600, prepare=lambda descriptor, _target: os.fchmod(descriptor, 0o640))
+    assert path.stat().st_mode & 0o777 == 0o640
+
+
 @pytest.mark.skipif(sys.platform == "win32", reason="file modes are POSIX")
 def test_the_mode_given_is_the_mode_of_the_new_file(tmp_path):
     path = tmp_path / ".env"
