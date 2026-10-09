@@ -76,8 +76,11 @@ bundled one. Ids and aliases are read as the text you write (`0123` stays `0123`
     UNRATE: us.unemployment
 ```
 
+`sync --source fred` and `sync --key fred:UNRATE` (both repeatable) sync only part of the
+catalog; `--full` asks for each series' whole history again and stores only what changed.
+
 `sync` exits with 0 when everything is up to date, 1 when there were failures, 2 for a
-configuration error (an unknown `--source` included) and 3 when a quota stopped it (run it again tomorrow). If a source is down,
+configuration error (an unknown `--source` or `--key` included) and 3 when a quota stopped it (run it again tomorrow). If a source is down,
 the store keeps what it already had; after three requests in a row fail, the rest of its series
 are not asked in that run and fail with `network_error`. A source that breaks (an unexpected answer, a damaged file)
 fails its own series and the run goes on with the next source.
