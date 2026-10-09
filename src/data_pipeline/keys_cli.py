@@ -2,6 +2,8 @@
 Output is ASCII only."""
 
 import pathlib
+import shutil
+import subprocess
 
 import click
 
@@ -9,11 +11,53 @@ from data_pipeline import credentials, keys_check
 from data_pipeline.credentials import Key
 
 GITIGNORE_FILE = ".gitignore"
+GIT = "git"  # the git command, looked up on PATH; without it the checks that need git are skipped
+
+
+def ascii_only(text: str) -> str:
+    """`text` with anything outside ASCII replaced (Windows consoles default to cp1252)."""
+    return text.encode("ascii", "replace").decode("ascii")
 
 
 def echo(line: str) -> None:
-    """Print one line, replacing anything outside ASCII (Windows consoles default to cp1252)."""
-    click.echo(line.encode("ascii", "replace").decode("ascii"))
+    """Print one line, ASCII only."""
+    click.echo(ascii_only(line))
+
+
+def _git(folder: pathlib.Path, *args: str) -> subprocess.CompletedProcess[str] | None:
+    """Run git with `args` in `folder`; None when git is not installed.
+
+    `core.fsmonitor` is turned off so that no hook program configured in the repository runs.
+    """
+    executable = shutil.which(GIT)
+    if executable is None:
+        return None
+    return subprocess.run(  # noqa: S603  # a fixed command, no shell
+        [executable, "-c", "core.fsmonitor=false", *args],
+        cwd=folder,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+
+
+def _refuse_a_tracked_env_file(env_file: pathlib.Path) -> None:
+    """Stop when git tracks `env_file`: no ignore rule applies to a tracked file, so the keys would be committed.
+
+    Without git, or outside a repository, there is nothing to check.
+    """
+    result = _git(env_file.parent, "ls-files", "--error-unmatch", "--", env_file.name)
+    if result is None or result.returncode != 0:
+        return
+    msg = (
+        f"{env_file} is tracked by git, and no .gitignore rule applies to a tracked file: the keys would go"
+        " into the next commit. Nothing was saved. To stop tracking it (the file stays on disk), run in"
+        f" {env_file.parent}:\n\n    git rm --cached {env_file.name}\n\nthen run setup again. If real keys"
+        " were ever committed, they are in the history: replace them at their source."
+    )
+    raise click.ClickException(ascii_only(msg))
 
 
 @click.group()
@@ -103,6 +147,7 @@ def setup_command(*, no_check: bool) -> None:
     """Fill the .env of this project (the nearest one, else a new one at its root) with the keys you choose."""
     env_file: pathlib.Path = credentials.target_env_file()
     echo(f"Keys are saved in {env_file}")
+    _refuse_a_tracked_env_file(env_file)
     # The search never leaves the project, but a parent folder's file is still not the one in
     # front of the person: they confirm it before any key goes there.
     if env_file.parent != pathlib.Path.cwd().resolve() and not click.confirm(
