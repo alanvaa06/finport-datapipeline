@@ -2,9 +2,10 @@
 
 A value passed in code wins over the process environment, which wins over the nearest `.env`:
 the one in the current folder, else in its parent, and so on up to the root of the project (the
-folder with `.git` or `pyproject.toml`), never above it. Outside a project only the current
-folder's `.env` counts, and the home folder's never does from below it: a `.env` that belongs to
-another project, to the home folder or to a shared folder is neither read nor written.
+closest folder with `.git`, else the closest with `pyproject.toml`), never above it. Outside a
+project only the current folder's `.env` counts, and the home folder's never does from below it:
+a `.env` that belongs to another project, to the home folder or to a shared folder is neither
+read nor written.
 Credentials are personal: `repr` shows only which ones are present, never their values.
 
 This module imports nothing from the store: the store and the command line both read it.
@@ -37,7 +38,9 @@ REPLACE_ATTEMPTS = 10
 REPLACE_WAIT = 0.5  # seconds between attempts: about five seconds in all
 FILE_MODE = 0o600  # on POSIX: readable and writable by the owner only
 ENV_FILE_ENCODING = "utf-8-sig"  # plain UTF-8, tolerating the BOM some editors add
-PROJECT_MARKERS = (".git", "pyproject.toml")  # a folder holding either is the root of a project
+# The root of a project: the closest folder with `.git`; with no `.git` above, the closest with
+# `pyproject.toml`. Markers in order of precedence.
+PROJECT_MARKERS = (".git", "pyproject.toml")
 LINE_BREAK = re.compile(r"\r\n|\r|\n")  # the only line breaks python-dotenv knows
 # Unicode categories a saved value may not hold: control characters (line feeds, tabs, NEL, VT,
 # FS...) and the line and paragraph separators U+2028 and U+2029.
@@ -146,22 +149,43 @@ def _home() -> pathlib.Path | None:
         return None
 
 
-def _search_path(folder: pathlib.Path) -> list[pathlib.Path]:
-    """The folders whose `.env` counts from `folder`: itself, then each parent up to the project root.
-
-    Outside a project (no `.git` or `pyproject.toml` at `folder` or above it, below the home
-    folder) only `folder` itself counts. The home folder ends the climb: it counts only when it
-    is `folder`.
-    """
+def _climb(folder: pathlib.Path) -> list[pathlib.Path]:
+    """`folder`, then each of its parents. The home folder ends the climb: it counts only when it is `folder`."""
     home = _home()
     walked: list[pathlib.Path] = []
     for candidate in (folder, *folder.parents):
         if walked and candidate == home:
             break
         walked.append(candidate)
-        if any((candidate / marker).exists() for marker in PROJECT_MARKERS):
-            return walked
-    return walked[:1]
+    return walked
+
+
+def project_root(start: pathlib.Path | None = None) -> pathlib.Path | None:
+    """The root of the project `start` (default: the current folder) is in, or None outside a project.
+
+    The root is the closest folder at or above `start` that holds `.git` (a folder, or the file a
+    worktree or submodule has). With no `.git` above, it is the closest folder with
+    `pyproject.toml`: a package with its own `pyproject.toml` inside a repository belongs to the
+    repository. Neither marker is looked for above the home folder.
+    """
+    walked = _climb((start or pathlib.Path.cwd()).resolve())
+    for marker in PROJECT_MARKERS:
+        for candidate in walked:
+            if (candidate / marker).exists():
+                return candidate
+    return None
+
+
+def _search_path(folder: pathlib.Path) -> list[pathlib.Path]:
+    """The folders whose `.env` counts from `folder`: itself, then each parent up to the project root.
+
+    Outside a project only `folder` itself counts.
+    """
+    root = project_root(folder)
+    if root is None:
+        return [folder]
+    walked = _climb(folder)
+    return walked[: walked.index(root) + 1]
 
 
 def find_env_file(start: pathlib.Path | None = None) -> pathlib.Path | None:

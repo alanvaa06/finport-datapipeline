@@ -99,6 +99,26 @@ def test_the_search_stops_at_the_root_of_the_project(tmp_path, marker):
     assert resolve(environ={}, start=notebooks).get("FRED_API_KEY") is None
 
 
+def test_the_root_of_a_repository_wins_over_a_package_inside_it(tmp_path):
+    repo = project(tmp_path / "repo")
+    (repo / ".env").write_text("FRED_API_KEY=repo\n", encoding="utf-8")
+    package = project(repo / "packages" / "x", "pyproject.toml")  # a monorepo: one pyproject.toml per package
+    (package / "src").mkdir()
+    assert find_env_file(package / "src") == repo / ".env"
+    assert resolve(environ={}, start=package / "src").get("FRED_API_KEY") == "repo"
+
+
+def test_a_git_folder_above_the_home_folder_never_wins(tmp_path, monkeypatch):
+    home = project(tmp_path / "home")  # a home kept in git, as dotfiles often are
+    (home / ".env").write_text("FRED_API_KEY=home\n", encoding="utf-8")
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    package = project(home / "analysis", "pyproject.toml")
+    (package / "notebooks").mkdir()
+    (package / ".env").write_text("FRED_API_KEY=package\n", encoding="utf-8")
+    assert find_env_file(package / "notebooks") == package / ".env"
+
+
 def test_outside_a_project_only_the_folder_itself_is_searched(tmp_path):
     (tmp_path / ".env").write_text("FRED_API_KEY=shared\n", encoding="utf-8")  # a shared /tmp/.env, a synced folder's
     work = tmp_path / "work"

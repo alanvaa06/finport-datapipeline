@@ -31,11 +31,12 @@ pip install git+https://github.com/alanvaa06/finport-datapipeline.git
 
 ## Keys
 
-Each source's key lives in one `.env` file at the root of your project, the folder that holds its
-`.git` or `pyproject.toml`; it is found from any subfolder. The search stops at that folder: a
-`.env` above it, in your home folder or in a shared folder is never read or written. Outside a
-project only the current folder's `.env` counts. A key passed in code wins over the environment,
-which wins over the file.
+Each source's key lives in one `.env` file at the root of your project: the closest folder that
+holds `.git` or, with no `.git` above, the closest that holds `pyproject.toml` (so in a monorepo
+the root is the repository's, not a package's). The file is found from any subfolder. The search
+stops at that folder: a `.env` above it, in your home folder or in a shared folder is never read
+or written. Outside a project only the current folder's `.env` counts. A key passed in code wins
+over the environment, which wins over the file.
 
 ```bash
 data-pipeline setup
