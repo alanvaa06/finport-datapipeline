@@ -31,16 +31,32 @@ pip install git+https://github.com/alanvaa06/finport-datapipeline.git
 
 ## Keys
 
-Each source's key lives in one `.env` file at the root of your project; it is found from any
-subfolder. A key passed in code wins over the environment, which wins over the file.
+Each source's key lives in one `.env` file at the root of your project: the closest folder that
+holds `.git` or, with no `.git` above, the closest that holds `pyproject.toml` (so in a monorepo
+the root is the repository's, not a package's). The file is found from any subfolder. The search
+stops at that folder: a `.env` above it, in your home folder or in a shared folder is never read
+or written. Outside a project only the current folder's `.env` counts. A key passed in code wins
+over the environment, which wins over the file.
 
 ```bash
 data-pipeline setup
 ```
 
 `setup` asks for each key, hidden as you type it, and checks it with one request to its source
-before saving. To see which keys are set and where each one comes from, run `data-pipeline keys`.
-It never shows the values.
+before saving. It shows the file it writes to, and asks first when that file is in a parent folder;
+with no `.env` in the project yet, it creates one at the root of the project (outside a project, in
+the current folder). Each save replaces the whole file at once, so it is never left half-written,
+and two saves take turns on a `.env.lock` next to it. On Linux and macOS a new `.env` is readable by
+you only; an existing one keeps its mode and group (0640 for a service's group, say), minus any
+access for others. To see which keys are set and where each one comes from, run `data-pipeline
+keys`. It never shows the values.
+
+In a git repository, before the first key goes in, `setup` adds `.env` and `.env.lock` to the
+`.gitignore` of that folder unless git already ignores them (it asks git, so a rule such as `.env*`
+anywhere counts); outside a repository it writes no `.gitignore`. A rule that un-ignores `.env`,
+such as `!.env`, stops `setup` instead of being overridden. If git already tracks the `.env`, an
+ignore rule cannot keep it out of the next commit: `setup` stops before asking for any key and tells
+you to run `git rm --cached .env`.
 
 | Variable | Source | Needed for |
 |---|---|---|

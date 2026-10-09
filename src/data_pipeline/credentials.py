@@ -1,21 +1,48 @@
 """The keys every part of the library uses, where they come from, and how they are saved.
 
 A value passed in code wins over the process environment, which wins over the nearest `.env`:
-the one in the current folder, else in its parent, and so on up. Credentials are personal:
-`repr` shows only which ones are present, never their values.
+the one in the current folder, else in its parent, and so on up to the root of the project (the
+closest folder with `.git`, else the closest with `pyproject.toml`), never above it. Outside a
+project only the current folder's `.env` counts, and the home folder's never does from below it:
+a `.env` that belongs to another project, to the home folder or to a shared folder is neither
+read nor written.
+Credentials are personal: `repr` shows only which ones are present, never their values.
 
-This module imports nothing from the store: the store and the command line both read it.
+This module imports nothing from the store: the store and the command line both read it. Its
+lock and its atomic write are the store's own, from `data_pipeline._files`.
 """
 
+import contextlib
 import dataclasses
 import os
 import pathlib
-from collections.abc import Mapping
+import re
+import stat
+import sys
+import time
+import unicodedata
+from collections.abc import Iterator, Mapping
 
 import dotenv
 
+from data_pipeline._files import try_lock, unlock, write_atomic
+
 ENV_FILE_NAME = ".env"
+LOCK_SUFFIX = ".lock"  # saves to `.env` take turns on `.env.lock`
+LOCK_TIMEOUT = 10.0  # seconds a save waits for another one to finish
+LOCK_POLL = 0.05  # seconds between two tries of the lock
+FILE_MODE = 0o600  # on POSIX, a new file: readable and writable by the owner only
+# On POSIX, what a save keeps of an existing file's mode: the owner's and the group's bits, nothing
+# for others, no setuid, setgid or sticky bit.
+KEPT_MODE_BITS = stat.S_IRWXU | stat.S_IRWXG
 ENV_FILE_ENCODING = "utf-8-sig"  # plain UTF-8, tolerating the BOM some editors add
+# The root of a project: the closest folder with `.git`; with no `.git` above, the closest with
+# `pyproject.toml`. Markers in order of precedence.
+PROJECT_MARKERS = (".git", "pyproject.toml")
+LINE_BREAK = re.compile(r"\r\n|\r|\n")  # the only line breaks python-dotenv knows
+# Unicode categories a saved value may not hold: control characters (line feeds, tabs, NEL, VT,
+# FS...) and the line and paragraph separators U+2028 and U+2029.
+UNSAFE_CATEGORIES = frozenset({"Cc", "Zl", "Zp"})
 ORIGIN_CODE = "code"
 ORIGIN_ENVIRONMENT = "environment"
 SETUP_COMMAND = "data-pipeline setup"
@@ -113,10 +140,56 @@ class Credentials:
         return f"Credentials({present})"
 
 
-def find_env_file(start: pathlib.Path | None = None) -> pathlib.Path | None:
-    """The `.env` of `start` (default: the current folder) or of its closest parent that has one."""
-    folder = (start or pathlib.Path.cwd()).resolve()
+def _home() -> pathlib.Path | None:
+    try:
+        return pathlib.Path.home().resolve()
+    except (RuntimeError, OSError):  # no home folder is known, as in some containers
+        return None
+
+
+def _climb(folder: pathlib.Path) -> list[pathlib.Path]:
+    """`folder`, then each of its parents. The home folder ends the climb: it counts only when it is `folder`."""
+    home = _home()
+    walked: list[pathlib.Path] = []
     for candidate in (folder, *folder.parents):
+        if walked and candidate == home:
+            break
+        walked.append(candidate)
+    return walked
+
+
+def project_root(start: pathlib.Path | None = None) -> pathlib.Path | None:
+    """The root of the project `start` (default: the current folder) is in, or None outside a project.
+
+    The root is the closest folder at or above `start` that holds `.git` (a folder, or the file a
+    worktree or submodule has). With no `.git` above, it is the closest folder with
+    `pyproject.toml`: a package with its own `pyproject.toml` inside a repository belongs to the
+    repository. Neither marker is looked for above the home folder.
+    """
+    walked = _climb((start or pathlib.Path.cwd()).resolve())
+    for marker in PROJECT_MARKERS:
+        for candidate in walked:
+            if (candidate / marker).exists():
+                return candidate
+    return None
+
+
+def _search_path(folder: pathlib.Path) -> list[pathlib.Path]:
+    """The folders whose `.env` counts from `folder`: itself, then each parent up to the project root.
+
+    Outside a project only `folder` itself counts.
+    """
+    root = project_root(folder)
+    if root is None:
+        return [folder]
+    walked = _climb(folder)
+    return walked[: walked.index(root) + 1]
+
+
+def find_env_file(start: pathlib.Path | None = None) -> pathlib.Path | None:
+    """The `.env` of `start` (default: the current folder) or of its closest parent in the same project."""
+    folder = (start or pathlib.Path.cwd()).resolve()
+    for candidate in _search_path(folder):
         path = candidate / ENV_FILE_NAME
         if path.is_file():
             return path
@@ -124,8 +197,12 @@ def find_env_file(start: pathlib.Path | None = None) -> pathlib.Path | None:
 
 
 def target_env_file(start: pathlib.Path | None = None) -> pathlib.Path:
-    """Where to save: the nearest `.env`, or a new one in `start` (default: the current folder)."""
-    return find_env_file(start) or (start or pathlib.Path.cwd()).resolve() / ENV_FILE_NAME
+    """Where to save: the nearest `.env`, else a new one at the root of the project.
+
+    Outside a project the new `.env` goes in `start` (default: the current folder) itself.
+    """
+    folder = (start or pathlib.Path.cwd()).resolve()
+    return find_env_file(folder) or (project_root(folder) or folder) / ENV_FILE_NAME
 
 
 def resolve(
@@ -161,30 +238,115 @@ def resolve(
     return Credentials(values, origins)
 
 
+def invalid_value(value: str) -> str | None:
+    """Why `value` cannot be saved in a `.env`, or None when it can."""
+    if any(unicodedata.category(char) in UNSAFE_CATEGORIES for char in value):
+        return "it holds a line break, a tab or another control character"
+    return None
+
+
 def save(env_file: pathlib.Path, updates: Mapping[str, str]) -> None:
-    """Write `updates` into `env_file`, replacing their lines and keeping every other line."""
+    """Write `updates` into `env_file`, replacing their lines and keeping every other line.
+
+    Saves to the same file take turns (see `locked`), and each one writes a temporary file in the
+    same folder that then replaces `env_file`: a reader sees the old file or the new one, never
+    half of one, and a save that fails leaves the old file as it was (`write_atomic`; on
+    Windows, a replacement refused for about five seconds because a reader has the file open
+    raises `_files.ReplaceRefusedError`, a PermissionError). On POSIX a new file is readable and
+    writable by its owner only (0600); an existing one keeps its mode and group, minus any access
+    for others (see `_keep_access`).
+    """
     for name, value in updates.items():
         if name not in _BY_NAME:
             msg = f"Unknown environment variable: {name}"
             raise ValueError(msg)
-        if "\n" in value or "\r" in value:
-            msg = f"Invalid value for {name}"
+        reason = invalid_value(value)
+        if reason is not None:
+            msg = f"Invalid value for {name}: {reason}"
             raise ValueError(msg)
-    lines = env_file.read_text(encoding=ENV_FILE_ENCODING).splitlines() if env_file.is_file() else []
-    remaining = dict(updates)
-    written: set[str] = set()
-    kept: list[str] = []
-    for line in lines:
-        line_name = _line_name(line)
-        if line_name is not None and line_name in updates:
-            if line_name not in written:  # the first line of a name takes the new value, later ones are dropped
-                written.add(line_name)
-                kept.append(f"{line_name}={_encode(updates[line_name])}")
-                remaining.pop(line_name)
-            continue
-        kept.append(line)
-    kept.extend(f"{name}={_encode(value)}" for name, value in remaining.items())
-    env_file.write_text("\n".join(kept) + "\n", encoding="utf-8", newline="\n")
+    path = env_file.resolve()  # through a symbolic link, the file it points at gets the new content
+    with locked(path):
+        lines = _lines(path.read_text(encoding=ENV_FILE_ENCODING)) if path.is_file() else []
+        remaining = dict(updates)
+        written: set[str] = set()
+        kept: list[str] = []
+        for line in lines:
+            line_name = _line_name(line)
+            if line_name is not None and line_name in updates:
+                if line_name not in written:  # the first line of a name takes the new value, later ones are dropped
+                    written.add(line_name)
+                    kept.append(f"{line_name}={_encode(updates[line_name])}")
+                    remaining.pop(line_name)
+                continue
+            kept.append(line)
+        kept.extend(f"{name}={_encode(value)}" for name, value in remaining.items())
+        text = "\n".join(kept) + "\n"
+        write_atomic(path, text.encode("utf-8"), mode=FILE_MODE, prepare=_keep_access)
+
+
+def lock_file(env_file: pathlib.Path) -> pathlib.Path:
+    """The file saves to `env_file` take turns on: `.env.lock`, next to `.env`."""
+    path = env_file.resolve()
+    return path.with_name(path.name + LOCK_SUFFIX)
+
+
+@contextlib.contextmanager
+def locked(env_file: pathlib.Path) -> Iterator[None]:
+    """Hold the lock of `env_file`, waiting up to LOCK_TIMEOUT seconds for whoever holds it now.
+
+    The lock is the operating system's, taken on `lock_file(env_file)` the way the store takes its
+    own (`data_pipeline._files`): it ends with the process that holds it, so a save that crashes
+    leaves no stale lock (the empty file stays and is reused). Raises TimeoutError when the wait
+    runs out.
+    """
+    descriptor = os.open(lock_file(env_file), os.O_RDWR | os.O_CREAT, FILE_MODE)
+    try:
+        deadline = time.monotonic() + LOCK_TIMEOUT
+        while not try_lock(descriptor):
+            if time.monotonic() >= deadline:
+                msg = f"{env_file} is being saved by another program; try again"
+                raise TimeoutError(msg)
+            time.sleep(LOCK_POLL)
+        try:
+            yield
+        finally:
+            unlock(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _keep_access(descriptor: int, path: pathlib.Path) -> None:
+    """Give the open new copy of `path` the access the old one had, minus any for others (POSIX).
+
+    A new file stays 0600, as it was created. An existing one keeps its mode (0640 so that a
+    service's group reads it, say) without the bits for others, and keeps its group. When the
+    group cannot be kept (its owner is not in that group), the group bits go too: the access
+    never passes to another group. On Windows the new file takes its access from its folder, as
+    the old one did, so there is nothing to do.
+    """
+    if sys.platform == "win32":
+        return
+    try:
+        old = path.stat()
+    except FileNotFoundError:
+        return
+    mode = stat.S_IMODE(old.st_mode) & KEPT_MODE_BITS
+    if mode & stat.S_IRWXG and os.fstat(descriptor).st_gid != old.st_gid:
+        try:
+            os.fchown(descriptor, -1, old.st_gid)
+        except PermissionError:
+            mode &= ~stat.S_IRWXG
+    os.fchmod(descriptor, mode)
+
+
+def _lines(text: str) -> list[str]:
+    """The lines of a `.env` as python-dotenv sees them: split on CR LF, CR or LF only.
+
+    `str.splitlines` also splits on U+2028, U+0085, VT, FS and others, which would turn part of a
+    value into a line of its own on the next save.
+    """
+    lines = LINE_BREAK.split(text)
+    return lines[:-1] if lines[-1] == "" else lines
 
 
 def _line_name(line: str) -> str | None:

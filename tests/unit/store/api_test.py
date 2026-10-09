@@ -254,6 +254,7 @@ def test_a_key_passed_in_code_is_used_without_any_file(world, tmp_path):
 
 def test_the_nearest_env_file_of_a_parent_folder_is_found(world, tmp_path, monkeypatch):
     _, server, clock = world  # the fixture wrote tmp_path/.env with the FRED key
+    (tmp_path / "pyproject.toml").write_text("", encoding="utf-8")  # the search climbs only within a project
     folder = tmp_path / "sub"
     folder.mkdir()
     monkeypatch.chdir(folder)
