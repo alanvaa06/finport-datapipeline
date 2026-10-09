@@ -6,7 +6,16 @@ import pytest
 
 from data_pipeline.store import storage as storage_module
 from data_pipeline.store.api import Store
-from data_pipeline.store.storage import Storage, TableSchema, append_versions, as_of, latest, table_frame, to_moment
+from data_pipeline.store.storage import (
+    Storage,
+    TableSchema,
+    append_versions,
+    as_of,
+    fill_attributes,
+    latest,
+    table_frame,
+    to_moment,
+)
 
 from .helpers import NOW
 
@@ -76,6 +85,37 @@ def test_an_attribute_that_changes_is_not_a_version():
     old, _added, _revised = merge(pd.DataFrame(), [version(1.0, "2023-11-03")])
     merged, _added, _revised = merge(old, [version(1.0, "2023-11-03", form="10-K405")], LATER)
     assert merged is old
+
+
+def fill(old, rows, moment=LATER):
+    return fill_attributes(old, frame(rows, moment), SCHEMA.key_columns, SCHEMA.value_columns, SCHEMA.attribute_columns)
+
+
+@pytest.mark.parametrize("empty", ["", None])
+def test_an_empty_attribute_of_a_stored_version_is_filled_from_the_same_version_received_again(empty):
+    old, _added, _revised = merge(pd.DataFrame(), [version(1.0, "2023-11-03", form=empty), version(2.0, "2025-10-31")])
+    filled, count = fill(old, [version(1.0, "2023-11-03", form="10-K"), version(2.0, "2025-10-31")])
+    assert count == 1
+    assert list(filled["form"]) == ["10-K", "10-K"]
+    # a description of the version, not a new one: the rest of every row is as stored
+    pd.testing.assert_frame_equal(filled.drop(columns="form"), old.drop(columns="form"))
+
+
+def test_a_stored_attribute_is_never_changed_and_another_version_fills_nothing():
+    old, _added, _revised = merge(pd.DataFrame(), [version(1.0, "2023-11-03"), version(2.0, "2025-10-31", form="")])
+    rows = [
+        version(1.0, "2023-11-03", form="10-K405"),  # the same version with another form: it keeps its own
+        version(2.0, "2025-11-01", form="10-K"),  # published another day: another version
+        version(3.0, "2025-10-31", form="10-K"),  # another value: another version
+    ]
+    filled, count = fill(old, rows)
+    assert (filled is old, count) == (True, 0)
+
+
+def test_an_attribute_a_stored_table_lacks_is_filled_too():
+    old, _added, _revised = merge(pd.DataFrame(), [version(1.0, "2023-11-03")])
+    filled, count = fill(old.drop(columns="form"), [version(1.0, "2023-11-03", form="10-K")])
+    assert (count, list(filled["form"])) == (1, ["10-K"])
 
 
 def test_two_values_published_the_same_day_are_both_kept_in_the_order_received():

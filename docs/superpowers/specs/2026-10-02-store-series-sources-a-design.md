@@ -114,8 +114,12 @@ Each is one file under `store/sources/`, one registry line and one citation titl
   `FetchBatch`.
 - Start year of a group: the earliest `since` among its requests. For requests without `since`
   (first load, or `full`): the entry's `start` if it has one; otherwise the source walks back
-  from the current year in 20-year windows and stops at the first window in which no series of
-  the group returns an observation.
+  from the current year in 20-year windows, deciding for each series on its own: a series stops
+  at the first window that brings it nothing after an earlier one did, or as soon as the API
+  says it does not exist; a series that has shown no data yet keeps walking back, down to 1900.
+  Each window asks only for the series still walking, so a series discontinued before the first
+  window loads the same alone as in a group. A gap of 20 years or more inside a series still
+  ends its walk.
 - Name comes from the catalog block's `series_title`; seasonal adjustment from its `seasonality`
   (`SA` or `NSA`). If the block is absent the name is the id.
 - Frequency comes from the period codes: `M01` to `M12` monthly, `Q01` to `Q04` quarterly, `A01`
@@ -137,6 +141,11 @@ Each is one file under `store/sources/`, one registry line and one citation titl
   first call, `GET .../series/{id}`, asks for the metadata: its `periodicidad` (`Diaria`,
   `Semanal`, `Mensual`, `Trimestral`, `Anual`) gives the frequency and its `unidad` the unit. Any
   other periodicity fails with `SOURCE_ERROR`, "unsupported frequency".
+- A declared frequency is checked against the dates of the data: Banxico dates a month, a
+  quarter or a year by its first day, so a series declared `M`, `Q` or `A` with a date that does
+  not start such a period, or declared `D` or `W` with every date on the first of a month, fails
+  with `SOURCE_ERROR` naming the date. Without the check a daily series declared monthly kept
+  one value a month, the last.
 - Dates are `dd/mm/yyyy`; `N/E` is missing; thousands separators are stripped. All three are
   already handled by `read_period` and `number`.
 - HTTP 404 is `NOT_FOUND`. A non-200 answer that mentions the token is `KeyRejectedError`.
@@ -205,6 +214,11 @@ import each other still holds.
 Nothing new: the failure policy of the base spec applies. BLS is the first real user of the two
 quota defences (its own persisted budget, and the server's signal) that the core already tests
 with a fake source.
+
+A series whose answer holds one period twice (twice with one publication day, for FRED's
+vintages) fails with `SOURCE_ERROR`, "period ... comes more than once": its data is more
+frequent than the frequency it is read with, or the answer repeats a row, and the store would
+keep only one of the values. Every series source checks it (the SDMX sources already did).
 
 ## Testing
 

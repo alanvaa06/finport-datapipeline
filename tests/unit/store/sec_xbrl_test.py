@@ -110,6 +110,27 @@ def test_a_value_restated_and_restated_back_is_three_versions():
     ]
 
 
+def test_a_version_takes_the_frame_from_whichever_of_its_appearances_carries_it():
+    # the SEC sets `frame` on one appearance of a fact, the latest filed, often a comparative
+    original = appearance(5601000000, "2009-10-27", "0001193125-09-214859", fy=2009, fp="FY")
+    comparative = appearance(5601000000, "2010-01-25", "0001193125-10-012085", form="10-Q", fy=2010, fp="Q1")
+    (row,) = versions(facts([original, {**comparative, "frame": "CY2009Q3I"}]))
+    assert row["frame"] == "CY2009Q3I"
+    # everything else describes the filing that first reported the version
+    assert (row["accession"], row["form"], row["fiscal_year"], row["fiscal_period"]) == (
+        "0001193125-09-214859",
+        "10-K",
+        "2009",
+        "FY",
+    )
+
+
+def test_a_frame_on_a_restatement_stays_with_the_restated_version():
+    framed = {**appearance(383000000000, "2026-10-30", "0000320193-26-000001"), "frame": "CY2023"}
+    rows = versions(facts([{**ORIGINAL, "frame": ""}, RESTATED, framed]))
+    assert [(row["filed"], row["frame"]) for row in rows] == [("2023-11-03", ""), ("2025-10-31", "CY2023")]
+
+
 def test_filings_of_the_same_day_are_ordered_by_accession():
     first = appearance(1.0, "2024-02-01", "0000320193-24-000001")
     amended = appearance(2.0, "2024-02-01", "0000320193-24-000002", form="10-K/A")
@@ -388,6 +409,34 @@ def test_a_first_load_with_a_restatement_reads_the_same_as_two_loads(tmp_path, s
     assert list(store.table("sec_xbrl", "AAPL", concept="Revenues")["value"]) == [383000000000.0]
     before = store.table("sec_xbrl", "AAPL", concept="Revenues", as_of="2024-01-01")
     assert list(before["value"]) == [383285000000.0]
+
+
+def test_a_stored_version_without_a_frame_gets_it_when_the_same_version_comes_again(tmp_path, sec, clock):
+    # stored by a build that kept the frame of the first appearance only: the SEC had put it on the repeat
+    unframed = {key: value for key, value in ORIGINAL.items() if key != "frame"}
+    sec.companies["0000320193"] = facts([unframed, REPEATED], [BALANCE])
+    (tmp_path / ".env").write_text(f"SEC_EDGAR_UA={AGENT}\n", encoding="utf-8")
+    store = Store(
+        tmp_path / "store",
+        env_file=tmp_path / ".env",
+        clock=lambda: clock["now"],
+        transport=httpx.MockTransport(sec),
+        sleep=lambda _seconds: None,
+    )
+    store.add("sec_xbrl", ["AAPL"])
+    store.sync()
+    path = tmp_path / "store" / "tables" / "sec_xbrl" / "AAPL.parquet"
+    before = pd.read_parquet(path)
+    assert store.table("sec_xbrl", "AAPL", frame="CY2023").empty
+    sec.companies["0000320193"] = facts([unframed, {**REPEATED, "frame": "CY2023"}], [BALANCE])
+    clock["now"] = LATER
+    report = store.sync()
+    assert (report.sources[0].new, report.sources[0].revised) == (0, 0)
+    after = pd.read_parquet(path)
+    assert list(after["frame"]) == ["", "CY2023"]  # Assets, then Revenues
+    pd.testing.assert_frame_equal(after.drop(columns="frame"), before.drop(columns="frame"))  # no new version
+    assert list(store.table("sec_xbrl", "AAPL", frame="CY2023")["concept"]) == ["Revenues"]
+    assert list(store.table("sec_xbrl", "AAPL", frame="CY2023", as_of="2024-01-01")["concept"]) == ["Revenues"]
 
 
 def test_a_new_period_is_a_new_fact(store, sec, clock):

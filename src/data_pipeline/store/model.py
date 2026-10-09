@@ -69,14 +69,20 @@ class Request:
     """A catalog entry plus what the store already has of it.
 
     For a series: `since`, the first date to ask for (`None` means full history).
-    For a table: `held`, the (frequency, period) pairs already stored.
+    For a table: `held`, the (frequency, period) pairs already stored, each followed by its values
+    in the columns the source names in its `held_by` (Source protocol), each as stored or as a
+    function the source pairs with it reads it (Comtrade: partner, flow, and the HS level of the
+    product code), so that a source can tell what one partner holds from what another does; and
+    `full`, true when the sync is full: the source asks for everything again, and still has
+    `held` to refuse what the stored table cannot take.
     For documents: `groups`, the names of the documents already stored.
     """
 
     entry: CatalogEntry
     since: datetime.date | None = None
-    held: frozenset[tuple[str, str]] = frozenset()
+    held: frozenset[tuple[str, ...]] = frozenset()
     groups: frozenset[str] = frozenset()
+    full: bool = False
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -98,6 +104,7 @@ class SeriesData:
     seasonal_adjustment: str = ""
     country: str = ""
     observations: tuple[Observation, ...] = ()
+    attrs: Mapping[str, str] = dataclasses.field(default_factory=dict)  # added to the entry's in the index
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -126,12 +133,17 @@ class TableData:
 
 
 SAFE_NAME = re.compile(r"[A-Za-z0-9._-]+")
+# Names Windows keeps for devices, with any extension (NUL.htm is the null device there)
+DEVICE_NAMES = frozenset({"CON", "PRN", "AUX", "NUL", *(f"{port}{n}" for port in ("COM", "LPT") for n in range(1, 10))})
 
 
 def check_name(name: str) -> None:
-    """Raise ValueError unless `name` can be a file or folder name inside the store: letters,
-    digits, `.`, `_` and `-`, and not `.` or `..`. A source's name never chooses another place."""
-    if not SAFE_NAME.fullmatch(name) or name in {".", ".."}:
+    """Raise ValueError unless `name` can be a file or folder name inside the store on every
+    system: letters, digits, `.`, `_` and `-` only (so no separator, `/` or `\\`, and no drive),
+    not ending in `.` (which also refuses `.` and `..`; Windows drops a final dot, so `a.htm.`
+    would be `a.htm`), and not a name Windows keeps for a device (`CON`, `nul.htm`, `COM1`). A
+    source's name never chooses another place."""
+    if not SAFE_NAME.fullmatch(name) or name.endswith(".") or name.split(".")[0].upper() in DEVICE_NAMES:
         msg = f"unsafe file name {name!r}"
         raise ValueError(msg)
 

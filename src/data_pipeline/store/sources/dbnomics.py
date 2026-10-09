@@ -24,7 +24,8 @@ from data_pipeline.store.model import (
     SeriesData,
 )
 from data_pipeline.store.periods import read_period
-from data_pipeline.store.sources.base import DECLARE_FREQUENCY, number, per_request, reject_params
+from data_pipeline.store.sources.base import DECLARE_FREQUENCY, HeldBy, number, per_request, reject_params
+from data_pipeline.store.sources.repeats import repeated_period
 
 URL = "https://api.db.nomics.world/v22/series"
 OK = 200
@@ -53,6 +54,7 @@ class Dbnomics:
     kind = Kind.SERIES
     requests_per_minute = 60
     daily_budget: int | None = None
+    held_by: HeldBy = ()
 
     def __init__(self, client: Client, credentials: Credentials) -> None:  # keyless: credentials are not read
         self._client = client
@@ -83,6 +85,9 @@ class Dbnomics:
         if frequency is None:
             return Failure(entry, Outcome.SOURCE_ERROR, f"{DECLARE_FREQUENCY} (DBnomics said {reported!r})")
         observations = read_observations(document, frequency)
+        repeated = repeated_period(observations, frequency)
+        if repeated:
+            return Failure(entry, Outcome.SOURCE_ERROR, repeated)
         if request.since is not None:
             observations = tuple(item for item in observations if item.date >= request.since)
         return SeriesData(

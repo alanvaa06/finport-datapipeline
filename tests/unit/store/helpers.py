@@ -65,6 +65,7 @@ class FakeSource:
 
     kind = Kind.SERIES
     requests_per_minute = 6000
+    held_by = ()
 
     def __init__(
         self,

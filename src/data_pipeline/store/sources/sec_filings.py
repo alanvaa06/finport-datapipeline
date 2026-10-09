@@ -6,10 +6,17 @@ document: its primary file and, for an 8-K, its exhibits (the earnings release i
 
 A filing never changes at the SEC. Each request carries the accession numbers already stored;
 the source lists the company's filings and downloads the ones that are missing, oldest first,
-one filing a batch, so a run that stops resumes by itself. A filing that fails ends that
-company's run; the next run asks for it again.
+one filing a batch, so a run that stops resumes by itself. A filing that fails (a file the SEC
+lists but does not have, an answer that cannot be read, a name the store refuses, a network
+failure) is recorded as the company's failure and skipped, so it never holds back the filings
+after it; the next run asks for it again. Names are checked before anything of a filing is
+downloaded: the store takes plain file names only (model.check_name). After
+MAX_NETWORK_FAILURES network failures the SEC is taken to be unreachable and the rest of the
+company waits for the next run. Only the reading of an answer turns an error into "unexpected
+answer": any other error is a bug, named on the company it hit, and it stops the source.
 """
 
+import contextlib
 import dataclasses
 import datetime
 import pathlib
@@ -31,8 +38,9 @@ from data_pipeline.store.model import (
     Kind,
     Outcome,
     Request,
+    check_name,
 )
-from data_pipeline.store.sources.base import missing_key, reject_params, utc_today
+from data_pipeline.store.sources.base import HeldBy, missing_key, reject_params, utc_today
 from data_pipeline.store.sources.sec import (
     REQUESTS_PER_MINUTE,
     AnswerError,
@@ -54,6 +62,7 @@ VIEWER_PAGE = re.compile(r"r\d+\.html?")  # a page of the SEC's XBRL viewer, not
 PRIMARY = "primary"
 EXHIBIT = "exhibit"
 STALE_AFTER_DAYS = 140  # a quarter and slack
+MAX_NETWORK_FAILURES = 3  # in one company's run
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -133,6 +142,29 @@ def missing(filings: Sequence[Filing], chosen: Settings, stored: Collection[str]
     return sorted(found.values(), key=lambda filing: (filing.filed, filing.accession))
 
 
+@contextlib.contextmanager
+def _reading() -> Iterator[None]:
+    """Around the reading of an answer of the SEC: what an odd answer raises there (a key it lacks,
+    a list where a mapping should be, a date that is not one) is an AnswerError. Only the reading
+    goes inside, so a bug anywhere else is raised as it is, not taken for an odd answer."""
+    try:
+        yield
+    except (KeyError, IndexError, TypeError, ValueError, AttributeError) as exc:
+        msg = f"unexpected answer ({type(exc).__name__}: {exc})"
+        raise AnswerError(msg) from exc
+
+
+def _plain(name: str, what: str, listed: str | None = None) -> str:
+    """`name` when the store takes it as a file or folder name (model.check_name), else the
+    AnswerError that fails its filing. `listed` is the name as the SEC wrote it."""
+    try:
+        check_name(name)
+    except ValueError:
+        msg = f"the SEC lists {what} {listed if listed is not None else name!r}, not a plain file name"
+        raise AnswerError(msg) from None
+    return name
+
+
 def exhibits(items: Sequence[Mapping[str, Any]], primary: str) -> list[str]:
     """The exhibit documents of a filing's folder: every .htm that is not the primary document,
     an index page or a page of the XBRL viewer."""
@@ -153,6 +185,7 @@ class SecFilings:
     kind = Kind.DOCUMENT
     requests_per_minute = REQUESTS_PER_MINUTE
     daily_budget: int | None = None
+    held_by: HeldBy = ()
 
     def __init__(
         self,
@@ -190,9 +223,14 @@ class SecFilings:
                 yield FetchBatch(failures=(Failure(entry, Outcome.NETWORK_ERROR, str(exc)),))
             except AnswerError as exc:
                 yield FetchBatch(failures=(Failure(entry, Outcome.SOURCE_ERROR, str(exc)),))
-            except (KeyError, IndexError, TypeError, ValueError, AttributeError) as exc:
-                reason = f"unexpected answer ({type(exc).__name__}: {exc})"
+            except QuotaExhaustedError:  # the SEC blocks: stop, and the rest waits for the next run
+                raise
+            except Exception as exc:
+                # A bug, not the SEC's answer. The company has already yielded a batch, so sync
+                # would count it as done: name the error on it, then stop the source.
+                reason = f"an error in the source, not in the SEC's answer ({type(exc).__name__}: {exc})"
                 yield FetchBatch(failures=(Failure(entry, Outcome.SOURCE_ERROR, reason),))
+                raise
 
     def _company(self, edgar: Edgar, request: Request, cik: str) -> Iterator[FetchBatch]:
         """First a batch without documents, so a company with nothing new is not a failure;
@@ -213,8 +251,20 @@ class SecFilings:
             return FetchBatch(documents=(data,))
 
         yield batch()
+        network_failures = 0
         for filing in missing(filings, chosen, request.groups):
-            yield batch(self._document(edgar, cik, filing))
+            try:
+                document = self._document(edgar, cik, filing)
+            except NetworkError as exc:
+                network_failures += 1
+                yield FetchBatch(failures=(Failure(entry, Outcome.NETWORK_ERROR, f"{filing.accession}: {exc}"),))
+                if network_failures >= MAX_NETWORK_FAILURES:
+                    return
+                continue
+            except AnswerError as exc:
+                yield FetchBatch(failures=(Failure(entry, Outcome.SOURCE_ERROR, f"{filing.accession}: {exc}"),))
+                continue
+            yield batch(document)
 
     def _filings(self, edgar: Edgar, cik: str, start: datetime.date) -> tuple[str, list[Filing]]:
         """(company name, its filings). Older pages are asked for only when they reach `start`."""
@@ -222,33 +272,46 @@ class SecFilings:
         if root is None:
             msg = "the SEC has no list of filings for this company"
             raise AnswerError(msg)
-        filings = read_filings(root["filings"]["recent"])
-        for page in root["filings"].get("files") or []:
-            if datetime.date.fromisoformat(str(page["filingTo"])) < start:
+        with _reading():
+            name = str(root.get("name") or "")
+            filings = read_filings(root["filings"]["recent"])
+            pages = list(root["filings"].get("files") or [])
+        for page in pages:
+            with _reading():
+                reaches = datetime.date.fromisoformat(str(page["filingTo"])) >= start
+                file = str(page["name"])
+            if not reaches:
                 continue
-            older = edgar.json(SUBMISSIONS_URL.format(name=page["name"]))
+            older = edgar.json(SUBMISSIONS_URL.format(name=file))
             if older is None:
-                msg = f"the SEC lists the page {page['name']} but does not have it"
+                msg = f"the SEC lists the page {file} but does not have it"
                 raise AnswerError(msg)
-            filings.extend(read_filings(older))
-        return str(root.get("name") or ""), filings
+            with _reading():
+                filings.extend(read_filings(older))
+        return name, filings
 
     def _document(self, edgar: Edgar, cik: str, filing: Filing) -> Document:
+        """One filing's files. Every name is checked before anything is downloaded: one the store
+        would refuse fails this filing alone."""
+        _plain(filing.accession, "a filing numbered")
         folder = filing.accession.replace("-", "")
         primary = filing.primary or f"{filing.accession}.txt"  # no primary document: the complete filing
         names = [(primary, PRIMARY)]
         if filing.form.upper().startswith(EXHIBITS_OF):
             listing = edgar.json(ARCHIVE_URL.format(cik=int(cik), folder=folder, file="index.json"))
-            items = [] if listing is None else listing["directory"]["item"]
-            names.extend((name, EXHIBIT) for name in exhibits(items, pathlib.PurePosixPath(primary).name))
+            with _reading():
+                items = [] if listing is None else listing["directory"]["item"]
+                listed = exhibits(items, pathlib.PurePosixPath(primary).name)
+            names.extend((name, EXHIBIT) for name in listed)
+        stored = [_plain(pathlib.PurePosixPath(name).name, "a file named", name) for name, _ in names]
         files = []
-        for name, role in names:
+        for (name, role), file in zip(names, stored, strict=True):
             url = ARCHIVE_URL.format(cik=int(cik), folder=folder, file=name)
             response = edgar.get(url)
             if response is None:
-                msg = f"{filing.accession}: the SEC lists {name} but does not have it"
+                msg = f"the SEC lists {name} but does not have it"
                 raise AnswerError(msg)
-            files.append(DocumentFile(pathlib.PurePosixPath(name).name, response.content, url, role))
+            files.append(DocumentFile(file, response.content, url, role))
         return Document(
             group=filing.accession,
             date=filing.filed,

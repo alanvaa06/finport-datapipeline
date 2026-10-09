@@ -73,11 +73,17 @@ is translated with the same map.
 | `period` | `2024` or `2024-06` |
 | `date` | Last day of the period |
 | `value_usd` | Trade value |
-| `weight_kg` | Net weight |
+| `weight_kg` | Net weight; missing when not reported, including a weight of 0 on a row with trade |
 | `fetched_at`, `published_at` | As for series |
 
 Key columns: `reporter, partner, flow, product, frequency, period`. Value columns: `value_usd,
 weight_kg`.
+
+The HS level of a row is not stored: it is read from the digits of its product code, 2 at
+`AG2`, 4 at `AG4`, 6 at `AG6`, Comtrade's codes for goods not specified by kind (`99`, `9999`,
+`999999`) included. Any other code, such as `TOTAL` (every product, which a query by level never
+brings), has no level. Every row so has its real level, whenever it was stored. A table that a
+build of this change stored with a `level` column keeps it on disk; `Store.table` leaves it out.
 
 The append-only rule of the base spec applies on the key: a received row is appended when the
 key is not stored or when any value column differs from the latest stored row (both missing
@@ -90,10 +96,21 @@ customs procedure and second partner; those rows are discarded.
 ## What a sync asks for
 
 There is no "since" for a table. For each reporter the source receives the `(frequency, period)`
-pairs already stored and works out what to ask:
+pairs already stored, each with its partner, flow and level (`held_by`: sync reads each distinct
+product code as its level, so `held` stays as small as the periods are), and works out, for each
+partner, what to ask. A period counts as stored for a partner when every chosen flow has it at
+the chosen level; a code without a level never counts.
 
 - annual: every year from `annual_from` to last year that is not stored, plus the last 2 years;
 - monthly: every one of the last `months` closed months that is not stored, plus the last 12.
+
+So a run cut after the first partner's calls (quota, a failed call), or an entry given a new
+partner or flow, asks the partners and flows left for their whole history on the next run. A
+partner and flow with no trade in a period are asked for it again on every run.
+
+A table holds one HS level. When the stored product codes are of another level than the entry's
+`level`, the reporter fails with `SOURCE_ERROR` before any call, and the message says how to proceed
+(set `level` back, or delete the table to load the new level from the start).
 
 Periods are asked for 12 at a time, the API's limit; one such query is one call and one batch,
 stored as soon as it arrives. Nothing keeps a list of pending queries: the next run recomputes
@@ -101,7 +118,9 @@ what is missing from the store, so a run stopped by the quota resumes by itself.
 
 A period the reporter has not published yet is asked for again on every run until it appears.
 
-`sync(full=True)` asks for everything again and stores only what changed.
+`sync(full=True)` asks for everything again and stores only what changed. Its requests still
+carry what is held, and say they are full: the source asks for every period whatever is held,
+and refuses a change of level before any call, as a normal sync does.
 
 ## The source
 
@@ -119,7 +138,9 @@ A period the reporter has not published yet is asked for again on every run unti
 
 - `model`: `TableData` (entry, key, rows, key columns, value columns, name, default staleness
   threshold), `FetchBatch.tables`, and `Request.held`, the `(frequency, period)` pairs already
-  stored for a table entry.
+  stored for a table entry, each followed by its values in the columns the source names in
+  `held_by` (Comtrade: partner, flow, and the level of the product code), and `Request.full`, set by a full sync, which
+  still sends what is held.
 - `storage`: `read_table` and `write_table`, and an append-only merge for any key and value
   columns. `latest` and `as_of` take the key columns as an argument. The series code path is
   not rewritten.
@@ -139,7 +160,7 @@ A period the reporter has not published yet is asked for again on every run unti
 
 The failure policy of the base spec applies. A query that fails (network, unexpected answer)
 fails its reporter for this run; the periods it would have brought are asked for again on the
-next run because they are still missing from the store.
+next run because they are still missing from the store for that partner and flow.
 
 ## Testing
 

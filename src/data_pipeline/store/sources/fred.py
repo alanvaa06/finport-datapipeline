@@ -40,7 +40,8 @@ from data_pipeline.store.model import (
     SeriesData,
 )
 from data_pipeline.store.periods import read_period
-from data_pipeline.store.sources.base import failures, number, per_request, reject_params
+from data_pipeline.store.sources.base import HeldBy, failures, number, per_request, reject_params
+from data_pipeline.store.sources.repeats import repeated_period
 
 URL = "https://api.stlouisfed.org/fred"
 OK = 200
@@ -116,6 +117,7 @@ class Fred:
     kind = Kind.SERIES
     requests_per_minute = 100  # assumed, not verified against FRED's documentation
     daily_budget: int | None = None
+    held_by: HeldBy = ()
 
     def __init__(self, client: Client, credentials: Credentials) -> None:
         self._client = client
@@ -153,6 +155,10 @@ class Fred:
             dated = False
         if isinstance(rows, _Refusal):
             return self._failure(entry, rows)
+        observations = read_observations(rows, frequency, dated=dated)
+        repeated = repeated_period(observations, frequency)
+        if repeated:
+            return Failure(entry, Outcome.SOURCE_ERROR, repeated)
         return SeriesData(
             entry=entry,
             key=entry.key,
@@ -160,7 +166,7 @@ class Fred:
             frequency=frequency,
             units=str(info.get("units") or ""),
             seasonal_adjustment=str(info.get("seasonal_adjustment_short") or ""),
-            observations=read_observations(rows, frequency, dated=dated),
+            observations=observations,
         )
 
     def _vintages(self, base: Mapping[str, str], params: Mapping[str, str], start: str) -> list[Row] | _Refusal:

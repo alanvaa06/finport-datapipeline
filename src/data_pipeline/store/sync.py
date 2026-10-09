@@ -42,7 +42,7 @@ from data_pipeline.store.model import (
     SeriesData,
     TableData,
 )
-from data_pipeline.store.sources.base import Source, clock_of_sync
+from data_pipeline.store.sources.base import HeldBy, Source, clock_of_sync
 from data_pipeline.store.storage import (
     INDEX_DTYPES,
     KEY,
@@ -57,6 +57,7 @@ from data_pipeline.store.storage import (
     append_versions,
     document_rows,
     drop_repeated_versions,
+    fill_attributes,
     latest,
     records,
     table_frame,
@@ -334,7 +335,7 @@ def _ok_row(
         "units": series.units,
         "seasonal_adjustment": series.seasonal_adjustment,
         "stale_after_days": entry.stale_after_days,
-        "attrs": json.dumps(dict(entry.attrs), sort_keys=True),
+        "attrs": json.dumps({**series.attrs, **entry.attrs}, sort_keys=True),
         "first_fetched_at": first if first is not None and pd.notna(first) else now,
         "last_fetched_at": now,
         "last_period": last[0] if last else None,
@@ -372,11 +373,23 @@ def _failed_row(entry: CatalogEntry, previous: Row | None, reason: str, kind: st
     }
 
 
-def held_periods(table: pd.DataFrame) -> frozenset[tuple[str, str]]:
-    """The (frequency, period) pairs a stored table holds, whatever their version."""
+def held_periods(table: pd.DataFrame, by: HeldBy = ()) -> frozenset[tuple[str, ...]]:
+    """The (frequency, period) pairs a stored table holds, whatever their version, each followed
+    by its values in the columns `by` names ("" for a missing value or a column the table lacks).
+    A column named with a function gives what the function reads in its value, asked once per
+    distinct value: Comtrade reads each product code as its HS level, so `held` stays as small
+    as the periods are, however many products the table has."""
     if table.empty or "frequency" not in table.columns or "period" not in table.columns:
         return frozenset()
-    return frozenset(zip(table["frequency"].astype(str), table["period"].astype(str), strict=True))
+    readers: list[tuple[str, Callable[[str], str] | None]] = [
+        (column, None) if isinstance(column, str) else column for column in by
+    ]
+    columns = ["frequency", "period", *(column for column, _ in readers)]
+    distinct = table.reindex(columns=columns).drop_duplicates().fillna("").astype(str)
+    for column, read in readers:
+        if read is not None:
+            distinct[column] = distinct[column].map({value: read(value) for value in distinct[column].unique()})
+    return frozenset(distinct.drop_duplicates().itertuples(index=False, name=None))
 
 
 def _table_row(table: TableData, previous: Row | None, stored: pd.DataFrame, now: datetime.datetime) -> Row:
@@ -428,10 +441,11 @@ def _sync_tables(
     *,
     full: bool,
 ) -> SourceReport:
-    """Sync a source of kind table. There is no `since`: each request carries what is stored."""
+    """Sync a source of kind table. There is no `since`: each request carries what is stored, also
+    when the sync is full, so a source can refuse an entry the stored table cannot take."""
     name = source.name
     requests = [
-        Request(entry, held=frozenset() if full else held_periods(storage.read_table(name, entry.source_id)))
+        Request(entry, held=held_periods(storage.read_table(name, entry.source_id), source.held_by), full=full)
         for entry in wanted
     ]
     calls_before = client.calls.get(name, 0)
@@ -451,9 +465,14 @@ def _sync_tables(
                         table.key_columns, table.value_columns, table.attribute_columns, table.versioned
                     )
                     received = table_frame(table.rows, schema, received_at)
+                    filled = 0
+                    if table.versioned:  # a stored version received again lends its missing attributes
+                        existing, filled = fill_attributes(
+                            existing, received, table.key_columns, table.value_columns, table.attribute_columns
+                        )
                     merge = append_versions if table.versioned else append_rows
                     merged, more, changed = merge(existing, received, table.key_columns, table.value_columns)
-                    if merged is not existing:
+                    if filled or merged is not existing:
                         storage.write_table(name, table.entry.source_id, merged, schema)
                     added += more
                     revised += changed

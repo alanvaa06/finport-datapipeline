@@ -1,4 +1,5 @@
 import datetime
+import json
 import math
 
 import httpx
@@ -8,7 +9,7 @@ from data_pipeline.credentials import Credentials
 from data_pipeline.store.model import Frequency, Outcome, Request
 from data_pipeline.store.sources.fred import Fred
 
-from .helpers import client, entry, fixture
+from .helpers import NOT_IN_ALFRED, client, entry, fixture
 
 KEY = "0123456789abcdef0123456789abcdef"
 WITH_KEY = Credentials({keys.FRED: KEY})
@@ -76,12 +77,17 @@ def test_a_series_outside_alfred_is_asked_again_without_vintages():
         seen.append(request)
         if "realtime_start" in request.url.params:
             return httpx.Response(400, text=fixture("fred_not_in_alfred.json"))
+        if request.url.path.endswith("/observations"):  # without vintages: the current value of each date
+            rows = json.loads(fixture("fred_observations.json"))["observations"]
+            current = [row for row in rows if row["realtime_end"] == "9999-12-31"]
+            return httpx.Response(200, json={"count": len(current), "observations": current})
         return serve()(request)
 
     series = fetch(handler, [Request(entry("SP500", "fred"))])[0].series[0]
     assert "realtime_start" not in seen[2].url.params
     assert all(observation.published_at is None for observation in series.observations)
-    assert [observation.value for observation in series.observations][-2:] == [4.1, 4.2]
+    assert [observation.period for observation in series.observations] == ["2026-03", "2026-04", "2026-05"]
+    assert series.observations[-1].value == 4.2
 
 
 def vintage_row(date, value, published):
@@ -220,3 +226,25 @@ def test_a_key_echoed_across_the_cut_of_the_message_leaves_no_prefix():
     reason = batches[0].failures[0].reason
     assert KEY[:8] not in reason
     assert "api_key=***" in reason
+
+
+def observations(rows, *, in_alfred=True):
+    """A FRED that answers /series from the fixture and /series/observations with `rows`."""
+
+    def handler(request):
+        if not request.url.path.endswith("/observations"):
+            return httpx.Response(200, text=fixture("fred_series.json"))
+        if "realtime_start" in request.url.params and not in_alfred:
+            return httpx.Response(400, json=NOT_IN_ALFRED)
+        return httpx.Response(200, json={"count": len(rows), "observations": rows})
+
+    return handler
+
+
+def test_a_period_that_comes_twice_fails_the_series():
+    rows = [{"date": "2026-05-01", "value": "4.1"}, {"date": "2026-05-15", "value": "4.3"}]
+    failure = fetch(observations(rows, in_alfred=False), [Request(entry("UNRATE", "fred"))])[0].failures[0]
+    assert failure.outcome is Outcome.SOURCE_ERROR
+    assert failure.reason.startswith("period 2026-05 comes more than once")
+    dated = [{**row, "realtime_start": "2026-06-05"} for row in rows]
+    assert fetch(observations(dated), [Request(entry("UNRATE", "fred"))])[0].failures[0].outcome is Outcome.SOURCE_ERROR

@@ -116,3 +116,10 @@ def test_without_a_token_nothing_is_requested():
         "Get one at https://www.inegi.org.mx/app/api/indicadores/interna_v1_1/tokenVerify.aspx "
         "and run: data-pipeline setup"
     )
+
+
+def test_a_period_that_comes_twice_fails_the_series():
+    repeated = {"FREQ": "8", "UNIT": "1058", "OBSERVATIONS": [{"TIME_PERIOD": "2026/05", "OBS_VALUE": "1"}] * 2}
+    failure = fetch(lambda _request: httpx.Response(200, json={"Series": [repeated]}), [Request(igae())])[0].failures[0]
+    assert failure.outcome is Outcome.SOURCE_ERROR
+    assert failure.reason.startswith("period 2026-05 comes more than once")

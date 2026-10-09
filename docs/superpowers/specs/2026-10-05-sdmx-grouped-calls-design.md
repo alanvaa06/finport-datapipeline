@@ -61,9 +61,12 @@ A group of one is asked exactly as today.
   `+`, in the order of the requests: `WS_TC/Q.AR+BR+CL.P.A.M.770.A`.
 - `startPeriod` is sent only when every request of the group has a `since`; it is the earliest
   year among them.
-- The rows of the answer are split by one column: the column, other than `TIME_PERIOD` and
-  `OBS_VALUE`, whose values are all among the requested values. If several columns qualify, the
-  one with the most distinct values is taken; if two tie, the split is ambiguous.
+- The rows of the answer are split by one column: the dimension whose values are all among the
+  requested values. Only the columns before `TIME_PERIOD` and `OBS_VALUE` can be dimensions
+  (SDMX-CSV puts the attributes after them), and known attributes such as `OBS_STATUS`,
+  `OBS_FLAG` and `UNIT_MULT` are left out wherever they come: an attribute whose codes happen
+  to match the requested values would give one series' rows to another. If several columns
+  qualify, the one with the most distinct values is taken; if two tie, the split is ambiguous.
 - Each request then takes the rows whose value in that column is its own, and they are read as
   a single-series answer is read today (frequency from the period text, WEO projections, units,
   a repeated period refused).

@@ -50,6 +50,7 @@ class FakeTables:
     name = "trade"
     kind = Kind.TABLE
     requests_per_minute = 6000
+    held_by = ()
 
     def __init__(self, http, daily_budget=None):
         self.daily_budget = daily_budget
@@ -95,6 +96,34 @@ def test_held_periods_are_the_pairs_of_a_stored_table():
     assert held_periods(pd.DataFrame()) == frozenset()
     frame = pd.DataFrame([row(), row(product="87"), row(period="2026-05")])
     assert held_periods(frame) == {("A", "2024"), ("M", "2026-05")}
+
+
+def test_held_periods_carry_the_values_of_the_columns_named():
+    frame = pd.DataFrame([row(), row(product="87"), row("USA", period="2026-05")]).assign(level=["AG2", "AG2", None])
+    assert held_periods(frame, ("reporter", "level")) == {("A", "2024", "MEX", "AG2"), ("M", "2026-05", "USA", "")}
+    assert held_periods(frame, ("partner",)) == {("A", "2024", ""), ("M", "2026-05", "")}  # a column it lacks
+
+
+def test_a_column_named_with_a_function_carries_what_the_function_reads_once_per_value():
+    frame = pd.DataFrame([row(), row(product="87"), row(product="2709"), row("USA", period="2026-05")])
+    read = []
+
+    def width(code):
+        read.append(code)
+        return str(len(code))
+
+    held = held_periods(frame, ("reporter", ("product", width)))
+    assert held == {("A", "2024", "MEX", "2"), ("A", "2024", "MEX", "4"), ("M", "2026-05", "USA", "2")}
+    assert sorted(read) == ["27", "2709", "87"]  # once each, though 27 is in two periods
+
+
+def test_a_source_that_names_its_held_by_columns_gets_their_values(tmp_path):
+    source, http = setup()
+    source.held_by = ("reporter",)
+    source.calls["MEX"] = [[row(), row(period="2026-05")]]
+    run(tmp_path, source, http)
+    run(tmp_path, source, http, now=LATER)
+    assert source.seen[1].held == {("A", "2024", "MEX"), ("M", "2026-05", "MEX")}
 
 
 def test_first_sync_merges_every_batch_into_the_table(tmp_path):
@@ -150,12 +179,14 @@ def test_a_revised_value_appends_a_version_and_keeps_the_old_one(tmp_path):
     assert list(latest(stored(tmp_path), KEY, KEY)["value_usd"]) == [120.0]
 
 
-def test_full_sends_nothing_held_and_stores_only_what_changed(tmp_path):
+def test_full_says_so_still_sends_what_is_held_and_stores_only_what_changed(tmp_path):
+    # the source asks for everything again, and can still refuse what the stored table cannot take
     source, http = setup()
     source.calls["MEX"] = [[row()]]
     run(tmp_path, source, http)
     report = run(tmp_path, source, http, now=LATER, full=True)
-    assert source.seen[1].held == frozenset()
+    assert (source.seen[0].full, source.seen[1].full) == (False, True)
+    assert source.seen[1].held == {("A", "2024")}
     assert report.sources[0].new == 0
     assert len(stored(tmp_path)) == 1
 

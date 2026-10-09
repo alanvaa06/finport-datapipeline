@@ -10,6 +10,7 @@ from data_pipeline.store.api import Store
 from data_pipeline.store.cli import cli
 from data_pipeline.store.errors import StoreError, UnknownSeriesError
 from data_pipeline.store.sources.comtrade import Comtrade
+from data_pipeline.store.storage import Storage
 
 from .helpers import NOT_IN_ALFRED, NOW
 
@@ -102,6 +103,31 @@ def test_table_returns_the_key_columns_the_date_and_the_values(store):
         "reporter", "partner", "flow", "product", "frequency", "period", "date", "value_usd", "weight_kg",
     ]  # fmt: skip
     assert list(table["period"]) == ["2024", "2024", "2025", "2026-04", "2026-05"]
+
+
+def test_a_table_written_with_a_column_the_source_no_longer_has_reads_and_syncs_without_it(
+    store, tmp_path, clock, services
+):
+    storage = Storage(tmp_path / "store")
+    older = storage.read_table("comtrade", "MEX").assign(level="AG2")  # as a build that recorded `level` stored it
+    older.to_parquet(storage.table_path("comtrade", "MEX"))
+    assert "level" not in store.table("comtrade", "MEX").columns
+    services.values[("MEX", "2025", "X", "27")] = 111.0
+    clock["now"] = LATER
+    report = store.sync()
+    assert (report.exit_code, report.sources[0].revised) == (0, 1)
+    table = store.table("comtrade", "MEX")
+    assert (len(table), "level" in table.columns) == (5, False)
+    assert table.loc[table["period"] == "2025", "value_usd"].tolist() == [111.0]
+
+
+def test_a_key_column_a_table_lacks_reads_as_missing_and_its_filter_keeps_none_of_its_rows(store, tmp_path):
+    storage = Storage(tmp_path / "store")
+    older = storage.read_table("comtrade", "USA").drop(columns="partner")  # a key column filtered before versions
+    older.to_parquet(storage.table_path("comtrade", "USA"))
+    assert store.table("comtrade", "USA")["partner"].isna().all()
+    assert list(store.table("comtrade", partner="WLD")["reporter"].unique()) == ["MEX"]
+    assert store.table("comtrade", "USA", partner="WLD").empty
 
 
 def test_filters_keep_the_rows_whose_column_equals_the_value(store):

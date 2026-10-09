@@ -1,11 +1,12 @@
 import errno
 import os
 import sys
+import time
 
 import pytest
 
 from data_pipeline import _files
-from data_pipeline._files import ReplaceRefusedError, try_lock, unlock, write_atomic
+from data_pipeline._files import TEMPORARY, ReplaceRefusedError, sweep_temporary, try_lock, unlock, write_atomic
 
 
 def opened(path):
@@ -172,3 +173,55 @@ def test_the_mode_given_is_the_mode_of_the_new_file(tmp_path):
     path = tmp_path / ".env"
     write_atomic(path, b"KEY=1\n", mode=0o600)
     assert path.stat().st_mode & 0o777 == 0o600
+
+
+def aged(path, seconds, content=b"half"):
+    """Create `path` as if it had last been written `seconds` ago."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(content)
+    moment = time.time() - seconds
+    os.utime(path, (moment, moment))
+    return path
+
+
+def test_the_temporary_file_of_a_write_has_the_name_the_sweep_looks_for(tmp_path, monkeypatch):
+    seen = []
+    real_fsync = os.fsync
+
+    def fsync(descriptor):  # while the write is under way: the temporary file is in the folder
+        seen.extend(tmp_path.iterdir())
+        real_fsync(descriptor)
+
+    monkeypatch.setattr(_files.os, "fsync", fsync)
+    write_atomic(tmp_path / "index.parquet", b"new")
+    (temporary,) = (path for path in seen if path.name != "index.parquet")
+    assert TEMPORARY.fullmatch(temporary.name)
+
+
+def test_the_sweep_removes_only_temporary_files_older_than_an_hour(tmp_path):
+    hour = 3600
+    stale = [
+        aged(tmp_path / "index.parquet.0123abcd.tmp", 2 * hour),
+        aged(tmp_path / "tables" / "comtrade" / "MEX.parquet.89ef0123.tmp", hour + 60),
+    ]
+    kept = [
+        aged(tmp_path / "runs.json.4567cdef.tmp", 60),  # a write in progress
+        aged(tmp_path / "notes.tmp", 2 * hour),  # not a name write_atomic gives
+        aged(tmp_path / "index.parquet.tmp", 2 * hour),
+        aged(tmp_path / "x.0123ABCD.tmp", 2 * hour),
+        aged(tmp_path / "x.0123abc.tmp", 2 * hour),
+        aged(tmp_path / "index.parquet", 2 * hour),
+    ]
+    (tmp_path / "folder.0123abcd.tmp").mkdir()  # a folder, whatever its name
+    assert sorted(sweep_temporary(tmp_path)) == sorted(stale)
+    assert not any(path.exists() for path in stale)
+    assert all(path.exists() for path in kept)
+    assert (tmp_path / "folder.0123abcd.tmp").is_dir()
+
+
+def test_the_sweep_of_one_folder_leaves_its_subfolders(tmp_path):
+    top = aged(tmp_path / "index.parquet.0123abcd.tmp", 7200)
+    below = aged(tmp_path / "other" / "x.parquet.0123abcd.tmp", 7200)
+    assert sweep_temporary(tmp_path, recursive=False) == [top]
+    assert below.exists()
+    assert sweep_temporary(tmp_path / "missing") == []

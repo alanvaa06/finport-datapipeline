@@ -9,7 +9,7 @@ from data_pipeline import credentials as keys
 from data_pipeline.credentials import Credentials
 from data_pipeline.store.errors import QuotaExhaustedError
 from data_pipeline.store.model import Frequency, Outcome, Request
-from data_pipeline.store.sources.bls import Bls, groups, windows
+from data_pipeline.store.sources.bls import Bls, absent, groups, windows
 
 from .helpers import client, entry
 
@@ -128,6 +128,73 @@ def test_a_first_load_walks_back_until_a_window_is_empty():
     assert server.spans() == [("2007", "2026"), ("1987", "2006"), ("1967", "1986")]
     assert [item.period for item in series.observations] == ["2001-01", "2026-04", "2026-05"]
     assert series.name == "LNS14000000"
+
+
+OLD = {(year, "M01"): "1.0" for year in range(1990, 2003)}  # discontinued in 2002
+LIVE = {(year, "M01"): "2.0" for year in range(1980, 2027)}
+
+
+def test_a_series_discontinued_long_ago_loads_alone_as_it_does_in_a_group():
+    alone = Server({"OLD": OLD})
+    (series,) = fetch(alone, [Request(bls("OLD"))])[0].series
+    assert len(series.observations) == 13
+    assert alone.spans() == [("2007", "2026"), ("1987", "2006"), ("1967", "1986")]
+    grouped = fetch(Server({"OLD": OLD, "LIVE": LIVE}), [Request(bls("OLD")), Request(bls("LIVE"))])[0]
+    assert [len(item.observations) for item in grouped.series] == [13, 47]
+
+
+def test_each_series_stops_walking_back_where_its_own_history_starts():
+    server = Server({"OLD": OLD, "LIVE": {**LIVE, (1955, "M01"): "2.0"}})
+    fetch(server, [Request(bls("OLD")), Request(bls("LIVE"))])
+    assert [(call["startyear"], call["seriesid"]) for call in server.calls] == [
+        ("2007", ["OLD", "LIVE"]),
+        ("1987", ["OLD", "LIVE"]),
+        ("1967", ["OLD", "LIVE"]),
+        ("1947", ["LIVE"]),
+        ("1927", ["LIVE"]),
+    ]
+
+
+def test_a_series_the_api_says_does_not_exist_ends_its_walk_at_once():
+    server = Server({})
+    failure = fetch(server, [Request(bls("NOPE"))])[0].failures[0]
+    assert len(server.calls) == 1
+    assert (failure.outcome, failure.reason) == (Outcome.NOT_FOUND, "Series does not exist for Series NOPE")
+
+
+@pytest.mark.parametrize(
+    ("note", "said"),
+    [
+        ("Series does not exist for Series CUUR0000SA0E1", False),  # another series whose id starts with it
+        ("Series does not exist for Series XCUUR0000SA0", False),
+        ("Series does not exist for Series CUUR0000SA0", True),
+        ("Series does not exist for Series CUUR0000SA0.", True),
+        ("Series does not exist for Series CUUR0000SA0, CUUR0000SA0E1", True),
+    ],
+)
+def test_a_note_is_about_a_series_only_when_it_names_its_whole_id(note, said):
+    assert absent("CUUR0000SA0", [note]) is said
+
+
+def test_a_series_is_not_taken_for_absent_by_the_note_of_one_whose_id_it_starts():
+    # CUUR0000SA0 has data only before the first window; CUUR0000SA0E1 does not exist
+    server = Server({"CUUR0000SA0": {(2001, "M01"): "177.1"}})
+    batch = fetch(server, [Request(bls("CUUR0000SA0")), Request(bls("CUUR0000SA0E1"))])[0]
+    assert [series.key for series in batch.series] == ["bls:CUUR0000SA0"]
+    assert [(failure.entry.source_id, failure.reason) for failure in batch.failures] == [
+        ("CUUR0000SA0E1", "Series does not exist for Series CUUR0000SA0E1")
+    ]
+
+
+def test_a_series_without_data_is_not_given_the_note_of_another():
+    server = Server({"CUUR0000SA0": {}})
+    since = datetime.date(2026, 1, 1)  # one group, one window
+    (batch,) = fetch(server, [Request(bls("CUUR0000SA0"), since), Request(bls("CUUR0000SA0E1"), since)])
+    assert len(server.calls) == 1
+    assert {failure.entry.source_id: failure.reason for failure in batch.failures} == {
+        "CUUR0000SA0": "BLS returned no observations for this series",
+        "CUUR0000SA0E1": "Series does not exist for Series CUUR0000SA0E1",
+    }
 
 
 def test_a_declared_start_replaces_the_walk_back():
@@ -254,3 +321,17 @@ def test_an_unusual_status_that_still_brings_data_is_read():
     server.statuses[1] = "REQUEST_PARTIALLY_PROCESSED"
     series = fetch(server, [Request(bls("A"), datetime.date(2026, 1, 1))])[0].series[0]
     assert [item.period for item in series.observations] == ["2026-05"]
+
+
+def test_a_period_that_comes_twice_fails_only_that_series():
+    def handler(_request):
+        twice = [{"year": "2026", "period": "M05", "value": value} for value in ("1.0", "2.0")]
+        series = [{"seriesID": "X", "data": twice}, {"seriesID": "Y", "data": twice[:1]}]
+        return httpx.Response(200, json={"status": "REQUEST_SUCCEEDED", "message": [], "Results": {"series": series}})
+
+    batch = fetch(
+        handler, [Request(bls("X"), datetime.date(2026, 1, 1)), Request(bls("Y"), datetime.date(2026, 1, 1))]
+    )[0]
+    assert [series.key for series in batch.series] == ["bls:Y"]
+    assert batch.failures[0].outcome is Outcome.SOURCE_ERROR
+    assert batch.failures[0].reason.startswith("period 2026-05 comes more than once")

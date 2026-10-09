@@ -16,13 +16,19 @@ while another program has the target open; it is tried again for about five seco
 the folder is flushed after the replacement, so the replacement itself survives a power cut. The
 caller chooses the new file's mode, and may adjust the temporary file (its mode, its group)
 before it replaces the target.
+
+A process killed between creating the temporary file and the replacement leaves that file
+behind: its name is new each time, so no later write reuses it. sweep_temporary removes such
+files once they are an hour old; the store calls it when a sync prepares it.
 """
 
 import contextlib
 import errno
 import os
 import pathlib
+import re
 import secrets
+import stat
 import sys
 import time
 from collections.abc import Callable
@@ -39,6 +45,8 @@ else:
 LOCKED_BYTE = 1 << 30  # the byte Windows locks: far past the content of any lock file
 REPLACE_ATTEMPTS = 10
 REPLACE_WAIT = 0.5  # seconds between attempts: about five seconds in all
+TEMPORARY = re.compile(r".+\.[0-9a-f]{8}\.tmp")  # the names temporary_path gives, and only those
+STALE_AFTER = 3600.0  # seconds: no write takes this long, so an older temporary file is an orphan
 # What the system answers when another holder has the lock (any other error is raised)
 HELD = frozenset({errno.EACCES, errno.EDEADLOCK} if sys.platform == "win32" else {errno.EAGAIN, errno.EWOULDBLOCK})
 _sleep = time.sleep
@@ -97,6 +105,40 @@ def _replace(temporary: pathlib.Path, path: pathlib.Path) -> None:
             return
 
 
+def temporary_path(path: pathlib.Path) -> pathlib.Path:
+    """A new name for the temporary file of a write to `path`, beside it: `<name>.<8 hex>.tmp`."""
+    return path.with_name(f"{path.name}.{secrets.token_hex(4)}.tmp")
+
+
+def sweep_temporary(
+    folder: pathlib.Path,
+    *,
+    recursive: bool = True,
+    older_than: float = STALE_AFTER,
+) -> list[pathlib.Path]:
+    """Remove the temporary files that writes which died left in `folder` (and the folders under
+    it, unless `recursive` is false): regular files named as temporary_path names them, last
+    written more than `older_than` seconds ago. A write in progress is younger, so it is never
+    touched, and no other file is. One that cannot be removed now (open in another program, or
+    already gone) is left for the next sweep. Links to folders are not followed. Returns the files
+    removed."""
+    removed: list[pathlib.Path] = []
+    limit = time.time() - older_than
+    for directory, folders, files in os.walk(folder):
+        if not recursive:
+            folders.clear()
+        for name in files:
+            if not TEMPORARY.fullmatch(name):
+                continue
+            path = pathlib.Path(directory) / name
+            with contextlib.suppress(OSError):
+                found = path.lstat()
+                if stat.S_ISREG(found.st_mode) and found.st_mtime < limit:
+                    path.unlink()
+                    removed.append(path)
+    return removed
+
+
 def write_atomic(
     path: pathlib.Path,
     content: bytes,
@@ -117,7 +159,7 @@ def write_atomic(
     of the file it replaces (fchmod, fchown). What it changes is flushed with the content; if it
     raises, `path` is left as it was. The store passes neither.
     """
-    temporary = path.with_name(f"{path.name}.{secrets.token_hex(4)}.tmp")
+    temporary = temporary_path(path)
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | BINARY
     descriptor = os.open(temporary, flags, mode)
     try:

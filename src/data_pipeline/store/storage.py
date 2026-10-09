@@ -7,8 +7,9 @@
 
 Observations are append-only: a changed value adds a row, nothing is rewritten or deleted.
 Every write goes to a temporary file, is flushed to the disk, and then replaces the target, so a
-run that dies halfway (or a power cut) never leaves a half-written file. Missing files read as
-empty frames; a file that cannot be read is a StoreError that names it and says whether the
+run that dies halfway (or a power cut) never leaves a half-written file; the temporary file of a
+process killed mid-write is removed by the next sync, once it is an hour old. Missing files read
+as empty frames; a file that cannot be read is a StoreError that names it and says whether the
 system would not open it (another program holds it) or its content is damaged.
 """
 
@@ -23,8 +24,9 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from data_pipeline._files import ReplaceRefusedError, write_atomic
+from data_pipeline._files import ReplaceRefusedError, sweep_temporary, write_atomic
 from data_pipeline.store.errors import StoreError
+from data_pipeline.store.model import check_name
 
 SCHEMA_VERSION = 1
 STORE_FILE = "store.json"
@@ -278,6 +280,50 @@ def append_versions(
     return merged, fresh_keys, len(to_append) - fresh_keys
 
 
+def _blank(column: pd.Series) -> np.ndarray:
+    """Where a text column says nothing: missing, or empty text."""
+    return (column.isna() | column.astype(object).eq("")).to_numpy(dtype=bool)
+
+
+def fill_attributes(
+    old: pd.DataFrame,
+    new: pd.DataFrame,
+    key: Sequence[str],
+    values: Sequence[str],
+    attributes: Sequence[str],
+) -> tuple[pd.DataFrame, int]:
+    """Fill the attributes a stored version of a versioned table lacks from the same version
+    received again: same key, `published_at` and values (see append_versions).
+
+    An attribute describes a version and is not part of it, so a version received again with an
+    attribute it was stored without (the `frame` of an SEC XBRL fact, which the SEC sets on a later
+    filing) is not appended: that attribute would stay empty forever. Here an attribute that is
+    missing or empty takes the received value; one that has a value is never changed, and no key,
+    value or stamp is touched, so as_of reads the same versions. Returns (table, rows filled);
+    when nothing is filled, `old` itself.
+    """
+    columns = [column for column in attributes if column in new.columns]
+    if old.empty or new.empty or not columns:
+        return old, 0
+    identity = [*key, "published_at", *values]
+    offered = new.drop_duplicates(identity, keep="first")[[*identity, *columns]]
+    found = old[identity].merge(offered, on=identity, how="left")  # one row per stored row, in order
+    filled = old
+    touched = np.zeros(len(old), dtype=bool)
+    for column in columns:
+        stored = old[column] if column in old.columns else pd.Series(None, index=old.index, dtype=object)
+        take = _blank(stored) & ~_blank(found[column])
+        if not take.any():
+            continue
+        if filled is old:
+            filled = old.copy()
+        merged = stored.to_numpy(dtype=object).copy()
+        merged[take] = found[column].to_numpy(dtype=object)[take]
+        filled[column] = merged
+        touched |= take
+    return filled, int(touched.sum())
+
+
 def drop_repeated_versions(old: pd.DataFrame, new: pd.DataFrame) -> pd.DataFrame:
     """The dated series rows of `new` that say something the store did not already know then:
     a row is dropped when the version of its period known at its `published_at` has the same
@@ -428,7 +474,11 @@ class Storage:
         return self.root / SERIES_DIR / f"{source}.parquet"
 
     def prepare(self) -> None:
-        """Create the store marker on first use; refuse a store written by another schema."""
+        """Create the store marker on first use; refuse a store written by another schema; in a
+        store of this schema, remove the temporary files that writes which died left behind, an
+        hour old or more (data_pipeline._files.sweep_temporary). Sync calls it once a run, holding
+        the lock. Only the folders the store writes in are swept: the root itself, and `series`,
+        `tables` and `documents` with everything under them."""
         path = self.root / STORE_FILE
         if not path.exists():
             _write_json({"schema_version": SCHEMA_VERSION}, path)
@@ -437,6 +487,9 @@ class Storage:
         if found != SCHEMA_VERSION:
             msg = f"{path}: schema_version {found!r}, this library reads version {SCHEMA_VERSION}"
             raise StoreError(msg)
+        sweep_temporary(self.root, recursive=False)
+        for folder in (SERIES_DIR, TABLES_DIR, DOCUMENTS_DIR):
+            sweep_temporary(self.root / folder)
 
     def read_observations(self, source: str) -> pd.DataFrame:
         return _read(self.series_path(source), OBS_DTYPES)
@@ -494,6 +547,12 @@ class Storage:
         )
 
     def document_path(self, source: str, name: str, group: str, file: str) -> pathlib.Path:
+        """Where one file of a document lives. `group` and `file` come from a source's answer, so
+        each must be a plain name (model.check_name): no separator of either kind, no `..`, no
+        drive, no device name; ValueError otherwise. `source` and `name` are the store's own
+        source name and a catalog id its source has checked."""
+        for part in (group, file):
+            check_name(part)
         return self.root / DOCUMENTS_DIR / source / name / group / file
 
     def document_names(self, source: str) -> list[str]:

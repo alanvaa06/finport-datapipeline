@@ -3,14 +3,29 @@
 One catalog id is one reporting country, written as ISO 3166 alpha-3 (`MEX`). Its table holds
 value and weight by partner, flow, product and period, annual and monthly.
 
-A table has no "since". Each request carries the (frequency, period) pairs already stored, and
-the source asks for what is missing plus a revision window: the last 2 years and the last 12
-closed months. Periods go 12 to a call, the API's limit (4 at 6 digits, to stay under its cap
-of 100,000 rows an answer); one call is one batch. Nothing remembers pending calls: the next
-run works out again what is missing, so a run stopped by the quota resumes by itself.
+The HS level of a row is read from its product code, never stored (see hs_level): 2 digits at
+AG2, 4 at AG4, 6 at AG6. So every row has its real level, whenever it was stored. A code with
+no level (`TOTAL`, which a query by level never brings) is left out of the level check and
+never counts as held.
+
+A table has no "since". Each request carries the periods already stored with their partner,
+flow and level, and the source asks each partner for what it is missing (a period counts as
+stored when every chosen flow has it at the chosen level) plus a revision window: the last 2
+years and the last 12 closed months. Periods go 12 to a call, the API's limit (4 at 6 digits,
+to stay under its cap of 100,000 rows an answer); one call is one batch. Nothing remembers
+pending calls: the next run works out again what is missing, so a run stopped by the quota, or
+an entry given a new partner or flow, is filled in by itself. A partner and flow that had no
+trade in a period are asked for it again on every run, like a period not yet published.
+
+A table holds one HS level. An entry whose `level` differs from the one stored fails without a
+call, in a full sync too: mixing 2- and 4-digit products in one table would count trade twice
+in any sum. A full sync asks for every period again, whatever is held.
 
 Only the total of a key is kept. Comtrade also answers with breakdowns by mode of transport,
 customs procedure and second partner; those rows are dropped.
+
+A weight of 0 on a row with trade is a weight not reported, and is stored as missing: summed as
+zero it would cut weight totals short and make value per kilogram infinite.
 """
 
 import dataclasses
@@ -18,6 +33,7 @@ import datetime
 import functools
 import importlib.resources
 import json
+import math
 from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from typing import Any
 
@@ -34,7 +50,7 @@ from data_pipeline.store.errors import (
 from data_pipeline.store.http import Client
 from data_pipeline.store.model import CatalogEntry, Failure, FetchBatch, Frequency, Kind, Outcome, Request, TableData
 from data_pipeline.store.periods import read_period
-from data_pipeline.store.sources.base import failures, missing_key, number, reject_params, utc_today
+from data_pipeline.store.sources.base import HeldBy, failures, missing_key, number, reject_params, utc_today
 
 URL = "https://comtradeapi.un.org/data/v1/get/C/{frequency}/HS"
 KEY_HEADER = "Ocp-Apim-Subscription-Key"
@@ -42,6 +58,7 @@ REPORTERS_FILE = "comtrade_reporters.json"
 WORLD = "WLD"
 WORLD_CODE = "0"
 LEVELS: Mapping[str, int] = {"AG2": 12, "AG4": 12, "AG6": 4}  # level -> periods in one call
+HS_DIGITS: Mapping[int, str] = {2: "AG2", 4: "AG4", 6: "AG6"}  # digits of a product code -> its level
 FLOWS = ("X", "M")
 FIELDS = ("level", "partners", "flows", "annual_from", "months")
 DEFAULT_LEVEL = "AG2"
@@ -144,12 +161,38 @@ def closed_months(today: datetime.date, count: int) -> list[str]:
     return [f"{number // MONTHS_IN_YEAR:04d}-{number % MONTHS_IN_YEAR + 1:02d}" for number in numbers]
 
 
+def hs_level(product: str) -> str:
+    """The HS level of a product code, read from its digits: 2 for a chapter (`27`), 4 for a
+    heading (`2709`), 6 for a subheading (`270900`), Comtrade's codes for goods not specified by
+    kind (`99`, `9999`, `999999`) included. Any other code, such as `TOTAL` (every product), has
+    no level: ""."""
+    return HS_DIGITS.get(len(product), "") if product.isascii() and product.isdigit() else ""
+
+
+def held_by_partner(held: Collection[tuple[str, ...]], chosen: Settings, partner: str) -> set[tuple[str, str]]:
+    """The (frequency, period) pairs the store holds for `partner` in every chosen flow, at the
+    chosen level. `held` is what sync sends: (frequency, period, partner, flow, level), the level
+    read from the product codes; a code without a level never counts as held."""
+    by_flow: dict[str, set[tuple[str, str]]] = {flow: set() for flow in chosen.flows}
+    for frequency, period, owner, flow, level in held:
+        if owner == partner and flow in by_flow and level == chosen.level:
+            by_flow[flow].add((frequency, period))
+    first, *others = by_flow.values()
+    return first.intersection(*others)
+
+
+def stored_levels(held: Collection[tuple[str, ...]]) -> set[str]:
+    """The HS levels of the product codes of a stored table."""
+    return {level for *_, level in held if level}
+
+
 def wanted_periods(
     held: Collection[tuple[str, str]],
     chosen: Settings,
     today: datetime.date,
 ) -> dict[Frequency, list[str]]:
-    """What to ask for: every period not stored, plus the revision window. Oldest first."""
+    """What to ask one partner for: every period it does not hold, plus the revision window.
+    `held` are the partner's (frequency, period) pairs. Oldest first."""
     years = [f"{year:04d}" for year in range(chosen.annual_from, today.year)]
     months = closed_months(today, chosen.months)
     annual = {year for year in years if (Frequency.ANNUAL.value, year) not in held} | set(years[-ANNUAL_WINDOW:])
@@ -158,12 +201,12 @@ def wanted_periods(
     return {Frequency.ANNUAL: sorted(annual), Frequency.MONTHLY: sorted(monthly)}
 
 
-def queries(held: Collection[tuple[str, str]], chosen: Settings, today: datetime.date) -> list[Query]:
+def queries(held: Collection[tuple[str, ...]], chosen: Settings, today: datetime.date) -> list[Query]:
     """The calls of one reporter: per partner, annual then monthly, in blocks of periods."""
     size = LEVELS[chosen.level]
     result: list[Query] = []
     for partner in chosen.partners:
-        for frequency, periods in wanted_periods(held, chosen, today).items():
+        for frequency, periods in wanted_periods(held_by_partner(held, chosen, partner), chosen, today).items():
             result.extend(
                 Query(frequency, partner, tuple(periods[start : start + size]))
                 for start in range(0, len(periods), size)
@@ -180,12 +223,19 @@ def is_total(row: Mapping[str, Any]) -> bool:
     )
 
 
-def read_rows(payload: Mapping[str, Any], reporter: str, query: Query, flows: Collection[str]) -> tuple[Row, ...]:
+def weight(item: Mapping[str, Any]) -> float:
+    """Net weight in kg; 0 with a positive trade value is a weight not reported (NaN)."""
+    kilograms = number(item.get("netWgt"))
+    value = number(item.get("primaryValue"))
+    return math.nan if kilograms == 0 and value > 0 else kilograms
+
+
+def read_rows(payload: Mapping[str, Any], reporter: str, query: Query, chosen: Settings) -> tuple[Row, ...]:
     """The answer of one call as table rows; breakdown rows and other flows are dropped."""
     rows: list[Row] = []
     for item in payload.get("data") or []:
         flow = str(item["flowCode"])
-        if not is_total(item) or flow not in flows:
+        if not is_total(item) or flow not in chosen.flows:
             continue
         period, day = read_period(str(item["period"]), query.frequency)
         rows.append(
@@ -198,7 +248,7 @@ def read_rows(payload: Mapping[str, Any], reporter: str, query: Query, flows: Co
                 "period": period,
                 "date": day,
                 "value_usd": number(item.get("primaryValue")),
-                "weight_kg": number(item.get("netWgt")),
+                "weight_kg": weight(item),
             }
         )
     return tuple(rows)
@@ -209,6 +259,7 @@ class Comtrade:
     kind = Kind.TABLE
     requests_per_minute = 30
     daily_budget: int | None = 450  # the free tier allows 500 calls a day
+    held_by: HeldBy = ("partner", "flow", ("product", hs_level))  # sync sends each product as its level
 
     def __init__(
         self,
@@ -248,7 +299,15 @@ class Comtrade:
         brought is still missing from the store, so the next run asks for it again."""
         entry = request.entry
         chosen = settings(entry)
-        for query in queries(request.held, chosen, self._today()):
+        other = sorted(stored_levels(request.held) - {chosen.level})
+        if other:
+            msg = (
+                f"the stored table holds HS level {', '.join(other)}, not {chosen.level}, and one table never "
+                f"mixes levels: set `level` back, or delete tables/comtrade/{entry.source_id}.parquet in the "
+                f"store to load {chosen.level} from the start"
+            )
+            raise _AnswerError(msg)
+        for query in queries(frozenset() if request.full else request.held, chosen, self._today()):
             rows = self._rows(entry.source_id, chosen, query, key)
             table = TableData(
                 entry=entry,
@@ -294,4 +353,4 @@ class Comtrade:
         if len(payload.get("data") or []) >= MAX_ROWS:
             msg = f"the answer reached Comtrade's cap of {MAX_ROWS} rows and may be cut short: narrow the entry"
             raise _AnswerError(msg)
-        return read_rows(payload, reporter, query, chosen.flows)
+        return read_rows(payload, reporter, query, chosen)

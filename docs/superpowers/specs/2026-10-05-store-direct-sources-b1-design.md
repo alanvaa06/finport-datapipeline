@@ -112,6 +112,10 @@ a table of provider settings (URL pattern, query parameters, headers).
 - IMF WEO: rows whose year is later than the column `LATEST_ACTUAL_ANNUAL_DATA` are projections.
 - Name: the column `SERIES_NAME` when present, otherwise the id. Units: the first of
   `UNIT_MEASURE`, `UNIT`, `unit` that is present.
+- `UNIT_MULT`, when the answer carries it, is recorded in the index as `attrs.unit_mult` (its
+  distinct values joined by commas), next to the catalog's attrs, which win on the same name.
+  Values are stored as published and never rescaled: a series in millions and one in units of
+  the same indicator show the difference there instead of changing stored data.
 - HTTP 400 or 404, or an answer without observations, is `NOT_FOUND`. Any other status is
   `SOURCE_ERROR`.
 - No key. Requests per minute: BIS 30, ECB 30, Eurostat 30, OECD 20, IMF 20. These are assumed,

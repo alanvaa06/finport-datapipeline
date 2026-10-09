@@ -65,9 +65,16 @@ class Edgar:
         return response
 
     def json(self, url: str) -> Any:
-        """The JSON of a SEC page, or None when the SEC answers 404."""
+        """The JSON of a SEC page, or None when the SEC answers 404. An answer that is not JSON
+        is an AnswerError."""
         response = self.get(url)
-        return None if response is None else response.json()
+        if response is None:
+            return None
+        try:
+            return response.json()
+        except ValueError as exc:  # JSONDecodeError, or bytes that are not text
+            msg = f"unexpected answer (not JSON: {self._client.excerpt(response.text, 200)})"
+            raise AnswerError(msg) from exc
 
     def ciks(self) -> dict[str, str]:
         """Ticker -> CIK as ten digits, from the SEC's list of companies."""

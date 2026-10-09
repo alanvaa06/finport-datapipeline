@@ -268,12 +268,111 @@ def test_an_unknown_ticker_fails_alone():
     assert groups(batches) == [ANNUAL, EVENT, AMENDED]
 
 
-def test_a_failed_download_ends_the_company_after_what_already_arrived():
+def failures(batches):
+    return [(failure.outcome, failure.reason) for batch in batches for failure in batch.failures]
+
+
+def test_a_filing_that_fails_is_recorded_and_the_later_ones_still_arrive():
     sec = Sec()
     sec.fail = "a8-kex991q1.htm"
     batches = fetch(sec, [Request(company())])
-    assert groups(batches) == [ANNUAL]
-    assert batches[-1].failures[0].outcome is Outcome.NETWORK_ERROR
+    assert groups(batches) == [ANNUAL, AMENDED]
+    ((outcome, reason),) = failures(batches)
+    assert outcome is Outcome.NETWORK_ERROR
+    assert reason.startswith(f"{EVENT}: ")
+
+
+def test_an_exhibit_the_sec_lists_but_does_not_have_no_longer_blocks_the_later_filings():
+    sec = Sec()
+    del sec.files["/Archives/edgar/data/320193/000032019326000005/a8-kex991q1.htm"]
+    batches = fetch(sec, [Request(company())])
+    assert groups(batches) == [ANNUAL, AMENDED]
+    assert failures(batches) == [(Outcome.SOURCE_ERROR, f"{EVENT}: the SEC lists a8-kex991q1.htm but does not have it")]
+
+
+def test_a_name_the_store_refuses_fails_only_its_filing():
+    sec = Sec()
+    odd = "0000320193-25-000050"
+    quarter = (odd, "10-Q", "2025-08-01", "2025-06-28", "quarterly report.htm")
+    sec.recent = page(quarter, *zip(*RECENT.values(), strict=True))
+    sec.files["/Archives/edgar/data/320193/000032019325000050/quarterly report.htm"] = b"<html>q</html>"
+    batches = fetch(sec, [Request(company())])
+    assert groups(batches) == [ANNUAL, EVENT, AMENDED]
+    ((outcome, reason),) = failures(batches)
+    assert outcome is Outcome.SOURCE_ERROR
+    assert reason == f"{odd}: the SEC lists a file named 'quarterly report.htm', not a plain file name"
+    assert "quarterly report.htm" not in sec.paths()  # refused before it is downloaded
+
+
+def test_an_exhibit_named_to_leave_its_folder_fails_its_filing_before_any_download():
+    escape = chr(92).join(["..", "..", "evil.htm"])  # a backslash path: on Windows it leaves the folder
+    sec = Sec()
+
+    def handler(request):
+        if request.url.path.endswith("/000032019326000005/index.json"):
+            return httpx.Response(200, json={"directory": {"item": [*FOLDER, {"name": escape}]}})
+        return sec(request)
+
+    batches = fetch(handler, [Request(company())])
+    assert groups(batches) == [ANNUAL, AMENDED]
+    assert failures(batches) == [
+        (Outcome.SOURCE_ERROR, f"{EVENT}: the SEC lists a file named {escape!r}, not a plain file name")
+    ]
+    assert {"aapl-8k.htm", "a8-kex991q1.htm"}.isdisjoint(sec.paths())  # nothing of that filing was downloaded
+
+
+@pytest.mark.parametrize(
+    ("listing", "reason"),
+    [
+        (httpx.Response(200, text="<html>busy</html>"), "unexpected answer (not JSON: <html>busy</html>)"),
+        (httpx.Response(200, json={"directory": []}), "unexpected answer (TypeError: "),
+        (httpx.Response(200, json={"directory": {"item": ["a8-kex991q1.htm"]}}), "unexpected answer (AttributeError: "),
+        (httpx.Response(200, json={"folder": {}}), "unexpected answer (KeyError: 'directory')"),
+    ],
+)
+def test_an_odd_listing_of_a_filing_fails_that_filing_and_the_later_ones_still_arrive(listing, reason):
+    sec = Sec()
+
+    def handler(request):
+        return listing if request.url.path.endswith("/000032019326000005/index.json") else sec(request)
+
+    batches = fetch(handler, [Request(company())])
+    assert groups(batches) == [ANNUAL, AMENDED]
+    ((outcome, found),) = failures(batches)
+    assert outcome is Outcome.SOURCE_ERROR
+    assert found.startswith(f"{EVENT}: {reason}")
+
+
+def test_an_odd_list_of_filings_is_still_a_source_error_of_its_company():
+    sec = Sec()
+    sec.recent = {**RECENT, "filingDate": ["2026-02-10", "yesterday", "2026-01-15", "2025-10-31", "2015-10-28"]}
+    (batch,) = fetch(sec, [Request(company())])
+    assert batch.failures[0].outcome is Outcome.SOURCE_ERROR
+    assert batch.failures[0].reason.startswith("unexpected answer (ValueError: ")
+
+
+def test_a_bug_while_a_filing_is_built_is_not_taken_for_an_odd_answer(monkeypatch):
+    def broken(*_args, **_kwargs):
+        msg = "a bug, not the SEC"
+        raise TypeError(msg)
+
+    monkeypatch.setattr("data_pipeline.store.sources.sec_filings.Document", broken)
+    batches = []
+    source = SecFilings(client(Sec()), CREDENTIALS, today=lambda: TODAY)
+    with pytest.raises(TypeError, match="a bug, not the SEC"):  # raised on, so the source stops
+        batches.extend(source.fetch([Request(company()), Request(company("MSFT"))]))
+    assert failures(batches) == [  # once, on the company it hit, never as "unexpected answer"
+        (Outcome.SOURCE_ERROR, "an error in the source, not in the SEC's answer (TypeError: a bug, not the SEC)")
+    ]
+
+
+def test_three_network_failures_end_the_company_for_this_run():
+    sec = Sec()
+    sec.fail = "/Archives/"
+    chosen = company(start=datetime.date(2015, 1, 1), params={"forms": ["10-K", "8-K"]})
+    batches = fetch(sec, [Request(chosen)])
+    assert [outcome for outcome, _ in failures(batches)] == [Outcome.NETWORK_ERROR] * 3
+    assert "aapl-10ka.htm" not in sec.paths()  # the fourth filing waits for the next run
 
 
 def test_a_document_the_sec_lists_but_does_not_have_is_a_source_error():
@@ -291,6 +390,19 @@ def test_a_document_the_sec_lists_but_does_not_have_is_a_source_error():
 def test_a_block_by_the_sec_stops_the_source():
     with pytest.raises(QuotaExhaustedError, match="check that SEC_EDGAR_UA"):
         fetch(lambda _request: httpx.Response(403), [Request(company())])
+
+
+def test_a_block_in_the_middle_of_a_company_stops_the_source_without_failing_the_company():
+    sec = Sec()
+
+    def handler(request):
+        return httpx.Response(403) if request.url.path.endswith("aapl-8k.htm") else sec(request)
+
+    batches = []
+    with pytest.raises(QuotaExhaustedError, match="check that SEC_EDGAR_UA"):
+        batches.extend(SecFilings(client(handler), CREDENTIALS, today=lambda: TODAY).fetch([Request(company())]))
+    assert groups(batches) == [ANNUAL]
+    assert failures(batches) == []
 
 
 def test_an_unexpected_list_of_filings_is_a_source_error():
@@ -421,7 +533,7 @@ def test_a_new_filing_is_added_and_the_old_files_stay(store, sec, clock, tmp_pat
     assert store.info("sec_filings:AAPL").last_period == "2026-05-01"
 
 
-def test_a_run_that_fails_in_the_middle_keeps_what_arrived_and_the_next_resumes(tmp_path, sec, clock, monkeypatch):
+def test_a_run_with_a_failed_filing_keeps_the_others_and_the_next_run_brings_it(tmp_path, sec, clock, monkeypatch):
     def filings(http, credentials):
         return SecFilings(http, credentials, today=TODAY.replace)
 
@@ -438,14 +550,37 @@ def test_a_run_that_fails_in_the_middle_keeps_what_arrived_and_the_next_resumes(
     sec.fail = "a8-kex991q1.htm"
     report = store.sync()
     assert report.exit_code == 1
-    assert report.sources[0].new == 1
-    assert list(store.documents("sec_filings", "AAPL")["group"]) == [ANNUAL]
+    assert report.sources[0].new == 2
+    assert list(store.documents("sec_filings", "AAPL")["group"]) == [ANNUAL, AMENDED]
     info = store.info("sec_filings:AAPL")
     assert (info.status, info.kind) == ("failed", "document")
+    assert info.reason.startswith(f"network_error: {EVENT}: ")
     sec.fail = None
     report = store.sync()
-    assert (report.exit_code, report.sources[0].new) == (0, 3)
+    assert (report.exit_code, report.sources[0].new) == (0, 2)
     assert len(store.documents("sec_filings", "AAPL")) == 4
+
+
+def test_a_bug_in_the_source_stops_its_sync_with_the_bug_in_the_reason(tmp_path, sec, clock, monkeypatch):
+    def broken(*_args, **_kwargs):
+        msg = "a bug, not the SEC"
+        raise TypeError(msg)
+
+    def filings(http, credentials):
+        return SecFilings(http, credentials, today=TODAY.replace)
+
+    monkeypatch.setitem(source_registry.REGISTRY, "sec_filings", filings)
+    monkeypatch.setattr("data_pipeline.store.sources.sec_filings.Document", broken)
+    (tmp_path / ".env").write_text(f"SEC_EDGAR_UA={AGENT}\n", encoding="utf-8")
+    store = Store(tmp_path / "store", env_file=tmp_path / ".env", transport=httpx.MockTransport(sec))
+    store.add("sec_filings", ["AAPL", "MSFT"])
+    report = store.sync()
+    assert report.exit_code == 1
+    bug = "TypeError: a bug, not the SEC"
+    assert report.sources[0].failed == (  # the company it hit, then the ones it never reached
+        ("sec_filings:AAPL", f"source_error: an error in the source, not in the SEC's answer ({bug})"),
+        ("sec_filings:MSFT", f"source_error: the sync of this source stopped: {bug}"),
+    )
 
 
 def test_the_index_describes_the_company(store):

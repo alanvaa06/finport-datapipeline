@@ -7,10 +7,18 @@ A group is all or nothing. If the quota runs out while its windows are being dow
 of that group is yielded: storing half a history would make the next sync believe the series is
 up to date from its newest observation backwards.
 
+A first load without `start` walks back in 20-year windows, and decides where to stop for each
+series on its own: a series stops once a window brings it nothing after an earlier window did
+(its history starts there), or once the API says it does not exist; a series that has not shown
+data yet keeps walking back, down to EARLIEST_YEAR. Later windows ask only for the series still
+walking, so what a series gets never depends on the series it is grouped with. A gap of 20 years
+or more inside a series still ends its walk.
+
 Annual averages (period codes M13 and Q05) are ignored: they would share a date with December.
 """
 
 import datetime
+import re
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from typing import Any
 
@@ -38,12 +46,14 @@ from data_pipeline.store.model import (
 from data_pipeline.store.periods import read_period
 from data_pipeline.store.sources.base import (
     UNSUPPORTED_FREQUENCY,
+    HeldBy,
     failures,
     missing_key,
     number,
     reject_params,
     utc_today,
 )
+from data_pipeline.store.sources.repeats import repeated_period
 
 URL = "https://api.bls.gov/publicAPI/v2/timeseries/data/"
 MAX_SERIES = 50
@@ -51,6 +61,7 @@ MAX_YEARS = 20
 EARLIEST_YEAR = 1900  # the walk back never asks for years before this one
 OK = 200
 SUCCEEDED = "REQUEST_SUCCEEDED"
+DOES_NOT_EXIST = "does not exist"  # BLS: "Series does not exist for Series <id>"
 NO_DATA = "BLS returned no observations for this series"
 SEASONALITY: Mapping[str, str] = {"seasonally adjusted": "SA", "not seasonally adjusted": "NSA"}
 # first letter of a period code -> (frequency, how to spell the period for read_period)
@@ -86,6 +97,17 @@ def groups(requests: Sequence[Request]) -> list[tuple[int | None, list[Request]]
     ]
 
 
+def mentions(note: str, series_id: str) -> bool:
+    """Whether a note of the API names this series: its whole id, not the start of a longer one
+    (CUUR0000SA0 is not named by a note about CUUR0000SA0E1)."""
+    return re.search(rf"(?<![A-Za-z0-9]){re.escape(series_id)}(?![A-Za-z0-9])", note) is not None
+
+
+def absent(series_id: str, messages: Sequence[str]) -> bool:
+    """Whether the API said that this series does not exist."""
+    return any(mentions(note, series_id) and DOES_NOT_EXIST in note.lower() for note in messages)
+
+
 def windows(first: int, last: int) -> list[tuple[int, int]]:
     """[first, last] cut into consecutive windows of at most MAX_YEARS years."""
     return [(year, min(year + MAX_YEARS - 1, last)) for year in range(first, last + 1, MAX_YEARS)]
@@ -96,6 +118,7 @@ class Bls:
     kind = Kind.SERIES
     requests_per_minute = 50
     daily_budget: int | None = 450  # the API allows 500; sync checks the budget between batches
+    held_by: HeldBy = ()
 
     def __init__(
         self,
@@ -142,11 +165,18 @@ class Bls:
             for first, last in windows(year, this_year):
                 self._window(ids, first, last, points, titles, messages)
         else:
+            walking = list(ids)  # series whose first observation is not found yet
+            started: set[str] = set()
             last = this_year
-            while last >= EARLIEST_YEAR:
+            while walking and last >= EARLIEST_YEAR:
                 first = max(last - MAX_YEARS + 1, EARLIEST_YEAR)
-                if self._window(ids, first, last, points, titles, messages) == 0:
-                    break
+                brought = self._window(walking, first, last, points, titles, messages)
+                walking = [
+                    series_id
+                    for series_id in walking
+                    if series_id in brought or (series_id not in started and not absent(series_id, messages))
+                ]
+                started |= brought
                 last = first - 1
         series = []
         failed = []
@@ -166,8 +196,8 @@ class Bls:
         points: dict[str, list[tuple[str, int, int, float]]],
         titles: dict[str, Mapping[str, Any]],
         messages: list[str],
-    ) -> int:
-        """Download one window into `points`. Returns how many observations it brought."""
+    ) -> set[str]:
+        """Download one window into `points`. Returns the ids of the series it brought observations of."""
         response = self._client.post(
             self.name,
             URL,
@@ -197,7 +227,7 @@ class Bls:
                 msg = f"BLS rejected the key: {text}"
                 raise KeyRejectedError(msg)
             raise _GroupError(text if status in text else f"{status}: {text}")
-        found = 0
+        found: set[str] = set()
         for item in answered:
             series_id = str(item.get("seriesID") or "")
             if item.get("catalog"):
@@ -207,7 +237,7 @@ class Bls:
                 points.setdefault(series_id, []).append(
                     (code[:1], int(point["year"]), int(code[1:]), number(point.get("value")))
                 )
-                found += 1
+                found.add(series_id)
         return found
 
     def _series(
@@ -219,7 +249,7 @@ class Bls:
     ) -> SeriesData | Failure:
         entry = request.entry
         if not raw:
-            said = next((note for note in messages if entry.source_id in note), NO_DATA)
+            said = next((note for note in messages if mentions(note, entry.source_id)), NO_DATA)
             return Failure(entry, Outcome.NOT_FOUND, said)
         letters = {letter for letter, _, _, _ in raw}
         letter = next((candidate for candidate in PREFERENCE if candidate in letters), None)
@@ -227,12 +257,15 @@ class Bls:
             codes = ", ".join(sorted(letters))
             return Failure(entry, Outcome.SOURCE_ERROR, f"{UNSUPPORTED_FREQUENCY} (period codes {codes})")
         frequency, spelling = KINDS[letter]
-        observations: dict[str, Observation] = {}
+        observations: list[Observation] = []
         for kind, year, order, value in raw:
             if kind != letter or order > LAST_REAL_NUMBER[letter]:
                 continue
             period, day = read_period(spelling.format(year=year, number=order), frequency)
-            observations[period] = Observation(period, day, value)
+            observations.append(Observation(period, day, value))
+        repeated = repeated_period(observations, frequency)
+        if repeated:
+            return Failure(entry, Outcome.SOURCE_ERROR, repeated)
         catalog = titles.get(entry.source_id, {})
         return SeriesData(
             entry=entry,
@@ -240,5 +273,5 @@ class Bls:
             name=str(catalog.get("series_title") or entry.source_id),
             frequency=frequency,
             seasonal_adjustment=SEASONALITY.get(str(catalog.get("seasonality") or "").strip().lower(), ""),
-            observations=tuple(sorted(observations.values(), key=lambda observation: observation.date)),
+            observations=tuple(sorted(observations, key=lambda observation: observation.date)),
         )

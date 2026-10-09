@@ -28,11 +28,13 @@ from data_pipeline.store.model import (
 from data_pipeline.store.periods import infer_frequency, read_period
 from data_pipeline.store.sources.base import (
     UNSUPPORTED_FREQUENCY,
+    HeldBy,
     failures,
     number,
     reject_params,
     utc_today,
 )
+from data_pipeline.store.sources.repeats import repeated_period
 
 URL = "https://api.worldbank.org/v2/country/{economies}/indicator/{indicator}"
 PER_PAGE = "20000"
@@ -72,6 +74,7 @@ class WorldBank:
     kind = Kind.SERIES
     requests_per_minute = 60
     daily_budget: int | None = None
+    held_by: HeldBy = ()
 
     def __init__(
         self,
@@ -165,10 +168,13 @@ class WorldBank:
         frequency = infer_frequency(text)
         if frequency is None:
             return Failure(entry, Outcome.SOURCE_ERROR, f"{UNSUPPORTED_FREQUENCY} {text!r}")
-        observations = {}
+        observations = []
         for row in rows:
             period, day = read_period(str(row["date"]), frequency)
-            observations[period] = Observation(period, day, number(row.get("value")))
+            observations.append(Observation(period, day, number(row.get("value"))))
+        repeated = repeated_period(observations, frequency)
+        if repeated:
+            return Failure(entry, Outcome.SOURCE_ERROR, repeated)
         first = rows[0]
         return SeriesData(
             entry=entry,
@@ -177,5 +183,5 @@ class WorldBank:
             frequency=frequency,
             units=str(first.get("unit") or ""),
             country=str(first.get("countryiso3code") or ""),
-            observations=tuple(sorted(observations.values(), key=lambda observation: observation.date)),
+            observations=tuple(sorted(observations, key=lambda observation: observation.date)),
         )

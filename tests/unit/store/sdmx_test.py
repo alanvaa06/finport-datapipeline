@@ -13,6 +13,7 @@ from data_pipeline.store.sources.sdmx import (
     Sdmx,
     group_requests,
     read_csv,
+    rows_of,
     split_id,
     splitting_column,
 )
@@ -173,6 +174,16 @@ def test_the_unit_is_the_first_unit_column_present_and_a_colon_is_a_missing_valu
     assert math.isnan(series.observations[0].value)
 
 
+def test_unit_mult_is_recorded_and_the_values_are_kept_as_published():
+    header = "REF_AREA,TIME_PERIOD,OBS_VALUE,UNIT_MULT"
+    series = read_csv(header + "\nMX,2025,1.5,6\nMX,2026,2.5,6\n", entry("ITG/MX.A", "imf"))
+    assert series.attrs == {"unit_mult": "6"}
+    assert [item.value for item in series.observations] == [1.5, 2.5]
+    mixed = read_csv(header + "\nMX,2025,1500,3\nMX,2026,2.5,6\n", entry("ITG/MX.A", "imf"))
+    assert mixed.attrs == {"unit_mult": "3,6"}
+    assert read_csv("REF_AREA,TIME_PERIOD,OBS_VALUE\nMX,2025,1\n", entry("ITG/MX.A", "imf")).attrs == {}
+
+
 @pytest.mark.parametrize(
     ("status", "outcome"), [(404, Outcome.NOT_FOUND), (400, Outcome.NOT_FOUND), (418, Outcome.SOURCE_ERROR)]
 )
@@ -263,6 +274,23 @@ def test_the_splitting_column_is_the_one_that_holds_the_requested_values():
     assert splitting_column(rows, ["XX", "YY"]) is None
     twins = [{"A": "AR", "B": "AR", "TIME_PERIOD": "2026", "OBS_VALUE": "1"}]
     assert splitting_column(twins, ["AR", "BR"]) is None
+
+
+def test_only_a_dimension_can_split_an_answer_never_an_attribute():
+    # SDMX-CSV puts the dimensions before TIME_PERIOD and the attributes after OBS_VALUE
+    after = rows_of("REF_AREA,TIME_PERIOD,OBS_VALUE,OBS_STATUS\nA,2024,1,B\nA,2025,2,C\n")
+    assert splitting_column(after, ["A", "B", "C"]) == "REF_AREA"
+    # a known attribute is left out wherever the provider puts it
+    before = rows_of("REF_AREA,OBS_STATUS,TIME_PERIOD,OBS_VALUE\nA,B,2024,1\nA,C,2025,2\n")
+    assert splitting_column(before, ["A", "B", "C"]) == "REF_AREA"
+
+
+def test_rows_of_an_omitted_series_are_never_given_to_another_one():
+    answer = "FREQ,REF_AREA,TIME_PERIOD,OBS_VALUE,OBS_STATUS\nA,AR,2024,1,BR\nA,AR,2025,2,CL\n"
+    requests = [Request(entry(f"FLOW/A.{country}", "bis")) for country in ("AR", "BR", "CL")]
+    (batch,) = fetch("bis", lambda _request: httpx.Response(200, text=answer), requests)
+    assert [(series.key, len(series.observations)) for series in batch.series] == [("bis:FLOW/A.AR", 2)]
+    assert [failure.outcome for failure in batch.failures] == [Outcome.NOT_FOUND, Outcome.NOT_FOUND]
 
 
 def test_a_group_is_one_call_and_its_answer_is_split_by_series():
