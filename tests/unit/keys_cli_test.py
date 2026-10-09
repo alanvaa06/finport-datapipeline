@@ -171,6 +171,7 @@ def test_setup_from_a_subfolder_creates_the_env_file_at_the_project_root(tmp_pat
     assert next(line for line in listed.output.splitlines() if "FRED_API_KEY" in line).startswith("[ok]")
 
 
+@needs_git
 @pytest.mark.parametrize(
     ("before", "after"),
     [
@@ -179,25 +180,112 @@ def test_setup_from_a_subfolder_creates_the_env_file_at_the_project_root(tmp_pat
         (b"build/", b"build/\n.env\n.env.lock\n"),
         (b"\xef\xbb\xbf.env\n", b"\xef\xbb\xbf.env\n.env.lock\n"),  # already listed, behind a BOM
         (b"/.env\n/.env.lock\n", b"/.env\n/.env.lock\n"),
+        (b".env*\n", b".env*\n"),  # a pattern covers both
+        (b"**/.env\n", b"**/.env\n.env.lock\n"),
+        (b".env\n.env.lock\n!.env.lock\n", b".env\n.env.lock\n!.env.lock\n"),  # an un-ignored lock file stays so
     ],
 )
 def test_setup_keeps_the_env_file_out_of_git(tmp_path, monkeypatch, before, after):
     monkeypatch.setattr(keys_check, "check", checker({}))
-    runner = CliRunner()
-    with runner.isolated_filesystem(temp_dir=tmp_path):
-        if before is not None:
-            pathlib.Path(".gitignore").write_bytes(before)
-        result = runner.invoke(cli, ["setup"], input="1\nfred\n")
-        gitignore = pathlib.Path(".gitignore").read_bytes()
+    root = repository(tmp_path / "project")
+    if before is not None:
+        (root / ".gitignore").write_bytes(before)
+    monkeypatch.chdir(root)
+    result = CliRunner().invoke(cli, ["setup"], input="1\nfred\n")
     assert result.exit_code == 0, result.output
-    assert gitignore == after
+    assert (root / ".gitignore").read_bytes() == after
+    assert (root / ".env").read_text(encoding="utf-8") == "FRED_API_KEY=fred\n"
 
 
+@needs_git
+def test_setup_takes_the_ignore_rules_of_every_level_into_account(tmp_path, monkeypatch):
+    monkeypatch.setattr(keys_check, "check", checker({}))
+    root = repository(tmp_path / "project")
+    (root / ".gitignore").write_bytes(b".env*\n")
+    (root / "notebooks").mkdir()
+    (root / "notebooks" / ".env").write_text("", encoding="utf-8")  # its own .env, still ignored from the root
+    monkeypatch.chdir(root / "notebooks")
+    result = CliRunner().invoke(cli, ["setup"], input="1\nfred\n")
+    assert result.exit_code == 0, result.output
+    assert not (root / "notebooks" / ".gitignore").exists()
+    assert (root / ".gitignore").read_bytes() == b".env*\n"
+
+
+@needs_git
+@pytest.mark.parametrize("rules", [b"!.env\n", b".env\n!/.env\n"])
+def test_setup_stops_when_a_rule_un_ignores_the_env_file(tmp_path, monkeypatch, rules):
+    monkeypatch.setattr(keys_check, "check", checker({}))
+    root = repository(tmp_path / "project")
+    (root / ".gitignore").write_bytes(rules)
+    monkeypatch.chdir(root)
+    result = CliRunner().invoke(cli, ["setup"], input="1\nfred\n")
+    assert result.exit_code == 1, result.output
+    assert "un-ignores" in result.output
+    assert ".gitignore" in result.output
+    assert "Which ones?" not in result.output
+    assert not (root / ".env").exists()
+    assert (root / ".gitignore").read_bytes() == rules
+
+
+@needs_git
+def test_setup_outside_a_repository_writes_no_gitignore(tmp_path, monkeypatch):
+    monkeypatch.setattr(keys_check, "check", checker({}))
+    monkeypatch.chdir(tmp_path)
+    result = CliRunner().invoke(cli, ["setup"], input="1\nfred\n")
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / ".env").read_text(encoding="utf-8") == "FRED_API_KEY=fred\n"
+    assert not (tmp_path / ".gitignore").exists()
+
+
+@pytest.mark.parametrize(
+    ("before", "after"),
+    [
+        (None, b".env\n.env.lock\n"),
+        (b"/.env\n", b"/.env\n.env.lock\n"),
+    ],
+)
+def test_setup_without_git_still_lists_the_env_file_in_a_git_project(tmp_path, monkeypatch, before, after):
+    monkeypatch.setattr(keys_check, "check", checker({}))
+    monkeypatch.setattr(keys_cli, "GIT", "no-such-git-executable")
+    root = tmp_path / "project"
+    (root / ".git").mkdir(parents=True)  # a clone made with a git that is not on PATH
+    if before is not None:
+        (root / ".gitignore").write_bytes(before)
+    monkeypatch.chdir(root)
+    result = CliRunner().invoke(cli, ["setup"], input="1\nfred\n")
+    assert result.exit_code == 0, result.output
+    assert (root / ".gitignore").read_bytes() == after
+
+
+def test_setup_without_git_stops_at_an_un_ignored_env_file(tmp_path, monkeypatch):
+    monkeypatch.setattr(keys_check, "check", checker({}))
+    monkeypatch.setattr(keys_cli, "GIT", "no-such-git-executable")
+    root = tmp_path / "project"
+    (root / ".git").mkdir(parents=True)
+    (root / ".gitignore").write_bytes(b"*.env\n!/.env\n")
+    monkeypatch.chdir(root)
+    result = CliRunner().invoke(cli, ["setup"], input="1\nfred\n")
+    assert result.exit_code == 1, result.output
+    assert not (root / ".env").exists()
+
+
+def test_setup_without_git_writes_no_gitignore_outside_a_git_project(tmp_path, monkeypatch):
+    monkeypatch.setattr(keys_check, "check", checker({}))
+    monkeypatch.setattr(keys_cli, "GIT", "no-such-git-executable")
+    root = tmp_path / "project"
+    root.mkdir()
+    (root / "pyproject.toml").write_text("", encoding="utf-8")
+    monkeypatch.chdir(root)
+    result = CliRunner().invoke(cli, ["setup"], input="1\nfred\n")
+    assert result.exit_code == 0, result.output
+    assert not (root / ".gitignore").exists()
+
+
+@needs_git
 def test_setup_lists_the_env_file_in_the_gitignore_of_its_own_folder(tmp_path, monkeypatch):
     monkeypatch.setattr(keys_check, "check", checker({}))
-    root = tmp_path / "project"
+    root = repository(tmp_path / "project")
     (root / "notebooks").mkdir(parents=True)
-    (root / ".git").mkdir()
     (root / ".env").write_text("", encoding="utf-8")
     monkeypatch.chdir(root / "notebooks")
     result = CliRunner().invoke(cli, ["setup"], input="y\n1\nfred\n")

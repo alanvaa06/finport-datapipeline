@@ -47,10 +47,13 @@ before saving. It shows the file it writes to, and asks first when that file is 
 with no `.env` in the project yet, it creates one at the root of the project (outside a project, in
 the current folder). Each save replaces the whole file at once, so it is never left half-written,
 and two saves take turns on a `.env.lock` next to it. On Linux and macOS the file is readable by you
-only. Before the first key goes in, `setup` adds `.env` and `.env.lock` to the `.gitignore` of that
-folder. If git already tracks the `.env`, an ignore rule cannot keep it out of the next commit:
-`setup` stops before asking for any key and tells you to run `git rm --cached .env`. To see which
-keys are set and where each one comes from, run `data-pipeline keys`. It never shows the values.
+only. In a git repository, before the first key goes in, `setup` adds `.env` and `.env.lock` to the
+`.gitignore` of that folder unless git already ignores them (it asks git, so a rule such as `.env*`
+anywhere counts); outside a repository it writes no `.gitignore`. A rule that un-ignores `.env`,
+such as `!.env`, stops `setup` instead of being overridden. If git already tracks the `.env`, an
+ignore rule cannot keep it out of the next commit: `setup` stops before asking for any key and tells
+you to run `git rm --cached .env`. To see which keys are set and where each one comes from, run
+`data-pipeline keys`. It never shows the values.
 
 | Variable | Source | Needed for |
 |---|---|---|
