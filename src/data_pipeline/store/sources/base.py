@@ -65,6 +65,7 @@ class Source(Protocol):
     kind: Kind
     requests_per_minute: int
     daily_budget: int | None  # None when the source has no daily quota
+    held_by: HeldBy  # a table source's columns that tell its stored rows apart (Request.held); else ()
 
     def validate(self, entry: CatalogEntry) -> None:
         """Raise CatalogError when the entry carries a field this source does not accept."""

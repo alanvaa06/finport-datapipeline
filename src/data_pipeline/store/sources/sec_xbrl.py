@@ -26,7 +26,7 @@ from data_pipeline.credentials import Credentials
 from data_pipeline.store.errors import NetworkError, QuotaExhaustedError, RateLimitedError
 from data_pipeline.store.http import Client
 from data_pipeline.store.model import CatalogEntry, Failure, FetchBatch, Kind, Outcome, Request, TableData
-from data_pipeline.store.sources.base import missing_key, reject_params
+from data_pipeline.store.sources.base import HeldBy, missing_key, reject_params
 from data_pipeline.store.sources.sec import (
     REQUESTS_PER_MINUTE,
     AnswerError,
@@ -119,6 +119,7 @@ class SecXbrl:
     kind = Kind.TABLE
     requests_per_minute = REQUESTS_PER_MINUTE
     daily_budget: int | None = None
+    held_by: HeldBy = ()
 
     def __init__(self, client: Client, credentials: Credentials) -> None:
         self._client = client

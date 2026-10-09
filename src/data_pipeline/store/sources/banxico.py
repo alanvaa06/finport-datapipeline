@@ -31,6 +31,7 @@ from data_pipeline.store.model import (
 from data_pipeline.store.periods import read_period
 from data_pipeline.store.sources.base import (
     UNSUPPORTED_FREQUENCY,
+    HeldBy,
     missing_key,
     number,
     per_request,
@@ -96,6 +97,7 @@ class Banxico:
     kind = Kind.SERIES
     requests_per_minute = 60
     daily_budget: int | None = None
+    held_by: HeldBy = ()
 
     def __init__(
         self,

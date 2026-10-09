@@ -40,7 +40,7 @@ from data_pipeline.store.model import (
     Request,
     check_name,
 )
-from data_pipeline.store.sources.base import missing_key, reject_params, utc_today
+from data_pipeline.store.sources.base import HeldBy, missing_key, reject_params, utc_today
 from data_pipeline.store.sources.sec import (
     REQUESTS_PER_MINUTE,
     AnswerError,
@@ -185,6 +185,7 @@ class SecFilings:
     kind = Kind.DOCUMENT
     requests_per_minute = REQUESTS_PER_MINUTE
     daily_budget: int | None = None
+    held_by: HeldBy = ()
 
     def __init__(
         self,

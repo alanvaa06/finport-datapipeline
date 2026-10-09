@@ -46,6 +46,7 @@ from data_pipeline.store.model import (
 from data_pipeline.store.periods import read_period
 from data_pipeline.store.sources.base import (
     UNSUPPORTED_FREQUENCY,
+    HeldBy,
     failures,
     missing_key,
     number,
@@ -117,6 +118,7 @@ class Bls:
     kind = Kind.SERIES
     requests_per_minute = 50
     daily_budget: int | None = 450  # the API allows 500; sync checks the budget between batches
+    held_by: HeldBy = ()
 
     def __init__(
         self,

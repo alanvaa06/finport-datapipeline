@@ -54,7 +54,7 @@ from data_pipeline.store.model import (
     SeriesData,
 )
 from data_pipeline.store.periods import infer_frequency, read_period
-from data_pipeline.store.sources.base import UNSUPPORTED_FREQUENCY, failures, number, reject_params
+from data_pipeline.store.sources.base import UNSUPPORTED_FREQUENCY, HeldBy, failures, number, reject_params
 
 OK = 200
 NOT_FOUND = frozenset({400, 404})
@@ -255,6 +255,7 @@ def batch(results: Sequence[SeriesData | Failure]) -> FetchBatch:
 class Sdmx:
     kind = Kind.SERIES
     daily_budget: int | None = None
+    held_by: HeldBy = ()
 
     def __init__(self, name: str, client: Client) -> None:
         self.name = name

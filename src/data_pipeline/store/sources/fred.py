@@ -40,7 +40,7 @@ from data_pipeline.store.model import (
     SeriesData,
 )
 from data_pipeline.store.periods import read_period
-from data_pipeline.store.sources.base import failures, number, per_request, reject_params
+from data_pipeline.store.sources.base import HeldBy, failures, number, per_request, reject_params
 from data_pipeline.store.sources.repeats import repeated_period
 
 URL = "https://api.stlouisfed.org/fred"
@@ -117,6 +117,7 @@ class Fred:
     kind = Kind.SERIES
     requests_per_minute = 100  # assumed, not verified against FRED's documentation
     daily_budget: int | None = None
+    held_by: HeldBy = ()
 
     def __init__(self, client: Client, credentials: Credentials) -> None:
         self._client = client

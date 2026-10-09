@@ -26,6 +26,7 @@ from data_pipeline.store.model import (
 from data_pipeline.store.periods import read_period
 from data_pipeline.store.sources.base import (
     DECLARE_FREQUENCY,
+    HeldBy,
     missing_key,
     number,
     per_request,
@@ -61,6 +62,7 @@ class Inegi:
     kind = Kind.SERIES
     requests_per_minute = 60
     daily_budget: int | None = None
+    held_by: HeldBy = ()
 
     def __init__(self, client: Client, credentials: Credentials) -> None:
         self._client = client

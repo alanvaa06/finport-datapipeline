@@ -2,6 +2,8 @@ import math
 
 import pytest
 
+from data_pipeline.credentials import Credentials
+from data_pipeline.store import sources
 from data_pipeline.store.errors import (
     CatalogError,
     KeyRejectedError,
@@ -12,8 +14,9 @@ from data_pipeline.store.errors import (
 )
 from data_pipeline.store.model import Failure, Outcome, Request
 from data_pipeline.store.sources.base import missing_key, number, per_request, reject_params
+from data_pipeline.store.sources.comtrade import hs_level
 
-from .helpers import entry, monthly
+from .helpers import client, entry, monthly
 
 
 @pytest.mark.parametrize("text", ["", ".", "N/E", "na", "NaN", "n/a", "-", None])
@@ -132,3 +135,12 @@ def test_a_persistent_rate_limit_stops_the_source_as_an_exhausted_quota():
     assert next(stream).series[0].key == "fake:A"
     with pytest.raises(QuotaExhaustedError, match="HTTP 429"):
         next(stream)
+
+
+def test_every_source_says_what_it_tells_its_stored_rows_apart_by():
+    # part of the Source protocol: sync reads it from a table source without a fallback
+    http = client()
+    built = {name: sources.create(name, http, Credentials()) for name in sources.REGISTRY}
+    held_by = {name: source.held_by for name, source in built.items()}
+    assert held_by.pop("comtrade") == ("partner", "flow", ("product", hs_level))
+    assert set(held_by.values()) == {()}

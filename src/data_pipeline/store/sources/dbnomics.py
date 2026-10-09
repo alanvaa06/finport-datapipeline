@@ -24,7 +24,7 @@ from data_pipeline.store.model import (
     SeriesData,
 )
 from data_pipeline.store.periods import read_period
-from data_pipeline.store.sources.base import DECLARE_FREQUENCY, number, per_request, reject_params
+from data_pipeline.store.sources.base import DECLARE_FREQUENCY, HeldBy, number, per_request, reject_params
 from data_pipeline.store.sources.repeats import repeated_period
 
 URL = "https://api.db.nomics.world/v22/series"
@@ -54,6 +54,7 @@ class Dbnomics:
     kind = Kind.SERIES
     requests_per_minute = 60
     daily_budget: int | None = None
+    held_by: HeldBy = ()
 
     def __init__(self, client: Client, credentials: Credentials) -> None:  # keyless: credentials are not read
         self._client = client

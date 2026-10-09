@@ -50,6 +50,7 @@ class FakeTables:
     name = "trade"
     kind = Kind.TABLE
     requests_per_minute = 6000
+    held_by = ()
 
     def __init__(self, http, daily_budget=None):
         self.daily_budget = daily_budget

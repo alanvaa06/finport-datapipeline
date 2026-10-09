@@ -70,7 +70,7 @@ class Request:
 
     For a series: `since`, the first date to ask for (`None` means full history).
     For a table: `held`, the (frequency, period) pairs already stored, each followed by its values
-    in the columns the source names in its optional `held_by` attribute, each as stored or as a
+    in the columns the source names in its `held_by` (Source protocol), each as stored or as a
     function the source pairs with it reads it (Comtrade: partner, flow, and the HS level of the
     product code), so that a source can tell what one partner holds from what another does; and
     `full`, true when the sync is full: the source asks for everything again, and still has

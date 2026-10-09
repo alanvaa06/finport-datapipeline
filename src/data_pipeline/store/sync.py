@@ -444,9 +444,8 @@ def _sync_tables(
     """Sync a source of kind table. There is no `since`: each request carries what is stored, also
     when the sync is full, so a source can refuse an entry the stored table cannot take."""
     name = source.name
-    by: HeldBy = getattr(source, "held_by", ())  # what a source tells its stored rows apart by
     requests = [
-        Request(entry, held=held_periods(storage.read_table(name, entry.source_id), by), full=full)
+        Request(entry, held=held_periods(storage.read_table(name, entry.source_id), source.held_by), full=full)
         for entry in wanted
     ]
     calls_before = client.calls.get(name, 0)
