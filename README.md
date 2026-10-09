@@ -216,6 +216,11 @@ pytest
 Tests that call the real APIs are marked `live`, and only run when you ask for them:
 `pytest -m live tests/live`.
 
+## Authors
+
+Alan Vazquez ([@alanvaa06](https://github.com/alanvaa06)) and Eduardo Ramos, CFA
+([@EERamos](https://github.com/EERamos)).
+
 ## License
 
 MIT, see [LICENSE](LICENSE).
