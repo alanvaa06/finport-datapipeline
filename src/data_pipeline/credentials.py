@@ -240,6 +240,13 @@ def resolve(
     return Credentials(values, origins)
 
 
+def invalid_value(value: str) -> str | None:
+    """Why `value` cannot be saved in a `.env`, or None when it can."""
+    if any(unicodedata.category(char) in UNSAFE_CATEGORIES for char in value):
+        return "it holds a line break, a tab or another control character"
+    return None
+
+
 def save(env_file: pathlib.Path, updates: Mapping[str, str]) -> None:
     """Write `updates` into `env_file`, replacing their lines and keeping every other line.
 
@@ -252,8 +259,9 @@ def save(env_file: pathlib.Path, updates: Mapping[str, str]) -> None:
         if name not in _BY_NAME:
             msg = f"Unknown environment variable: {name}"
             raise ValueError(msg)
-        if any(unicodedata.category(char) in UNSAFE_CATEGORIES for char in value):
-            msg = f"Invalid value for {name}: it holds a line break or another control character"
+        reason = invalid_value(value)
+        if reason is not None:
+            msg = f"Invalid value for {name}: {reason}"
             raise ValueError(msg)
     path = env_file.resolve()  # through a symbolic link, the file it points at gets the new content
     with locked(path):

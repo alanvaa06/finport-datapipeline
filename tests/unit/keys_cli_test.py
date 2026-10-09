@@ -376,6 +376,71 @@ def test_setup_asks_again_for_an_sec_contact_without_an_email_even_with_no_check
     assert content == "SEC_EDGAR_UA=Ana Lopez ana@example.com\n"
 
 
+def test_setup_drops_whitespace_around_a_pasted_key(tmp_path, monkeypatch):
+    monkeypatch.setattr(keys_check, "check", checker({}))
+    monkeypatch.chdir(tmp_path)
+    result = CliRunner().invoke(cli, ["setup"], input="1\n \tfred\t \n")
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / ".env").read_text(encoding="utf-8") == "FRED_API_KEY=fred\n"
+
+
+@pytest.mark.parametrize("options", [[], ["--no-check"]])
+def test_setup_asks_again_for_a_key_with_a_control_character_inside(tmp_path, monkeypatch, options):
+    checked = []
+
+    def check(name, value, **_kwargs):
+        checked.append(value)
+        return Check(name, Verdict.OK, "fake")
+
+    monkeypatch.setattr(keys_check, "check", check)
+    monkeypatch.chdir(tmp_path)
+    result = CliRunner().invoke(cli, ["setup", *options], input="1,2\nfr\ted\ny\nfred\nbls\n")
+    assert result.exit_code == 0, result.output
+    assert "[x]   FRED_API_KEY  it holds a line break, a tab or another control character" in result.output
+    assert "fr\ted" not in checked  # a value that cannot be saved is never sent to its source
+    assert (tmp_path / ".env").read_text(encoding="utf-8") == "FRED_API_KEY=fred\nBLS_API_KEY=bls\n"
+
+
+def test_setup_skips_a_key_with_a_control_character_when_asked_to(tmp_path, monkeypatch):
+    monkeypatch.setattr(keys_check, "check", checker({}))
+    monkeypatch.chdir(tmp_path)
+    result = CliRunner().invoke(cli, ["setup"], input="1,2\nfr\ted\nn\nbls\n")
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / ".env").read_text(encoding="utf-8") == "BLS_API_KEY=bls\n"
+
+
+def test_setup_says_when_another_program_holds_the_env_file_and_goes_on(tmp_path, monkeypatch):
+    monkeypatch.setattr(keys_check, "check", checker({}))
+    monkeypatch.setattr(credentials, "LOCK_TIMEOUT", 0.2)
+    monkeypatch.chdir(tmp_path)
+    with credentials.locked(tmp_path / ".env"):
+        result = CliRunner().invoke(cli, ["setup"], input="1,2\nfred\nn\nbls\nn\n")
+    assert result.exit_code == 0, result.output
+    assert result.output.count("being saved by another program") == 2  # each key is offered, not the first only
+    assert "Nothing saved." in result.output
+    assert not (tmp_path / ".env").exists()
+
+
+def test_setup_saves_a_key_on_a_second_try_once_the_env_file_is_free(tmp_path, monkeypatch):
+    monkeypatch.setattr(keys_check, "check", checker({}))
+    real_save = credentials.save
+    calls = []
+
+    def busy_once(env_file, updates):
+        calls.append(updates)
+        if len(calls) == 1:
+            msg = f"{env_file} is being saved by another program; try again"
+            raise TimeoutError(msg)
+        real_save(env_file, updates)
+
+    monkeypatch.setattr(credentials, "save", busy_once)
+    monkeypatch.chdir(tmp_path)
+    result = CliRunner().invoke(cli, ["setup"], input="1\nfred\ny\n")
+    assert result.exit_code == 0, result.output
+    assert len(calls) == 2
+    assert (tmp_path / ".env").read_text(encoding="utf-8") == "FRED_API_KEY=fred\n"
+
+
 @needs_git
 @pytest.mark.parametrize("on_disk", [True, False])  # deleted by hand, the file is still in the index
 def test_setup_stops_before_saving_when_git_tracks_the_env_file(tmp_path, monkeypatch, on_disk):

@@ -70,23 +70,58 @@ def _prompt_value(key: Key) -> str | None:
     return str(answer).strip() or None
 
 
+def _local_check(key: Key, value: str) -> keys_check.Check | None:
+    """The rejection of `value` that needs no request to its source, or None.
+
+    These rules apply even without a check: a value `credentials.save` refuses (it is never sent
+    to its source either), and an SEC contact with no e-mail.
+    """
+    reason = credentials.invalid_value(value)
+    if reason is not None:
+        return keys_check.Check(key.name, keys_check.Verdict.REJECTED, reason)
+    if key.name == credentials.SEC_UA and "@" not in value:
+        return keys_check.check(key.name, value)  # rejected locally, with the SEC's wording
+    return None
+
+
 def _ask(key: Key, *, check: bool) -> str | None:
-    """The value to save for `key`, or None when the person skips it or gives up on a rejected one."""
+    """The value to save for `key`, or None when the person skips it or gives up on a rejected one.
+
+    Whitespace around what was typed or pasted is dropped (`_prompt_value`).
+    """
     while True:
         value = _prompt_value(key)
         if value is None:
             echo(f"skipped {key.name}")
             return None
-        # The SEC needs a contact e-mail: that rule is local, so it applies even without a check.
-        needs_email = key.name == credentials.SEC_UA and "@" not in value
-        if not check and not needs_email:
+        result = _local_check(key, value)
+        if result is None and check:
+            result = keys_check.check(key.name, value)
+        if result is None:
             return value
-        result = keys_check.check(key.name, value)
         echo(result.line())
         if result.verdict is not keys_check.Verdict.REJECTED:
             return value
         if not click.confirm("Type it again?", default=True):
             return None
+
+
+def _save(env_file: pathlib.Path, key: Key, value: str) -> bool:
+    """Save `value` now; when the file cannot be written, say why and offer to try again.
+
+    False when the person gives up on that key. The usual reason is another program saving the
+    same file (`credentials.save` raises TimeoutError after waiting for it).
+    """
+    while True:
+        try:
+            credentials.save(env_file, {key.name: value})
+        except OSError as exc:  # TimeoutError included
+            echo(f"[x]   {key.name}  not saved: {exc}")
+            if not click.confirm("Try again?", default=True):
+                echo(f"skipped {key.name}")
+                return False
+        else:
+            return True
 
 
 def _git(folder: pathlib.Path, *args: str, stdin: str | None = None) -> subprocess.CompletedProcess[str] | None:
@@ -252,8 +287,8 @@ def setup_command(*, no_check: bool) -> None:
             continue
         value = _ask(key, check=not no_check)
         if value:
-            if not saved:
-                _add_to_gitignore(env_file.parent, ignore)  # before the first key reaches the file
-            credentials.save(env_file, {key.name: value})  # now, so an interruption keeps what was accepted
-            saved = True
+            _add_to_gitignore(env_file.parent, ignore)  # before the first key reaches the file
+            ignore = []
+            if _save(env_file, key, value):  # now, so an interruption keeps what was accepted
+                saved = True
     echo(f"Saved in {env_file}." if saved else "Nothing saved.")
