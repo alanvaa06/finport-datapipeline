@@ -2,8 +2,10 @@ import datetime
 import errno
 import json
 import math
+import os
 import pathlib
 import sys
+import time
 
 import pandas as pd
 import pytest
@@ -167,6 +169,27 @@ def test_prepare_writes_the_schema_marker_once(tmp_path):
     storage.prepare()
     storage.prepare()
     assert json.loads((tmp_path / "store" / "store.json").read_text(encoding="utf-8")) == {"schema_version": 1}
+
+
+def test_prepare_removes_what_writes_that_died_left_in_the_store_and_nothing_else(tmp_path):
+    # a process killed between creating a temporary file and the replacement leaves it behind
+    storage = Storage(tmp_path / "store")
+    storage.prepare()
+    moment = time.time() - 7200
+    left = [
+        tmp_path / "store" / "index.parquet.0123abcd.tmp",
+        tmp_path / "store" / "series" / "fred.parquet.89ef0123.tmp",
+        tmp_path / "store" / "tables" / "comtrade" / "MEX.parquet.4567cdef.tmp",
+        tmp_path / "store" / "documents" / "sec_filings" / "AAPL" / "0001" / "a.htm.0a1b2c3d.tmp",
+    ]
+    other = tmp_path / "store" / "notes" / "draft.docx.0123abcd.tmp"  # not a folder the store writes in
+    for path in [*left, other]:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"half")
+        os.utime(path, (moment, moment))
+    storage.prepare()
+    assert [path.exists() for path in left] == [False] * 4
+    assert other.exists()
 
 
 def test_prepare_refuses_another_schema(tmp_path):

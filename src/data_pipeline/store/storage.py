@@ -7,8 +7,9 @@
 
 Observations are append-only: a changed value adds a row, nothing is rewritten or deleted.
 Every write goes to a temporary file, is flushed to the disk, and then replaces the target, so a
-run that dies halfway (or a power cut) never leaves a half-written file. Missing files read as
-empty frames; a file that cannot be read is a StoreError that names it and says whether the
+run that dies halfway (or a power cut) never leaves a half-written file; the temporary file of a
+process killed mid-write is removed by the next sync, once it is an hour old. Missing files read
+as empty frames; a file that cannot be read is a StoreError that names it and says whether the
 system would not open it (another program holds it) or its content is damaged.
 """
 
@@ -23,7 +24,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from data_pipeline._files import ReplaceRefusedError, write_atomic
+from data_pipeline._files import ReplaceRefusedError, sweep_temporary, write_atomic
 from data_pipeline.store.errors import StoreError
 from data_pipeline.store.model import check_name
 
@@ -473,7 +474,11 @@ class Storage:
         return self.root / SERIES_DIR / f"{source}.parquet"
 
     def prepare(self) -> None:
-        """Create the store marker on first use; refuse a store written by another schema."""
+        """Create the store marker on first use; refuse a store written by another schema; in a
+        store of this schema, remove the temporary files that writes which died left behind, an
+        hour old or more (data_pipeline._files.sweep_temporary). Sync calls it once a run, holding
+        the lock. Only the folders the store writes in are swept: the root itself, and `series`,
+        `tables` and `documents` with everything under them."""
         path = self.root / STORE_FILE
         if not path.exists():
             _write_json({"schema_version": SCHEMA_VERSION}, path)
@@ -482,6 +487,9 @@ class Storage:
         if found != SCHEMA_VERSION:
             msg = f"{path}: schema_version {found!r}, this library reads version {SCHEMA_VERSION}"
             raise StoreError(msg)
+        sweep_temporary(self.root, recursive=False)
+        for folder in (SERIES_DIR, TABLES_DIR, DOCUMENTS_DIR):
+            sweep_temporary(self.root / folder)
 
     def read_observations(self, source: str) -> pd.DataFrame:
         return _read(self.series_path(source), OBS_DTYPES)
