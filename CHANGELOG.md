@@ -85,25 +85,36 @@ Store core:
 - Ids and aliases an entry gets through a YAML merge key (`<<: *defaults`) keep the text written.
 - The store and the credentials share one implementation of the operating system's lock and of
   the atomic file write (`data_pipeline._files`).
+- A sync removes the temporary files that a process killed mid-write left in the store
+  (`<file>.<8 hex>.tmp`), once they are an hour old.
 
 Sources:
 
 - Comtrade asks each partner and flow for the periods it is missing. A run cut after the world's
   calls, or an entry given a new partner or flow, used to leave the other partners asking only for
-  the revision windows. Every row records its HS `level`, and an entry whose `level` differs from
-  the stored one fails without a call instead of mixing 2- and 4-digit products in one table.
+  the revision windows. A table holds one HS level, read from the digits of each product code (2,
+  4 or 6; nothing is stored, so rows synced by an earlier release have their real level too): an
+  entry whose `level` differs from the stored one fails without a call, in a full sync as well,
+  instead of mixing 2- and 4-digit products in one table.
 - Comtrade stores a weight of 0 on a row with trade as missing: it is a weight not reported.
 - FRED, BLS, Banxico, INEGI, the World Bank and DBnomics fail a series whose answer holds one period
   twice, instead of keeping one of the values. Banxico also checks a declared `frequency` against
   the dates of the data.
-- SEC XBRL: a version takes its `frame` from whichever filing repeating it carries it. A store
-  synced before this change keeps an empty `frame` on the versions it holds until the company's
-  table is deleted and synced again.
+- SEC XBRL: a version takes its `frame` from whichever filing repeating it carries it. A version
+  stored without one gets it on the next sync: the stored row is filled in, no version is added and
+  `as_of` reads the same rows. Nothing has to be downloaded again.
 - SEC filings: a filing that fails is recorded and skipped, so it no longer holds back the filings
-  after it; three network failures in one company's run still end that run. Filings count as known
-  from the end of the day the SEC received them, like the XBRL facts they carry.
+  after it; three network failures in one company's run still end that run. File names are checked
+  before a filing downloads: one that is not a plain file name (a separator of either kind, `..`, a
+  drive, a final dot, a Windows device name such as `NUL.htm`) fails that filing alone, and the
+  store refuses such a document path whatever sends it. An error that is not in the SEC's answer is
+  no longer reported as "unexpected answer": it is named on the company it hit and stops the
+  source. Filings count as known from the end of the day the SEC received them, like the XBRL facts
+  they carry.
 - BLS decides where each series' walk back stops on its own, so a series discontinued before the
-  first 20-year window loads alone as it does in a group.
+  first 20-year window loads alone as it does in a group. A note of the API is about a series only
+  when it names its whole id: `CUUR0000SA0` is no longer taken for absent by a note about
+  `CUUR0000SA0E1`.
 - SDMX: a grouped answer is split by a dimension only, never by an attribute such as `OBS_STATUS`,
   and a series' `UNIT_MULT` is recorded as `attrs.unit_mult` in the index; values are never rescaled.
 
