@@ -17,6 +17,7 @@ import errno
 import os
 import pathlib
 import re
+import stat
 import sys
 import tempfile
 import time
@@ -36,7 +37,10 @@ LOCK_TIMEOUT = 10.0  # seconds a save waits for another one to finish
 LOCK_POLL = 0.05  # seconds between two tries of the lock
 REPLACE_ATTEMPTS = 10
 REPLACE_WAIT = 0.5  # seconds between attempts: about five seconds in all
-FILE_MODE = 0o600  # on POSIX: readable and writable by the owner only
+FILE_MODE = 0o600  # on POSIX, a new file: readable and writable by the owner only
+# On POSIX, what a save keeps of an existing file's mode: the owner's and the group's bits, nothing
+# for others, no setuid, setgid or sticky bit.
+KEPT_MODE_BITS = stat.S_IRWXU | stat.S_IRWXG
 ENV_FILE_ENCODING = "utf-8-sig"  # plain UTF-8, tolerating the BOM some editors add
 # The root of a project: the closest folder with `.git`; with no `.git` above, the closest with
 # `pyproject.toml`. Markers in order of precedence.
@@ -252,8 +256,9 @@ def save(env_file: pathlib.Path, updates: Mapping[str, str]) -> None:
 
     Saves to the same file take turns (see `locked`), and each one writes a temporary file in the
     same folder that then replaces `env_file`: a reader sees the old file or the new one, never
-    half of one, and a save that fails leaves the old file as it was. On POSIX the file is left
-    readable and writable by its owner only (0600).
+    half of one, and a save that fails leaves the old file as it was. On POSIX a new file is
+    readable and writable by its owner only (0600); an existing one keeps its mode and group,
+    minus any access for others.
     """
     for name, value in updates.items():
         if name not in _BY_NAME:
@@ -328,6 +333,9 @@ if sys.platform == "win32":
         os.lseek(descriptor, 0, os.SEEK_SET)
         msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
 
+    def _keep_access(descriptor: int, path: pathlib.Path) -> None:
+        """Nothing to do: on Windows the new file takes its access from its folder, as the old one did."""
+
 else:
 
     def _try_lock(descriptor: int) -> bool:
@@ -340,17 +348,38 @@ else:
     def _unlock(descriptor: int) -> None:
         fcntl.flock(descriptor, fcntl.LOCK_UN)
 
+    def _keep_access(descriptor: int, path: pathlib.Path) -> None:
+        """Give the open new copy of `path` the access the old one had, minus any for others.
+
+        A new file stays 0600, as `mkstemp` made it. An existing one keeps its mode (0640 so that a
+        service's group reads it, say) without the bits for others, and keeps its group. When the
+        group cannot be kept (its owner is not in that group), the group bits go too: the access
+        never passes to another group.
+        """
+        try:
+            old = path.stat()
+        except FileNotFoundError:
+            return
+        mode = stat.S_IMODE(old.st_mode) & KEPT_MODE_BITS
+        if mode & stat.S_IRWXG and os.fstat(descriptor).st_gid != old.st_gid:
+            try:
+                os.fchown(descriptor, -1, old.st_gid)
+            except PermissionError:
+                mode &= ~stat.S_IRWXG
+        os.fchmod(descriptor, mode)
+
 
 def _write(path: pathlib.Path, text: str) -> None:
     """Put `text` in `path` through a temporary file in the same folder that then replaces it.
 
-    `mkstemp` creates the temporary file readable and writable by its owner only, so on POSIX
-    `path` ends up 0600 whatever its mode was before.
+    `mkstemp` creates the temporary file readable and writable by its owner only; on POSIX it
+    then takes the access of the file it replaces, minus any for others (see `_keep_access`).
     """
     descriptor, name = tempfile.mkstemp(dir=path.parent, prefix=f"{path.name}.", suffix=".tmp")
     temporary = pathlib.Path(name)
     try:
         with os.fdopen(descriptor, "wb") as handle:
+            _keep_access(handle.fileno(), path)
             handle.write(text.encode("utf-8"))
             handle.flush()
             os.fsync(handle.fileno())

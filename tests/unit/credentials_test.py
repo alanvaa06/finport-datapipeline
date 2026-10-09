@@ -283,15 +283,74 @@ def test_a_save_gives_up_when_another_one_holds_the_file(tmp_path, monkeypatch):
     assert env_file.read_text(encoding="utf-8") == "FRED_API_KEY=x\n"
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="POSIX permissions")
-def test_the_saved_file_is_readable_by_its_owner_only(tmp_path):
+POSIX_ONLY = pytest.mark.skipif(sys.platform == "win32", reason="POSIX permissions")
+
+
+def other_group(path):
+    """A group of this user's other than `path`'s, or None when the user is in one group only."""
+    current = path.stat().st_gid
+    return next((gid for gid in os.getgroups() if gid != current), None)
+
+
+@POSIX_ONLY
+def test_a_new_env_file_is_readable_by_its_owner_only(tmp_path):
+    save(tmp_path / ".env", {"FRED_API_KEY": "x"})
+    assert stat.S_IMODE((tmp_path / ".env").stat().st_mode) == 0o600
+
+
+@POSIX_ONLY
+@pytest.mark.parametrize(
+    ("before", "after"),
+    [
+        (0o600, 0o600),
+        (0o640, 0o640),  # read by a service's group: still read after a save
+        (0o660, 0o660),
+        (0o644, 0o640),  # others lose their access
+        (0o666, 0o660),
+        (0o604, 0o600),
+        (0o400, 0o400),
+    ],
+)
+def test_a_save_keeps_the_mode_of_an_existing_file_minus_access_for_others(tmp_path, before, after):
     env_file = tmp_path / ".env"
     env_file.write_text("OTHER_VAR=keep\n", encoding="utf-8")
-    env_file.chmod(0o644)
+    env_file.chmod(before)
     save(env_file, {"FRED_API_KEY": "x"})
-    assert stat.S_IMODE(env_file.stat().st_mode) == 0o600
-    save(tmp_path / "new.env", {"FRED_API_KEY": "x"})
-    assert stat.S_IMODE((tmp_path / "new.env").stat().st_mode) == 0o600
+    assert stat.S_IMODE(env_file.stat().st_mode) == after
+    assert env_file.read_text(encoding="utf-8") == "OTHER_VAR=keep\nFRED_API_KEY=x\n"
+
+
+@POSIX_ONLY
+def test_a_save_keeps_the_group_of_an_existing_file(tmp_path):
+    env_file = tmp_path / ".env"
+    env_file.write_text("OTHER_VAR=keep\n", encoding="utf-8")
+    group = other_group(env_file)
+    if group is None:
+        pytest.skip("the user is in one group only")
+    os.chown(env_file, -1, group)  # as `chgrp docker .env` would
+    env_file.chmod(0o640)
+    save(env_file, {"FRED_API_KEY": "x"})
+    assert env_file.stat().st_gid == group
+    assert stat.S_IMODE(env_file.stat().st_mode) == 0o640
+
+
+@POSIX_ONLY
+def test_a_save_that_cannot_keep_the_group_takes_its_access_away(tmp_path, monkeypatch):
+    env_file = tmp_path / ".env"
+    env_file.write_text("OTHER_VAR=keep\n", encoding="utf-8")
+    group = other_group(env_file)
+    if group is None:
+        pytest.skip("the user is in one group only")
+    os.chown(env_file, -1, group)
+    env_file.chmod(0o640)
+
+    def refused(*_args):
+        raise PermissionError(1, "Operation not permitted")
+
+    monkeypatch.setattr(os, "fchown", refused)  # as when the owner is not in the file's group
+    save(env_file, {"FRED_API_KEY": "x"})
+    assert env_file.stat().st_gid != group
+    assert stat.S_IMODE(env_file.stat().st_mode) == 0o600  # the group's access never passes to another group
 
 
 def test_a_save_through_a_symbolic_link_writes_the_file_it_points_at(tmp_path):
