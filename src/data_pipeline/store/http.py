@@ -180,7 +180,7 @@ class Client:
             wait = None
             try:
                 request = self._http.build_request(method, url, params=params, headers=headers, json=body)
-                response = self._send(source, request)
+                response = self._send(source, request, per_minute)
             except httpx.TransportError as exc:
                 reason = f"{type(exc).__name__}: {exc}"
                 limited = False
@@ -205,8 +205,9 @@ class Client:
         self._failing[source] = (failing + 1, reason)
         raise NetworkError(msg) from None
 
-    def _send(self, source: str, request: httpx.Request) -> httpx.Response:
-        """Send `request`, following redirects within its host over https (each one a call)."""
+    def _send(self, source: str, request: httpx.Request, per_minute: int) -> httpx.Response:
+        """Send `request`, following redirects within its host over https. Each hop is a call,
+        paced like any other: it waits its turn at `per_minute`."""
         response = self._http.send(request)
         for _ in range(MAX_REDIRECTS):
             target = response.next_request
@@ -222,6 +223,7 @@ class Client:
                 )
                 raise NetworkError(msg)
             response.close()
+            self._wait_turn(source, per_minute)
             self.calls[source] = self.calls.get(source, 0) + 1
             response = self._http.send(target)
         msg = self.scrub(f"{source}: more than {MAX_REDIRECTS} redirects from {request.url.host}")

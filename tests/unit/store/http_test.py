@@ -162,6 +162,16 @@ def test_a_redirect_within_the_same_host_over_https_is_followed():
     assert seen[1].headers["Bmx-Token"] == "s3cr3t"
 
 
+def test_each_redirect_hop_waits_its_turn_like_any_other_call():
+    handler, seen = redirecting("https://api.example.test/moved")
+    waits = []
+    client = Client(transport=httpx.MockTransport(handler), sleep=waits.append, clock=lambda: 0.0)
+    client.get("banxico", "https://api.example.test/start", per_minute=60)
+    assert [request.url.path for request in seen] == ["/start", "/moved"]
+    assert waits == [1.0]  # 60 a minute: the hop goes a second after the first request
+    assert client.calls == {"banxico": 2}
+
+
 @pytest.mark.parametrize(
     ("location", "status"),
     [
