@@ -10,6 +10,7 @@ import time
 import pandas as pd
 import pytest
 
+from data_pipeline._files import try_lock
 from data_pipeline.store import sync as sync_module
 from data_pipeline.store.errors import CatalogError, LockHeldError, StoreError
 from data_pipeline.store.model import Failure, Frequency, Observation, Outcome, SeriesData
@@ -34,6 +35,15 @@ def stored_values(tmp_path, key="fake:UNRATE"):
     frame = latest(Storage(tmp_path).read_observations("fake"))
     frame = frame[frame["key"] == key]
     return dict(zip(frame["period"], frame["value"], strict=True))
+
+
+def lock_is_free(tmp_path):
+    """True when a sync could take the lock now: whatever ran before released it."""
+    try:
+        with lock(tmp_path):
+            return True
+    except LockHeldError:
+        return False
 
 
 def index_row(tmp_path, key="fake:UNRATE"):
@@ -195,7 +205,7 @@ def test_an_interrupted_run_keeps_what_it_stored_and_frees_the_lock(tmp_path):
     with pytest.raises(KeyboardInterrupt):
         run(tmp_path, source, entries=[UNRATE, DGS10])
     assert stored_values(tmp_path) == {"2026-05": 4.1}
-    assert not (tmp_path / LOCK_FILE).exists()
+    assert lock_is_free(tmp_path)
     healthy = FakeSource()
     healthy.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
     healthy.answers["DGS10"] = monthly(DGS10, {"2026-05": 4.4})
@@ -227,7 +237,7 @@ def test_a_source_that_breaks_fails_its_own_series_and_the_next_source_still_run
     assert report.exit_code == 1
     assert index_row(tmp_path, "fake:DGS10")["status"] == "failed"
     assert Storage(tmp_path).read_runs()["fake"]["failed"] == 1
-    assert not (tmp_path / LOCK_FILE).exists()
+    assert lock_is_free(tmp_path)
 
 
 def test_a_damaged_file_of_one_source_fails_that_source_only(tmp_path):
@@ -258,7 +268,26 @@ def test_a_lock_left_by_a_sync_that_died_is_taken_over(tmp_path):
     source = FakeSource()
     source.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
     assert run(tmp_path, source).exit_code == 0
-    assert not (tmp_path / LOCK_FILE).exists()
+    assert lock_is_free(tmp_path)
+
+
+def test_the_lock_file_is_never_deleted_and_says_nothing_once_released(tmp_path):
+    with lock(tmp_path):
+        assert f'"pid": {os.getpid()}' in (tmp_path / LOCK_FILE).read_text(encoding="ascii")
+    assert (tmp_path / LOCK_FILE).read_bytes() == b""  # no stale holder for the next refusal to name
+
+
+def test_a_sync_that_opened_the_lock_file_just_before_it_was_released_still_excludes_the_next(tmp_path):
+    # Sync B opens sync.lock while A holds it; A releases; B locks what it opened. Had A deleted
+    # the file, B would hold a lock on a file nobody else sees, and C would create and lock another.
+    with lock(tmp_path):
+        late = os.open(tmp_path / LOCK_FILE, os.O_RDWR)
+    try:
+        assert try_lock(late)
+        with pytest.raises(LockHeldError):
+            run(tmp_path, FakeSource())
+    finally:
+        os.close(late)
 
 
 HOLD_THE_LOCK = """
@@ -304,7 +333,7 @@ def test_an_invalid_catalog_stops_before_any_download(tmp_path):
     with pytest.raises(CatalogError, match="declared more than once"):
         run(tmp_path, source, entries=[UNRATE, UNRATE])
     assert source.seen == []
-    assert not (tmp_path / LOCK_FILE).exists()
+    assert lock_is_free(tmp_path)
 
 
 def test_only_sources_and_only_keys_restrict_the_run(tmp_path):
@@ -568,7 +597,7 @@ def test_a_source_or_key_the_catalog_does_not_declare_is_an_error_not_an_empty_r
     with pytest.raises(StoreError, match=message):
         run(tmp_path, source, entries=[UNRATE, DGS10], **options)
     assert source.seen == []
-    assert not (tmp_path / LOCK_FILE).exists()
+    assert lock_is_free(tmp_path)
 
 
 def test_sources_and_keys_that_select_nothing_together_are_an_error(tmp_path):

@@ -142,21 +142,13 @@ class SyncReport:
 
 
 def _take(descriptor: int, path: pathlib.Path) -> bool:
-    """Take the operating system's lock on an open lock file without waiting (False: another sync
-    holds it). The system releases it when the process ends, however it ends, so a sync that was
-    killed never blocks the next. Any other failure is a StoreError that names the file."""
+    """Take the operating system's lock on the open lock file without waiting (False: another
+    sync holds it). Any other failure is a StoreError that names the file."""
     try:
         return try_lock(descriptor)
     except OSError as exc:
-        os.close(descriptor)
         msg = f"{path}: could not be locked ({type(exc).__name__}: {exc})"
         raise StoreError(msg) from exc
-
-
-def _release(descriptor: int) -> None:
-    with contextlib.suppress(OSError):
-        unlock(descriptor)
-    os.close(descriptor)
 
 
 def _holder(path: pathlib.Path) -> str:
@@ -171,37 +163,38 @@ def _holder(path: pathlib.Path) -> str:
 @contextlib.contextmanager
 def lock(root: pathlib.Path) -> Iterator[None]:
     """Hold <root>/sync.lock for the duration of a sync. A second sync is refused while the first
-    runs. The file records the holder (pid, host, start); the lock itself is the operating
-    system's, so a file left behind by a sync that died is taken over."""
+    runs, with the holder (pid, host, start) the file records.
+
+    The lock is the operating system's: it ends with the process that holds it, however that
+    process ends, so a sync that was killed never blocks the next. The file is never deleted. A
+    sync that opened it just before the holder deleted it would lock a file nobody else sees, and
+    the next sync would create and lock another one: two syncs at once. A file left behind is
+    harmless; on release it is emptied, so a refusal never names a holder that is gone.
+    """
     path = root / LOCK_FILE
     root.mkdir(parents=True, exist_ok=True)
-    while True:
-        descriptor = os.open(path, os.O_RDWR | os.O_CREAT, 0o644)
+    descriptor = os.open(path, os.O_RDWR | os.O_CREAT, 0o644)
+    try:
         if not _take(descriptor, path):
-            os.close(descriptor)
             msg = f"another sync is running on this store{_holder(path)}: {path}"
             raise LockHeldError(msg)
+        holder = {
+            "pid": os.getpid(),
+            "host": socket.gethostname(),
+            "started": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds"),
+        }
+        os.ftruncate(descriptor, 0)
+        os.lseek(descriptor, 0, os.SEEK_SET)
+        os.write(descriptor, json.dumps(holder).encode("ascii"))
         try:
-            same = os.fstat(descriptor).st_ino == path.stat().st_ino
-        except FileNotFoundError:
-            same = False
-        if same:
-            break
-        _release(descriptor)  # the sync that held it removed the file meanwhile: lock the new one
-    holder = {
-        "pid": os.getpid(),
-        "host": socket.gethostname(),
-        "started": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds"),
-    }
-    os.ftruncate(descriptor, 0)
-    os.lseek(descriptor, 0, os.SEEK_SET)
-    os.write(descriptor, json.dumps(holder).encode("ascii"))
-    try:
-        yield
+            yield
+        finally:
+            with contextlib.suppress(OSError):
+                os.ftruncate(descriptor, 0)
+            with contextlib.suppress(OSError):  # closing the descriptor releases it anyway
+                unlock(descriptor)
     finally:
-        _release(descriptor)
-        with contextlib.suppress(OSError):  # on Windows a sync that just opened it keeps the file
-            path.unlink(missing_ok=True)
+        os.close(descriptor)
 
 
 def observation_rows(series: SeriesData, fetched_at: datetime.datetime, today: datetime.date) -> list[Row]:
