@@ -278,6 +278,50 @@ def append_versions(
     return merged, fresh_keys, len(to_append) - fresh_keys
 
 
+def _blank(column: pd.Series) -> np.ndarray:
+    """Where a text column says nothing: missing, or empty text."""
+    return (column.isna() | column.astype(object).eq("")).to_numpy(dtype=bool)
+
+
+def fill_attributes(
+    old: pd.DataFrame,
+    new: pd.DataFrame,
+    key: Sequence[str],
+    values: Sequence[str],
+    attributes: Sequence[str],
+) -> tuple[pd.DataFrame, int]:
+    """Fill the attributes a stored version of a versioned table lacks from the same version
+    received again: same key, `published_at` and values (see append_versions).
+
+    An attribute describes a version and is not part of it, so a version received again with an
+    attribute it was stored without (the `frame` of an SEC XBRL fact, which the SEC sets on a later
+    filing) is not appended: that attribute would stay empty forever. Here an attribute that is
+    missing or empty takes the received value; one that has a value is never changed, and no key,
+    value or stamp is touched, so as_of reads the same versions. Returns (table, rows filled);
+    when nothing is filled, `old` itself.
+    """
+    columns = [column for column in attributes if column in new.columns]
+    if old.empty or new.empty or not columns:
+        return old, 0
+    identity = [*key, "published_at", *values]
+    offered = new.drop_duplicates(identity, keep="first")[[*identity, *columns]]
+    found = old[identity].merge(offered, on=identity, how="left")  # one row per stored row, in order
+    filled = old
+    touched = np.zeros(len(old), dtype=bool)
+    for column in columns:
+        stored = old[column] if column in old.columns else pd.Series(None, index=old.index, dtype=object)
+        take = _blank(stored) & ~_blank(found[column])
+        if not take.any():
+            continue
+        if filled is old:
+            filled = old.copy()
+        merged = stored.to_numpy(dtype=object).copy()
+        merged[take] = found[column].to_numpy(dtype=object)[take]
+        filled[column] = merged
+        touched |= take
+    return filled, int(touched.sum())
+
+
 def drop_repeated_versions(old: pd.DataFrame, new: pd.DataFrame) -> pd.DataFrame:
     """The dated series rows of `new` that say something the store did not already know then:
     a row is dropped when the version of its period known at its `published_at` has the same

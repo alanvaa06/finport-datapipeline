@@ -13,7 +13,8 @@ the filing. Nothing is mapped or derived: reading the concepts is the consumer's
 A version describes the filing that first reported it (form, accession, filed, fiscal year and
 period, which the SEC gives per filing), except for `frame`: the SEC sets it on one appearance
 of a fact only, the latest filed, which is often a comparative, so a version takes it from
-whichever of its appearances carries it.
+whichever of its appearances carries it. A version already stored without it gets it from the
+next sync that brings it (see storage.fill_attributes): that adds no version.
 """
 
 import datetime

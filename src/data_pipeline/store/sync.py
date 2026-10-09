@@ -57,6 +57,7 @@ from data_pipeline.store.storage import (
     append_versions,
     document_rows,
     drop_repeated_versions,
+    fill_attributes,
     latest,
     records,
     table_frame,
@@ -465,9 +466,14 @@ def _sync_tables(
                         table.key_columns, table.value_columns, table.attribute_columns, table.versioned
                     )
                     received = table_frame(table.rows, schema, received_at)
+                    filled = 0
+                    if table.versioned:  # a stored version received again lends its missing attributes
+                        existing, filled = fill_attributes(
+                            existing, received, table.key_columns, table.value_columns, table.attribute_columns
+                        )
                     merge = append_versions if table.versioned else append_rows
                     merged, more, changed = merge(existing, received, table.key_columns, table.value_columns)
-                    if merged is not existing:
+                    if filled or merged is not existing:
                         storage.write_table(name, table.entry.source_id, merged, schema)
                     added += more
                     revised += changed

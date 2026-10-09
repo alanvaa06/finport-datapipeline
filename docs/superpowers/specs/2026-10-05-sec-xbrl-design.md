@@ -68,13 +68,15 @@ then by accession. The first is a version; a later one is a version only when it
 from the previous version (relative tolerance 1e-9). Repeats of the same value are dropped,
 except for their `frame`: the SEC sets it on one appearance of a fact only, the latest filed,
 so a version takes it from whichever of its appearances carries it. The other attributes are
-those of the version's first appearance. A store synced before this change holds an empty
-`frame` on such versions until its table is deleted and synced again (attributes are never
-compared, so a sync does not rewrite them).
+those of the version's first appearance.
 
 A version is identified by its key columns and its `published_at`. A sync appends the versions
-that are not stored; no stored row is changed or deleted. A second sync right after a first adds
-nothing.
+that are not stored; no stored row is deleted, and no stored key, value or stamp is changed. The
+one thing a sync writes in a stored row is an attribute it lacks: when a version comes again
+(same key, `published_at` and value) with an attribute the stored one has empty, the stored row
+takes it. That is how a store synced before versions took their `frame` from a repeat gets it,
+with no new version, so `as_of` reads the same rows. An attribute with a value is never changed.
+A second sync right after a first adds nothing.
 
 The current value of a fact is its version with the latest `published_at`. As of a moment, it is
 the latest version with `published_at` at or before that moment.

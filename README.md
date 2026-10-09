@@ -129,7 +129,10 @@ refused with an error (exit 2 for `show --as-of`).
   FRED gives the day, not the hour, so a vintage counts as known from the end of that day (UTC):
   `as_of="2026-10-02"` sees what came out that day, `as_of="2026-10-02T12:00Z"` does not.
 - **SEC XBRL facts and SEC filings:** each version of a fact, and each filing, is dated with the
-  day the SEC received it, and also counts as known from the end of that day.
+  day the SEC received it, and also counts as known from the end of that day. A fact's `frame`
+  (`CY2023Q4I`) comes from whichever filing carries it, often a later one that repeats the value.
+  A version stored without it, by an older release, gets it on the next sync: the stored row is
+  filled in, no version is added, and `as_of` reads the same rows. Nothing to re-download.
 - **Every other source,** and FRED series that ALFRED does not keep (such as `SP500`): the
   source does not say when a value was published, so the store dates it by its own fetch. On
   those, `as_of` sees nothing before your first sync, and point-in-time history starts that day.
