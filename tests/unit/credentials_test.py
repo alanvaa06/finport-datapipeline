@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from data_pipeline import credentials
+from data_pipeline import _files, credentials
 from data_pipeline.credentials import Credentials, find_env_file, project_root, resolve, save, target_env_file
 
 
@@ -281,6 +281,39 @@ def test_a_save_gives_up_when_another_one_holds_the_file(tmp_path, monkeypatch):
         save(env_file, {"FRED_API_KEY": "x"})
     save(env_file, {"FRED_API_KEY": "x"})  # once released, the next save goes through
     assert env_file.read_text(encoding="utf-8") == "FRED_API_KEY=x\n"
+
+
+def test_a_save_waits_for_a_lock_taken_through_the_shared_module(tmp_path, monkeypatch):
+    env_file = tmp_path / ".env"
+    monkeypatch.setattr(credentials, "LOCK_TIMEOUT", 0.2)
+    descriptor = os.open(credentials.lock_file(env_file), os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        assert _files.try_lock(descriptor)  # the way the store takes its own lock
+        with pytest.raises(TimeoutError, match="being saved by another program"):
+            save(env_file, {"FRED_API_KEY": "x"})
+        _files.unlock(descriptor)
+    finally:
+        os.close(descriptor)
+    save(env_file, {"FRED_API_KEY": "x"})
+    assert env_file.read_text(encoding="utf-8") == "FRED_API_KEY=x\n"
+
+
+def test_a_save_refused_while_a_reader_holds_the_file_leaves_it_as_it_was(tmp_path, monkeypatch):
+    env_file = tmp_path / ".env"
+    env_file.write_text("FRED_API_KEY=old\n", encoding="utf-8")
+    waits = []
+
+    def refused(*_args, **_kwargs):
+        raise PermissionError(13, "The process cannot access the file")  # Windows, a reader has it open
+
+    monkeypatch.setattr(pathlib.Path, "replace", refused)
+    monkeypatch.setattr(_files, "_sleep", waits.append)
+    with pytest.raises(_files.ReplaceRefusedError):
+        save(env_file, {"FRED_API_KEY": "new"})
+    monkeypatch.undo()
+    assert len(waits) == _files.REPLACE_ATTEMPTS - 1
+    assert env_file.read_text(encoding="utf-8") == "FRED_API_KEY=old\n"
+    assert not [path.name for path in tmp_path.iterdir() if path.name.endswith(".tmp")]
 
 
 POSIX_ONLY = pytest.mark.skipif(sys.platform == "win32", reason="POSIX permissions")

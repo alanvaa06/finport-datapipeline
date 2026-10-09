@@ -24,6 +24,11 @@ def test_fixtures_hold_nothing_shaped_like_a_key():
     assert offenders == []
 
 
-def test_the_credentials_module_imports_nothing_from_the_library():
-    source = (ROOT / "src" / "data_pipeline" / "credentials.py").read_text(encoding="utf-8")
-    assert [name for name in IMPORT.findall(source) if name.startswith("data_pipeline")] == []
+def library_imports(module):
+    source = (ROOT / "src" / "data_pipeline" / module).read_text(encoding="utf-8")
+    return [name for name in IMPORT.findall(source) if name.startswith("data_pipeline")]
+
+
+def test_the_credentials_module_imports_nothing_from_the_library_but_the_shared_file_helpers():
+    assert library_imports("credentials.py") == ["data_pipeline._files"]  # the lock and atomic write the store uses
+    assert library_imports("_files.py") == []

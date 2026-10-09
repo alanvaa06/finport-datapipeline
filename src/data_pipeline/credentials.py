@@ -8,35 +8,29 @@ a `.env` that belongs to another project, to the home folder or to a shared fold
 read nor written.
 Credentials are personal: `repr` shows only which ones are present, never their values.
 
-This module imports nothing from the store: the store and the command line both read it.
+This module imports nothing from the store: the store and the command line both read it. Its
+lock and its atomic write are the store's own, from `data_pipeline._files`.
 """
 
 import contextlib
 import dataclasses
-import errno
 import os
 import pathlib
 import re
 import stat
 import sys
-import tempfile
 import time
 import unicodedata
 from collections.abc import Iterator, Mapping
 
 import dotenv
 
-if sys.platform == "win32":
-    import msvcrt
-else:
-    import fcntl
+from data_pipeline._files import try_lock, unlock, write_atomic
 
 ENV_FILE_NAME = ".env"
 LOCK_SUFFIX = ".lock"  # saves to `.env` take turns on `.env.lock`
 LOCK_TIMEOUT = 10.0  # seconds a save waits for another one to finish
 LOCK_POLL = 0.05  # seconds between two tries of the lock
-REPLACE_ATTEMPTS = 10
-REPLACE_WAIT = 0.5  # seconds between attempts: about five seconds in all
 FILE_MODE = 0o600  # on POSIX, a new file: readable and writable by the owner only
 # On POSIX, what a save keeps of an existing file's mode: the owner's and the group's bits, nothing
 # for others, no setuid, setgid or sticky bit.
@@ -256,9 +250,11 @@ def save(env_file: pathlib.Path, updates: Mapping[str, str]) -> None:
 
     Saves to the same file take turns (see `locked`), and each one writes a temporary file in the
     same folder that then replaces `env_file`: a reader sees the old file or the new one, never
-    half of one, and a save that fails leaves the old file as it was. On POSIX a new file is
-    readable and writable by its owner only (0600); an existing one keeps its mode and group,
-    minus any access for others.
+    half of one, and a save that fails leaves the old file as it was (`write_atomic`; on
+    Windows, a replacement refused for about five seconds because a reader has the file open
+    raises `_files.ReplaceRefusedError`, a PermissionError). On POSIX a new file is readable and
+    writable by its owner only (0600); an existing one keeps its mode and group, minus any access
+    for others (see `_keep_access`).
     """
     for name, value in updates.items():
         if name not in _BY_NAME:
@@ -284,7 +280,8 @@ def save(env_file: pathlib.Path, updates: Mapping[str, str]) -> None:
                 continue
             kept.append(line)
         kept.extend(f"{name}={_encode(value)}" for name, value in remaining.items())
-        _write(path, "\n".join(kept) + "\n")
+        text = "\n".join(kept) + "\n"
+        write_atomic(path, text.encode("utf-8"), mode=FILE_MODE, prepare=_keep_access)
 
 
 def lock_file(env_file: pathlib.Path) -> pathlib.Path:
@@ -297,14 +294,15 @@ def lock_file(env_file: pathlib.Path) -> pathlib.Path:
 def locked(env_file: pathlib.Path) -> Iterator[None]:
     """Hold the lock of `env_file`, waiting up to LOCK_TIMEOUT seconds for whoever holds it now.
 
-    The lock is the operating system's, taken on `lock_file(env_file)`: it ends with the process
-    that holds it, so a save that crashes leaves no stale lock (the empty file stays and is
-    reused). Raises TimeoutError when the wait runs out.
+    The lock is the operating system's, taken on `lock_file(env_file)` the way the store takes its
+    own (`data_pipeline._files`): it ends with the process that holds it, so a save that crashes
+    leaves no stale lock (the empty file stays and is reused). Raises TimeoutError when the wait
+    runs out.
     """
     descriptor = os.open(lock_file(env_file), os.O_RDWR | os.O_CREAT, FILE_MODE)
     try:
         deadline = time.monotonic() + LOCK_TIMEOUT
-        while not _try_lock(descriptor):
+        while not try_lock(descriptor):
             if time.monotonic() >= deadline:
                 msg = f"{env_file} is being saved by another program; try again"
                 raise TimeoutError(msg)
@@ -312,97 +310,33 @@ def locked(env_file: pathlib.Path) -> Iterator[None]:
         try:
             yield
         finally:
-            _unlock(descriptor)
+            unlock(descriptor)
     finally:
         os.close(descriptor)
 
 
-if sys.platform == "win32":
+def _keep_access(descriptor: int, path: pathlib.Path) -> None:
+    """Give the open new copy of `path` the access the old one had, minus any for others (POSIX).
 
-    def _try_lock(descriptor: int) -> bool:
-        os.lseek(descriptor, 0, os.SEEK_SET)
-        try:
-            msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
-        except OSError as exc:
-            if exc.errno in (errno.EACCES, errno.EDEADLOCK):  # someone else holds it
-                return False
-            raise
-        return True
-
-    def _unlock(descriptor: int) -> None:
-        os.lseek(descriptor, 0, os.SEEK_SET)
-        msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
-
-    def _keep_access(descriptor: int, path: pathlib.Path) -> None:
-        """Nothing to do: on Windows the new file takes its access from its folder, as the old one did."""
-
-else:
-
-    def _try_lock(descriptor: int) -> bool:
-        try:
-            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:  # someone else holds it
-            return False
-        return True
-
-    def _unlock(descriptor: int) -> None:
-        fcntl.flock(descriptor, fcntl.LOCK_UN)
-
-    def _keep_access(descriptor: int, path: pathlib.Path) -> None:
-        """Give the open new copy of `path` the access the old one had, minus any for others.
-
-        A new file stays 0600, as `mkstemp` made it. An existing one keeps its mode (0640 so that a
-        service's group reads it, say) without the bits for others, and keeps its group. When the
-        group cannot be kept (its owner is not in that group), the group bits go too: the access
-        never passes to another group.
-        """
-        try:
-            old = path.stat()
-        except FileNotFoundError:
-            return
-        mode = stat.S_IMODE(old.st_mode) & KEPT_MODE_BITS
-        if mode & stat.S_IRWXG and os.fstat(descriptor).st_gid != old.st_gid:
-            try:
-                os.fchown(descriptor, -1, old.st_gid)
-            except PermissionError:
-                mode &= ~stat.S_IRWXG
-        os.fchmod(descriptor, mode)
-
-
-def _write(path: pathlib.Path, text: str) -> None:
-    """Put `text` in `path` through a temporary file in the same folder that then replaces it.
-
-    `mkstemp` creates the temporary file readable and writable by its owner only; on POSIX it
-    then takes the access of the file it replaces, minus any for others (see `_keep_access`).
+    A new file stays 0600, as it was created. An existing one keeps its mode (0640 so that a
+    service's group reads it, say) without the bits for others, and keeps its group. When the
+    group cannot be kept (its owner is not in that group), the group bits go too: the access
+    never passes to another group. On Windows the new file takes its access from its folder, as
+    the old one did, so there is nothing to do.
     """
-    descriptor, name = tempfile.mkstemp(dir=path.parent, prefix=f"{path.name}.", suffix=".tmp")
-    temporary = pathlib.Path(name)
+    if sys.platform == "win32":
+        return
     try:
-        with os.fdopen(descriptor, "wb") as handle:
-            _keep_access(handle.fileno(), path)
-            handle.write(text.encode("utf-8"))
-            handle.flush()
-            os.fsync(handle.fileno())
-        _replace(temporary, path)
-    finally:
-        temporary.unlink(missing_ok=True)  # still there only when the replacement failed
-
-
-def _replace(temporary: pathlib.Path, path: pathlib.Path) -> None:
-    """Put the finished temporary file in place of `path`.
-
-    On Windows the replacement is refused while another program has `path` open (something
-    reading the keys): it is given a few seconds to finish before the error is raised.
-    """
-    for attempt in range(1, REPLACE_ATTEMPTS + 1):
+        old = path.stat()
+    except FileNotFoundError:
+        return
+    mode = stat.S_IMODE(old.st_mode) & KEPT_MODE_BITS
+    if mode & stat.S_IRWXG and os.fstat(descriptor).st_gid != old.st_gid:
         try:
-            temporary.replace(path)
+            os.fchown(descriptor, -1, old.st_gid)
         except PermissionError:
-            if attempt == REPLACE_ATTEMPTS:
-                raise
-            time.sleep(REPLACE_WAIT)
-        else:
-            return
+            mode &= ~stat.S_IRWXG
+    os.fchmod(descriptor, mode)
 
 
 def _lines(text: str) -> list[str]:
