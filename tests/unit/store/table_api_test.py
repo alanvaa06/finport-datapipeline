@@ -114,6 +114,15 @@ def test_a_table_written_before_a_column_existed_reads_it_as_missing(store, tmp_
     assert list(store.table("comtrade", level="AG2")["reporter"].unique()) == ["MEX"]
 
 
+def test_a_key_column_a_table_lacks_reads_as_missing_and_its_filter_keeps_none_of_its_rows(store, tmp_path):
+    storage = Storage(tmp_path / "store")
+    older = storage.read_table("comtrade", "USA").drop(columns="partner")  # a key column filtered before versions
+    older.to_parquet(storage.table_path("comtrade", "USA"))
+    assert store.table("comtrade", "USA")["partner"].isna().all()
+    assert list(store.table("comtrade", partner="WLD")["reporter"].unique()) == ["MEX"]
+    assert store.table("comtrade", "USA", partner="WLD").empty
+
+
 def test_filters_keep_the_rows_whose_column_equals_the_value(store):
     exports = store.table("comtrade", "MEX", flow="X", frequency="A")
     assert dict(zip(exports["period"], exports["value_usd"], strict=True)) == {"2024": 100.0, "2025": 110.0}

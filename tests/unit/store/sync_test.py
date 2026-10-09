@@ -1,5 +1,6 @@
 import dataclasses
 import datetime
+import errno
 import json
 import math
 import os
@@ -11,6 +12,9 @@ import time
 import pandas as pd
 import pytest
 
+from data_pipeline._files import try_lock
+from data_pipeline.store import sync as sync_module
+from data_pipeline.store.api import Store
 from data_pipeline.store.errors import CatalogError, LockHeldError, StoreError
 from data_pipeline.store.model import Failure, Frequency, Observation, Outcome, SeriesData
 from data_pipeline.store.periods import read_period
@@ -34,6 +38,15 @@ def stored_values(tmp_path, key="fake:UNRATE"):
     frame = latest(Storage(tmp_path).read_observations("fake"))
     frame = frame[frame["key"] == key]
     return dict(zip(frame["period"], frame["value"], strict=True))
+
+
+def lock_is_free(tmp_path):
+    """True when a sync could take the lock now: whatever ran before released it."""
+    try:
+        with lock(tmp_path):
+            return True
+    except LockHeldError:
+        return False
 
 
 def index_row(tmp_path, key="fake:UNRATE"):
@@ -206,7 +219,7 @@ def test_an_interrupted_run_keeps_what_it_stored_and_frees_the_lock(tmp_path):
     with pytest.raises(KeyboardInterrupt):
         run(tmp_path, source, entries=[UNRATE, DGS10])
     assert stored_values(tmp_path) == {"2026-05": 4.1}
-    assert not (tmp_path / LOCK_FILE).exists()
+    assert lock_is_free(tmp_path)
     healthy = FakeSource()
     healthy.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
     healthy.answers["DGS10"] = monthly(DGS10, {"2026-05": 4.4})
@@ -238,7 +251,7 @@ def test_a_source_that_breaks_fails_its_own_series_and_the_next_source_still_run
     assert report.exit_code == 1
     assert index_row(tmp_path, "fake:DGS10")["status"] == "failed"
     assert Storage(tmp_path).read_runs()["fake"]["failed"] == 1
-    assert not (tmp_path / LOCK_FILE).exists()
+    assert lock_is_free(tmp_path)
 
 
 def test_a_damaged_file_of_one_source_fails_that_source_only(tmp_path):
@@ -269,7 +282,26 @@ def test_a_lock_left_by_a_sync_that_died_is_taken_over(tmp_path):
     source = FakeSource()
     source.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
     assert run(tmp_path, source).exit_code == 0
-    assert not (tmp_path / LOCK_FILE).exists()
+    assert lock_is_free(tmp_path)
+
+
+def test_the_lock_file_is_never_deleted_and_says_nothing_once_released(tmp_path):
+    with lock(tmp_path):
+        assert f'"pid": {os.getpid()}' in (tmp_path / LOCK_FILE).read_text(encoding="ascii")
+    assert (tmp_path / LOCK_FILE).read_bytes() == b""  # no stale holder for the next refusal to name
+
+
+def test_a_sync_that_opened_the_lock_file_just_before_it_was_released_still_excludes_the_next(tmp_path):
+    # Sync B opens sync.lock while A holds it; A releases; B locks what it opened. Had A deleted
+    # the file, B would hold a lock on a file nobody else sees, and C would create and lock another.
+    with lock(tmp_path):
+        late = os.open(tmp_path / LOCK_FILE, os.O_RDWR)
+    try:
+        assert try_lock(late)
+        with pytest.raises(LockHeldError):
+            run(tmp_path, FakeSource())
+    finally:
+        os.close(late)
 
 
 HOLD_THE_LOCK = """
@@ -315,7 +347,7 @@ def test_an_invalid_catalog_stops_before_any_download(tmp_path):
     with pytest.raises(CatalogError, match="declared more than once"):
         run(tmp_path, source, entries=[UNRATE, UNRATE])
     assert source.seen == []
-    assert not (tmp_path / LOCK_FILE).exists()
+    assert lock_is_free(tmp_path)
 
 
 def test_only_sources_and_only_keys_restrict_the_run(tmp_path):
@@ -560,10 +592,50 @@ def test_a_series_whose_frequency_changes_fails_and_keeps_its_data(tmp_path):
     (key, reason), = report.sources[0].failed
     assert key == "fake:UNRATE"
     assert reason.startswith("source_error: the source now sends this series as Q; the store holds it as M")
+    assert "to store it as Q, sync it with full (data-pipeline sync --full --key fake:UNRATE, " in reason
+    assert "Store.sync(keys=['fake:UNRATE'], full=True))" in reason
     assert report.exit_code == 1
     assert stored_values(tmp_path) == {"2026-01": 10.0, "2026-02": 11.0, "2026-03": 12.0}
     row = index_row(tmp_path)
     assert (row["status"], row["frequency"], row["last_period"]) == ("failed", "M", "2026-03")
+
+
+def test_a_full_sync_stores_a_series_at_its_new_frequency_and_keeps_the_old_one_as_history(tmp_path):
+    source = FakeSource()
+    source.answers["UNRATE"] = monthly(UNRATE, {"2026-01": 10.0, "2026-02": 11.0, "2026-03": 12.0})
+    source.answers["DGS10"] = monthly(DGS10, {"2026-02": 4.0, "2026-03": 4.1})
+    run(tmp_path, source, entries=[UNRATE, DGS10])
+    source.answers["UNRATE"] = quarterly(UNRATE, {"2026Q1": 33.0})  # a catalog's frequency corrected
+    source.answers["DGS10"] = monthly(DGS10, {"2026-03": 4.1})  # no frequency change: nothing retired
+    assert run(tmp_path, source, entries=[UNRATE, DGS10], now=LATER).exit_code == 1
+    report = run(tmp_path, source, entries=[UNRATE, DGS10], now=LATER + datetime.timedelta(days=1), full=True)
+    assert (report.sources[0].ok, report.sources[0].failed, report.exit_code) == (2, (), 0)
+    assert (report.sources[0].new, report.sources[0].revised) == (1, 3)  # each month's value becomes missing
+    store = Store(tmp_path)
+    assert store.series("fake:UNRATE").to_dict("records") == [
+        {"date": pd.Timestamp("2026-03-31"), "period": "2026Q1", "value": 33.0}
+    ]
+    before = store.series("fake:UNRATE", as_of=LATER.date())
+    assert list(zip(before["period"], before["value"], strict=True)) == [
+        ("2026-01", 10.0),
+        ("2026-02", 11.0),
+        ("2026-03", 12.0),
+    ]
+    assert len(store.revisions("fake:UNRATE")) == 7  # append-only: every stored row is still there
+    assert list(store.series("fake:DGS10")["period"]) == ["2026-02", "2026-03"]
+    row = index_row(tmp_path)
+    assert (row["status"], row["frequency"], row["last_period"]) == ("ok", "Q", "2026Q1")
+
+
+def test_a_full_sync_retires_the_dated_versions_of_the_old_frequency_too(tmp_path):
+    source = FakeSource()
+    source.answers["UNRATE"] = vintages(UNRATE, UNRATE_VINTAGES)
+    run(tmp_path, source)
+    source.answers["UNRATE"] = quarterly(UNRATE, {"2026Q1": 33.0})
+    run(tmp_path, source, now=LATER, full=True)
+    store = Store(tmp_path)
+    assert list(store.series("fake:UNRATE")["period"]) == ["2026Q1"]
+    assert list(store.series("fake:UNRATE", as_of="2026-06-05")["value"]) == [4.1, 4.2]
 
 
 @pytest.mark.parametrize(
@@ -579,7 +651,7 @@ def test_a_source_or_key_the_catalog_does_not_declare_is_an_error_not_an_empty_r
     with pytest.raises(StoreError, match=message):
         run(tmp_path, source, entries=[UNRATE, DGS10], **options)
     assert source.seen == []
-    assert not (tmp_path / LOCK_FILE).exists()
+    assert lock_is_free(tmp_path)
 
 
 def test_sources_and_keys_that_select_nothing_together_are_an_error(tmp_path):
@@ -635,3 +707,13 @@ def test_the_budget_day_follows_the_clock_not_the_start_of_the_run(tmp_path):
     runs = Storage(tmp_path).read_runs()
     assert runs["fake"]["budget"] == {"day": "2026-06-07", "calls": 1}
     assert runs["other"]["budget"] == {"day": "2026-06-07", "calls": 1}
+
+
+def test_a_lock_that_fails_for_another_reason_is_an_error_that_names_the_file(tmp_path, monkeypatch):
+    def no_locks(_descriptor):
+        raise OSError(errno.ENOLCK, "No locks available")
+
+    monkeypatch.setattr(sync_module, "try_lock", no_locks)
+    with pytest.raises(StoreError, match=r"sync\.lock: could not be locked \(OSError: .*No locks available") as raised:
+        run(tmp_path, FakeSource())
+    assert not isinstance(raised.value, LockHeldError)

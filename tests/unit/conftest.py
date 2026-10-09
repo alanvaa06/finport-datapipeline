@@ -23,7 +23,10 @@ def confine_env_search(
 
 @pytest.fixture(autouse=True)
 def isolated_credentials(monkeypatch, tmp_path_factory):
-    """No test sees a developer's real keys: not from the environment, not from a `.env` above the temp folder."""
+    """No unit test sees a developer's real keys: not from the environment, not from a `.env` above the temp folder.
+
+    It lives here, not in `tests/conftest.py`, so the live tests in `tests/live/` do see them.
+    """
     for name in credentials.NAMES:
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr(

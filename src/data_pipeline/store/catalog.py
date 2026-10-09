@@ -66,6 +66,9 @@ class _Loader(yaml.SafeLoader):
     """The safe loader, except that the ids and aliases of an entry keep the text written."""
 
     def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> dict[Hashable, Any]:
+        # Merge keys (<<: *defaults) first, so an id or alias brought in from an anchor is seen too.
+        # The loader merges again in construct_mapping; with no merge key left, that changes nothing.
+        self.flatten_mapping(node)
         for key, value in node.value:
             if isinstance(key, yaml.ScalarNode) and key.value in TEXT_FIELDS:
                 _keep_text(value)

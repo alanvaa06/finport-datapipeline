@@ -198,6 +198,31 @@ def test_ids_and_aliases_keep_the_text_written_where_yaml_1_1_would_turn_it_into
     assert (first.start, first.stale_after_days) == (datetime.date(1990, 1, 1), 45)
 
 
+def test_ids_and_aliases_merged_from_an_anchor_keep_the_text_written(tmp_path):
+    path = tmp_path / "catalog.yaml"
+    path.write_text(
+        "- <<: &base\n"
+        "    source: inegi\n"
+        "    id: 0123\n"
+        "    alias: NO\n"
+        "  start: 1990-01-01\n"
+        "- <<: [*base]\n"
+        "  id: 12:30\n"
+        "  alias: e_mx_x\n"
+        "- <<: {ids: [0456, 1.10], alias: {0456: off}}\n"
+        "  source: inegi\n",
+        encoding="utf-8",
+    )
+    entries = load_catalog(path)
+    assert [(item.source_id, item.alias) for item in entries] == [
+        ("0123", "NO"),
+        ("12:30", "e_mx_x"),
+        ("0456", "off"),
+        ("1.10", None),
+    ]
+    assert entries[0].start == datetime.date(1990, 1, 1)
+
+
 def test_an_empty_id_is_still_refused(tmp_path):
     path = tmp_path / "catalog.yaml"
     path.write_text("- source: inegi\n  id: ~\n", encoding="utf-8")

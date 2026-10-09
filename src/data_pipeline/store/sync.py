@@ -8,22 +8,27 @@ is interrupted), so an interrupted run keeps what it already downloaded. A serie
 keeps its previous data; the failure is recorded in the index. A source that breaks (a bug, a
 damaged file) fails its own unfinished entries and the run goes on with the next source; its
 calls are recorded in runs.json even when the run is interrupted.
+
+A stored series the source now sends at another frequency fails and keeps its data, unless the
+sync is full: then it is stored at the new frequency, and each old period gets a missing value
+(it leaves the current data; as_of before that sync still reads it). Nothing is deleted.
 """
 
 import contextlib
 import dataclasses
 import datetime
 import json
+import math
 import os
 import pathlib
 import socket
-import sys
 import time
 from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from typing import Any
 
 import pandas as pd
 
+from data_pipeline._files import try_lock, unlock
 from data_pipeline.store.catalog import check_catalog
 from data_pipeline.store.errors import LockHeldError, QuotaExhaustedError, StoreError
 from data_pipeline.store.http import Client
@@ -58,13 +63,7 @@ from data_pipeline.store.storage import (
     typed,
 )
 
-if sys.platform == "win32":
-    import msvcrt
-else:
-    import fcntl
-
 LOCK_FILE = "sync.lock"
-LOCKED_BYTE = 1 << 30  # Windows locks a byte range: one far past the holder's details keeps them readable
 WINDOW_DAYS: Mapping[Frequency, int] = {Frequency.DAILY: 30, Frequency.WEEKLY: 91}
 WINDOW_MONTHS: Mapping[Frequency, int] = {
     Frequency.MONTHLY: 24,
@@ -147,28 +146,14 @@ class SyncReport:
         return [line for report in self.sources for line in report.lines()]
 
 
-def _try_lock(descriptor: int) -> bool:
-    """Take the operating system's lock on an open lock file without waiting. The system releases
-    it when the process ends, however it ends, so a sync that was killed never blocks the next."""
+def _take(descriptor: int, path: pathlib.Path) -> bool:
+    """Take the operating system's lock on the open lock file without waiting (False: another
+    sync holds it). Any other failure is a StoreError that names the file."""
     try:
-        if sys.platform == "win32":
-            os.lseek(descriptor, LOCKED_BYTE, os.SEEK_SET)
-            msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
-        else:
-            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except OSError:
-        return False
-    return True
-
-
-def _unlock(descriptor: int) -> None:
-    with contextlib.suppress(OSError):
-        if sys.platform == "win32":
-            os.lseek(descriptor, LOCKED_BYTE, os.SEEK_SET)
-            msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
-        else:
-            fcntl.flock(descriptor, fcntl.LOCK_UN)
-    os.close(descriptor)
+        return try_lock(descriptor)
+    except OSError as exc:
+        msg = f"{path}: could not be locked ({type(exc).__name__}: {exc})"
+        raise StoreError(msg) from exc
 
 
 def _holder(path: pathlib.Path) -> str:
@@ -183,37 +168,38 @@ def _holder(path: pathlib.Path) -> str:
 @contextlib.contextmanager
 def lock(root: pathlib.Path) -> Iterator[None]:
     """Hold <root>/sync.lock for the duration of a sync. A second sync is refused while the first
-    runs. The file records the holder (pid, host, start); the lock itself is the operating
-    system's, so a file left behind by a sync that died is taken over."""
+    runs, with the holder (pid, host, start) the file records.
+
+    The lock is the operating system's: it ends with the process that holds it, however that
+    process ends, so a sync that was killed never blocks the next. The file is never deleted. A
+    sync that opened it just before the holder deleted it would lock a file nobody else sees, and
+    the next sync would create and lock another one: two syncs at once. A file left behind is
+    harmless; on release it is emptied, so a refusal never names a holder that is gone.
+    """
     path = root / LOCK_FILE
     root.mkdir(parents=True, exist_ok=True)
-    while True:
-        descriptor = os.open(path, os.O_RDWR | os.O_CREAT, 0o644)
-        if not _try_lock(descriptor):
-            os.close(descriptor)
+    descriptor = os.open(path, os.O_RDWR | os.O_CREAT, 0o644)
+    try:
+        if not _take(descriptor, path):
             msg = f"another sync is running on this store{_holder(path)}: {path}"
             raise LockHeldError(msg)
+        holder = {
+            "pid": os.getpid(),
+            "host": socket.gethostname(),
+            "started": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds"),
+        }
+        os.ftruncate(descriptor, 0)
+        os.lseek(descriptor, 0, os.SEEK_SET)
+        os.write(descriptor, json.dumps(holder).encode("ascii"))
         try:
-            same = os.fstat(descriptor).st_ino == path.stat().st_ino
-        except FileNotFoundError:
-            same = False
-        if same:
-            break
-        _unlock(descriptor)  # the sync that held it removed the file meanwhile: lock the new one
-    holder = {
-        "pid": os.getpid(),
-        "host": socket.gethostname(),
-        "started": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds"),
-    }
-    os.ftruncate(descriptor, 0)
-    os.lseek(descriptor, 0, os.SEEK_SET)
-    os.write(descriptor, json.dumps(holder).encode("ascii"))
-    try:
-        yield
+            yield
+        finally:
+            with contextlib.suppress(OSError):
+                os.ftruncate(descriptor, 0)
+            with contextlib.suppress(OSError):  # closing the descriptor releases it anyway
+                unlock(descriptor)
     finally:
-        _unlock(descriptor)
-        with contextlib.suppress(OSError):  # on Windows a sync that just opened it keeps the file
-            path.unlink(missing_ok=True)
+        os.close(descriptor)
 
 
 def observation_rows(series: SeriesData, fetched_at: datetime.datetime, today: datetime.date) -> list[Row]:
@@ -257,19 +243,52 @@ def last_real(observations: pd.DataFrame, today: datetime.date) -> dict[str, Las
     }
 
 
-def _frequency_change(series: SeriesData, previous: Row | None) -> str:
-    """The failure of a stored series that the source now sends with another frequency, or "".
+def _held_frequency(series: SeriesData, previous: Row | None) -> str:
+    """The frequency the store holds a series at, when the source now sends it at another; or ""."""
+    held = str(previous.get("frequency") or "") if previous else ""
+    return "" if held == series.frequency.value else held
+
+
+def _frequency_change(series: SeriesData, held: str) -> str:
+    """Why a sync that is not full refuses a stored series the source now sends at another
+    frequency, and the way out.
 
     Its periods are not stored: months next to quarters under one key would both stay current
-    (no new month replaces an old one), so series() would mix them and frame() repeat dates.
+    (no new month replaces an old one), so series() would mix them and frame() repeat dates. A
+    full sync of the key stores it at the new frequency and retires the old periods (see
+    retired_rows).
     """
-    held = str(previous.get("frequency") or "") if previous else ""
-    if not held or held == series.frequency.value:
-        return ""
+    new = series.frequency.value
     return (
-        f"{Outcome.SOURCE_ERROR.value}: the source now sends this series as {series.frequency.value}; "
-        f"the store holds it as {held} and keeps that data. One key cannot hold two frequencies"
+        f"{Outcome.SOURCE_ERROR.value}: the source now sends this series as {new}; "
+        f"the store holds it as {held} and keeps that data. One key cannot hold two frequencies: "
+        f"to store it as {new}, sync it with full (data-pipeline sync --full --key {series.key}, "
+        f"or Store.sync(keys=[{series.key!r}], full=True)); its {held} periods then leave its "
+        "current data and stay readable with as_of"
     )
+
+
+def retired_rows(stored: pd.DataFrame, series: SeriesData, fetched_at: datetime.datetime) -> list[Row]:
+    """A missing value, fetched at `fetched_at`, for each period of `series` that has a value in
+    `stored` and that the source no longer sends. A missing value is how the store says a period
+    has none now: series() and frame() leave it out, while every stored version stays, so as_of
+    before `fetched_at` still reads it. A full sync appends these for a series whose frequency
+    changed, so the old periods leave its current data without deleting anything."""
+    current = latest(stored[stored["key"] == series.key])
+    sent = {observation.period for observation in series.observations}
+    return [
+        {
+            "key": series.key,
+            "period": period,
+            "date": date,
+            "value": math.nan,
+            "projection": False,
+            "fetched_at": fetched_at,
+            "published_at": None,
+        }
+        for period, date, value in zip(current["period"], current["date"], current["value"], strict=True)
+        if period not in sent and pd.notna(value)
+    ]
 
 
 def _since(entry: CatalogEntry, row: Row | None, last: LastReal | None) -> datetime.date | None:
@@ -606,10 +625,13 @@ class _Checkpoints:
     def __post_init__(self) -> None:
         self.last = self.monotonic()
 
-    def keep(self, series: Sequence[SeriesData]) -> None:
-        """Hold downloaded series until the next checkpoint."""
+    def keep(self, series: Sequence[SeriesData], moved: Collection[str] = ()) -> None:
+        """Hold downloaded series until the next checkpoint. A series in `moved` is stored at a
+        new frequency: its old periods are retired (see retired_rows)."""
         received_at = self.clock()
         for item in series:
+            if item.key in moved:
+                self.rows.extend(retired_rows(self.observations, item, received_at))
             self.rows.extend(observation_rows(item, received_at, received_at.date()))
             self.series.append((item, received_at))
 
@@ -677,13 +699,16 @@ def _sync_source(
         try:
             for batch in source.fetch(requests):
                 fresh = [series for series in batch.series if series.key not in done]
-                moved = {series.key: _frequency_change(series, index.get(series.key)) for series in fresh}
-                checkpoints.keep([series for series in fresh if not moved[series.key]])
+                held = {series.key: _held_frequency(series, index.get(series.key)) for series in fresh}
+                moved = {key for key, frequency in held.items() if frequency}
+                # A full sync stores a series at its new frequency; any other refuses it.
+                refused = {} if full else {s.key: _frequency_change(s, held[s.key]) for s in fresh if s.key in moved}
+                checkpoints.keep([series for series in fresh if series.key not in refused], moved)
                 for series in fresh:
                     done.add(series.key)
-                    if moved[series.key]:
-                        failed.append((series.key, moved[series.key]))
-                        checkpoints.failed(series.entry, moved[series.key])
+                    if series.key in refused:
+                        failed.append((series.key, refused[series.key]))
+                        checkpoints.failed(series.entry, refused[series.key])
                     else:
                         ok += 1
                 for failure in batch.failures:

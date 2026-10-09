@@ -410,6 +410,12 @@ def test_filters_and_as_of(store):
         store.documents("sec_filings", "AAPL", kind="10-K")
 
 
+def test_a_filing_counts_as_known_from_the_end_of_its_day(store):
+    # the SEC gives the day it received a filing, not the hour, as for the XBRL facts it carries
+    assert list(store.documents("sec_filings", "AAPL", as_of="2026-01-29T12:00:00+00:00")["form"]) == ["10-K"]
+    assert len(store.documents("sec_filings", "AAPL", as_of="2026-01-29T23:59:59.999999+00:00")) == 3
+
+
 def test_unknown_documents_are_an_error(store):
     with pytest.raises(UnknownSeriesError, match="no stored documents of source 'sec_filings' have id 'MSFT'"):
         store.documents("sec_filings", "MSFT")

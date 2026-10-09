@@ -86,6 +86,17 @@ def test_failures_exit_one(workspace):
     assert "fred:NOPE  not_found:" in result.output
 
 
+def test_key_syncs_only_the_series_named(workspace):
+    root, _ = workspace
+    (root / "catalog.yaml").write_text("- source: fred\n  ids: [UNRATE, NOPE]\n", encoding="utf-8")
+    result = invoke("sync", "--root", str(root / "store"), "--key", "fred:UNRATE")
+    assert result.exit_code == 0
+    assert result.output.startswith("[ok]  fred        1 series")
+    typo = invoke("sync", "--root", str(root / "store"), "--key", "fred:UNRAT")
+    assert typo.exit_code == 2
+    assert "no catalog entry has key 'fred:UNRAT'" in typo.output
+
+
 def test_a_missing_key_is_a_clear_message_without_a_traceback(workspace):
     root, _ = workspace
     result = invoke("sync", "--root", str(root / "store"), "--env-file", str(root / "absent.env"))

@@ -146,7 +146,14 @@ class Store:
         *,
         full: bool = False,
     ) -> SyncReport:
-        """Download what the catalog declares and store what changed."""
+        """Download what the catalog declares and store what changed: of the `sources` and the
+        `keys` given, or all of it.
+
+        `full` asks each series for its whole history again. It is also how a series whose
+        frequency changed (say a catalog's `frequency: Q` corrected to `M`) is stored again, which
+        any other sync refuses: its old periods get a missing value, so `series` and `frame` read
+        only the new frequency, while `as_of` a moment before still reads the old periods.
+        """
         credentials = resolve(self._credentials, env_file=self._env_file)
         with Client(secrets=credentials.secrets(), transport=self._transport, sleep=self._sleep) as client:
             instances = {
@@ -269,7 +276,8 @@ class Store:
 
         One row per key, in its latest version or as it was known at `as_of`. `filters` keep the
         rows whose column equals the value: `table("comtrade", "MEX", flow="X", frequency="A")`.
-        They apply to that version, so `form="10-K"` leaves out a 10-K value a 10-K/A replaced.
+        They apply to that version, so `form="10-K"` leaves out a 10-K value a 10-K/A replaced
+        (a filter on a key column is applied first, since it keeps or drops a key whole).
         Columns: the key columns, `date`, the value columns, the attribute columns.
         """
         names = self._storage.table_names(source)
@@ -287,16 +295,23 @@ class Store:
             msg = f"unknown column(s) for a {source} table: {', '.join(unknown)} (columns: {', '.join(columns)})"
             raise StoreError(msg)
         order = [*(column for column in key if column != "period"), "date"]
+        # Every version of a key shares its key columns, so a filter on them drops whole keys and
+        # can go first, before the work of choosing versions. Any other filter goes after the
+        # version is chosen: never revive a replaced one.
+        on_key = {column: value for column, value in filters.items() if column in key}
+        on_version = {column: value for column, value in filters.items() if column not in key}
         parts = []
         for name in names if id is None else [id]:
             stored = self._storage.read_table(source, name)
             # a column added after this table was written reads as missing
             stored = stored.reindex(columns=[*stored.columns, *(c for c in columns if c not in stored)])
+            for column, value in on_key.items():
+                stored = stored[stored[column] == value]
             if as_of is None:
                 current = st.latest(stored, key, order, by_publication=schema.versioned)
             else:
                 current = st.as_of(stored, st.to_moment(as_of), key, order)
-            for column, value in filters.items():  # after the version is chosen: never revive a replaced one
+            for column, value in on_version.items():
                 current = current[current[column] == value]
             parts.append(current[columns].reset_index(drop=True))
         filled = [part for part in parts if not part.empty] or parts[:1]
@@ -314,8 +329,8 @@ class Store:
 
         Columns: `id`, the columns of the list (`group`, `date`, `file`, `role`, `url`, `size`,
         `sha256`, `fetched_at` and the source's own, such as `form`) and `path`, the file on
-        disk. Oldest document first. `as_of` keeps what had been published by that day;
-        `filters` keep the rows whose column equals the value.
+        disk. Oldest document first. `as_of` keeps what had been published by then, each document
+        known from the end of its day; `filters` keep the rows whose column equals the value.
         """
         names = self._storage.document_names(source)
         if id is not None and id not in names:
@@ -342,7 +357,9 @@ class Store:
         for column, value in filters.items():
             found = found[found[column] == value]
         if as_of is not None:
-            found = found[found["date"] <= st.to_moment(as_of).tz_localize(None)]
+            # a document gives the day it was published, not the hour: known from the end of that day
+            known_at = found["date"] + pd.Timedelta(days=1) - pd.Timedelta(microseconds=1)
+            found = found[known_at <= st.to_moment(as_of).tz_localize(None)]
         return found.sort_values(["date", "id", "group", "role", "file"], kind="stable").reset_index(drop=True)
 
     def revisions(self, key: str) -> pd.DataFrame:
