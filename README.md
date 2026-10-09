@@ -6,11 +6,14 @@ row, so you can read a series **as it was known on a past date**. That is what a
 to avoid look-ahead bias. How far back that works depends on the source: see
 [Reading as of a past date](#reading-as-of-a-past-date).
 
-- **Macro:** a bundled catalog of **1,293 curated series across 44 economies**. It covers rates,
-  money and credit, prices, activity, sentiment, labour and the external sector. Every series
-  has a stable `e_*` name, like `e_us_cpi` or `e_mx_target_rate`.
+- **Macro:** a bundled catalog of **1,293 curated series across 44 economies**, 61 indicators. It
+  covers rates, money and credit, prices, activity, sentiment, labour and the external sector.
+  Every series has a stable `e_*` name, like `e_us_cpi` or `e_mx_target_rate`. See
+  [The macro catalog](#the-macro-catalog).
 - **Sources, read directly from each publisher:** FRED, BLS, Banxico SIE, INEGI, the World Bank,
-  the BIS, the ECB, Eurostat, the OECD and the IMF. DBnomics covers what has no direct id yet.
+  the BIS, the ECB, Eurostat, the OECD and the IMF: 1,197 of the catalog's series, 861 of them
+  through SDMX. The other 96 come from DBnomics, a frozen mirror of datasets their publisher
+  retired.
 - **Tables:** goods trade from UN Comtrade, and the XBRL facts that companies report to the SEC.
   Each version of a fact is dated with the day it was filed.
 - **Documents:** SEC filings (10-K, 10-Q, 8-K with their exhibits, 20-F, 40-F), stored as the
@@ -130,6 +133,28 @@ store.add("fred", ["UNRATE"])
 report = store.sync()
 ```
 
+## The macro catalog
+
+`data-pipeline catalog` lists it. Each entry's name ends with the unit of its values, such as
+`(USD)`, `(index)` or `(% p.a.)`, and the series of one indicator (the alias without its country)
+share it. The 38 exceptions carry `attrs.units_differ`: goods trade and reserves still on the
+DBnomics mirror, and Banxico's reserves, are in millions of USD where the IMF series of the same
+indicator are in USD; FRED's nominal GDP is in billions at an annual rate.
+
+Some indicators are only as uniform as their publishers allow:
+
+- `short_rate` is the 3-month interbank rate (OECD) for ten economies, a money-market rate, a
+  Treasury bill yield or rate for most others, and the deposit rate for Switzerland. The name of
+  each says which.
+- `pmi_mfg` is the OECD's manufacturing confidence balance: a percent balance around 0, not a
+  purchasing managers' index around 50.
+
+`attrs.stale` marks 158 series that are not current, with the reason: the 96 on DBnomics, and
+62 whose publisher was, when checked on 2026-10-08, more than one period behind the store's
+staleness threshold: the euro members' national policy rates, which end in 1998, the IMF's
+unemployment rates and producer prices, published months late, and a few more. `catalog` shows
+them with `[stale]`.
+
 ## Data terms
 
 This library ships code, not data. Each user brings their own keys, and the data goes to that
@@ -137,8 +162,11 @@ user's own disk. Each source has its own terms of use. Every catalog entry has a
 flag:
 
 - `yes`: Eurostat, the World Bank.
-- `restricted`: the IMF, the BIS, the OECD.
+- `restricted`: the IMF, the BIS, the OECD, and DBnomics, which mirrors IMF and OECD data under
+  their terms.
 - `no`: FRED.
+- `unverified`: Banxico, INEGI and the ECB. Their terms have not been reviewed for this flag;
+  read them before a commercial use.
 
 FRED limits redistribution of large datasets and the use of its data to train machine-learning
 models. Check those terms before you build a commercial product on it.
