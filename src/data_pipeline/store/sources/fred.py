@@ -219,7 +219,7 @@ class Fred:
         if response.status_code == OK:
             payload: dict[str, Any] = response.json()
             return payload
-        text = self._client.scrub(response.text[:300])
+        text = self._client.excerpt(response.text, 300)
         if "api_key" in text:
             msg = f"FRED rejected the key: {text}"
             raise KeyRejectedError(msg)

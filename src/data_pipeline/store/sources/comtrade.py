@@ -278,7 +278,7 @@ class Comtrade:
             headers={KEY_HEADER: key},
             per_minute=self.requests_per_minute,
         )
-        text = self._client.scrub(response.text[:300])
+        text = self._client.excerpt(response.text, 300)
         if response.status_code == UNAUTHORIZED:
             msg = f"Comtrade rejected the key: {text}"
             raise KeyRejectedError(msg)
@@ -290,7 +290,7 @@ class Comtrade:
             raise _AnswerError(msg)
         payload = response.json()
         if payload.get("error"):
-            raise _AnswerError(self._client.scrub(str(payload["error"])[:300]))
+            raise _AnswerError(self._client.excerpt(str(payload["error"]), 300))
         if len(payload.get("data") or []) >= MAX_ROWS:
             msg = f"the answer reached Comtrade's cap of {MAX_ROWS} rows and may be cut short: narrow the entry"
             raise _AnswerError(msg)

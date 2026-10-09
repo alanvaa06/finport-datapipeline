@@ -4,7 +4,7 @@ import datetime
 import math
 
 import pandas as pd
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from data_pipeline.store.storage import OBS_DTYPES, TOLERANCE, append_changes, as_of, empty_observations, latest, typed
@@ -12,6 +12,9 @@ from data_pipeline.store.storage import OBS_DTYPES, TOLERANCE, append_changes, a
 START = datetime.datetime(2026, 1, 1, tzinfo=datetime.UTC)
 DAYS = {"2026-01": "2026-01-31", "2026-02": "2026-02-28", "2026-03": "2026-03-31", "2026-04": "2026-04-30"}
 VALUES = st.one_of(st.just(math.nan), st.floats(min_value=-1e6, max_value=1e6, allow_nan=False))
+# Each example replays up to six syncs through pandas: hundreds of ms on a loaded machine, so the
+# default 200 ms deadline makes these properties fail on timing, not on the store.
+UNTIMED = settings(deadline=None)
 BATCHES = st.lists(st.dictionaries(st.sampled_from(sorted(DAYS)), VALUES, min_size=1), min_size=1, max_size=6)
 
 
@@ -51,6 +54,7 @@ def replay(batches):
     return history
 
 
+@UNTIMED
 @given(BATCHES)
 def test_syncing_the_same_data_twice_adds_no_rows(batches):
     stored = replay(batches)[-1]
@@ -58,6 +62,7 @@ def test_syncing_the_same_data_twice_adds_no_rows(batches):
     assert (len(again), added, revised) == (len(stored), 0, 0)
 
 
+@UNTIMED
 @given(BATCHES)
 def test_a_normal_read_returns_the_last_value_received(batches):
     expected = {}
@@ -69,6 +74,7 @@ def test_a_normal_read_returns_the_last_value_received(batches):
     assert all(same(found[period], expected[period]) for period in expected)
 
 
+@UNTIMED
 @given(BATCHES)
 def test_an_as_of_read_never_returns_something_known_later(batches):
     history = replay(batches)
@@ -78,6 +84,7 @@ def test_an_as_of_read_never_returns_something_known_later(batches):
         pd.testing.assert_frame_equal(seen, latest(then))
 
 
+@UNTIMED
 @given(BATCHES)
 def test_no_stored_row_is_ever_changed_or_deleted(batches):
     history = replay(batches)

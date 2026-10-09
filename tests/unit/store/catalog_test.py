@@ -2,7 +2,9 @@ import datetime
 import pathlib
 
 import pytest
+import yaml
 
+from data_pipeline.store import catalog as catalog_module
 from data_pipeline.store.catalog import build_entries, bundled_catalogs, check_catalog, load_catalog, parse_catalog
 from data_pipeline.store.errors import CatalogError
 from data_pipeline.store.model import Frequency
@@ -175,3 +177,76 @@ def test_a_file_wins_over_a_bundled_catalog_of_the_same_name(tmp_path, monkeypat
 def test_an_unknown_catalog_lists_the_bundled_ones(tmp_path):
     with pytest.raises(CatalogError, match="bundled catalogs: macro"):
         load_catalog(tmp_path / "absent.yaml")
+
+
+def test_ids_and_aliases_keep_the_text_written_where_yaml_1_1_would_turn_it_into_a_number(tmp_path):
+    path = tmp_path / "catalog.yaml"
+    path.write_text(
+        "- source: inegi\n"
+        "  ids: [0123, 12:30, NO, 1e3, 1.10, 737121]\n"
+        "  alias: {0123: yes, NO: e_no_x}\n"
+        "  start: 1990-01-01\n"
+        "  stale_after_days: 45\n"
+        "- source: inegi\n"
+        "  id: 0456\n"
+        "  alias: off\n",
+        encoding="utf-8",
+    )
+    first, *_, last = entries = load_catalog(path)
+    assert [item.source_id for item in entries] == ["0123", "12:30", "NO", "1e3", "1.10", "737121", "0456"]
+    assert (first.alias, entries[2].alias, last.alias) == ("yes", "e_no_x", "off")
+    assert (first.start, first.stale_after_days) == (datetime.date(1990, 1, 1), 45)
+
+
+def test_ids_and_aliases_merged_from_an_anchor_keep_the_text_written(tmp_path):
+    path = tmp_path / "catalog.yaml"
+    path.write_text(
+        "- <<: &base\n"
+        "    source: inegi\n"
+        "    id: 0123\n"
+        "    alias: NO\n"
+        "  start: 1990-01-01\n"
+        "- <<: [*base]\n"
+        "  id: 12:30\n"
+        "  alias: e_mx_x\n"
+        "- <<: {ids: [0456, 1.10], alias: {0456: off}}\n"
+        "  source: inegi\n",
+        encoding="utf-8",
+    )
+    entries = load_catalog(path)
+    assert [(item.source_id, item.alias) for item in entries] == [
+        ("0123", "NO"),
+        ("12:30", "e_mx_x"),
+        ("0456", "off"),
+        ("1.10", None),
+    ]
+    assert entries[0].start == datetime.date(1990, 1, 1)
+
+
+def test_an_empty_id_is_still_refused(tmp_path):
+    path = tmp_path / "catalog.yaml"
+    path.write_text("- source: inegi\n  id: ~\n", encoding="utf-8")
+    with pytest.raises(CatalogError, match="'id' must be one series id"):
+        load_catalog(path)
+
+
+def test_the_bundled_catalog_reads_the_same_keys_as_plain_yaml():
+    text = (pathlib.Path(catalog_module.__file__).parent / "catalogs" / "macro.yaml").read_text(encoding="utf-8")
+    plain = parse_catalog(yaml.safe_load(text))
+    assert [(item.key, item.alias) for item in load_catalog(pathlib.Path("bundled:macro"))] == [
+        (item.key, item.alias) for item in plain
+    ]
+
+
+def test_a_folder_named_like_a_bundled_catalog_does_not_hide_it(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "macro").mkdir()
+    assert len(load_catalog(pathlib.Path("macro"))) > 1000
+
+
+def test_bundled_names_a_shipped_catalog_even_beside_a_file_of_that_name(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "macro").write_text("- source: fred\n  ids: [UNRATE]\n", encoding="utf-8")
+    assert len(load_catalog(pathlib.Path("bundled:macro"))) > 1000
+    with pytest.raises(CatalogError, match="bundled catalogs: macro"):
+        load_catalog(pathlib.Path("bundled:nothing"))

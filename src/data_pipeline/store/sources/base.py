@@ -6,6 +6,8 @@ skips the rest of that source; a network failure or an unexpected answer fails o
 request; an exhausted quota stops the source. Nothing is filled in.
 """
 
+import contextlib
+import contextvars
 import datetime
 import math
 from collections.abc import Callable, Collection, Iterator, Sequence
@@ -35,8 +37,23 @@ UNSUPPORTED_FREQUENCY = "unsupported frequency"
 DECLARE_FREQUENCY = "the source does not report a frequency: declare `frequency` in the catalog"
 
 
+_CLOCK: contextvars.ContextVar[Callable[[], datetime.datetime] | None] = contextvars.ContextVar("clock", default=None)
+
+
 def utc_today() -> datetime.date:
-    return datetime.datetime.now(datetime.UTC).date()
+    """Today in UTC by the clock of the sync that is running (Store(clock=...)), else the system's."""
+    clock = _CLOCK.get()
+    return (clock() if clock is not None else datetime.datetime.now(datetime.UTC)).date()
+
+
+@contextlib.contextmanager
+def clock_of_sync(clock: Callable[[], datetime.datetime]) -> Iterator[None]:
+    """While a sync runs, the sources' `utc_today` reads its clock rather than the system's."""
+    token = _CLOCK.set(clock)
+    try:
+        yield
+    finally:
+        _CLOCK.reset(token)
 
 
 class Source(Protocol):

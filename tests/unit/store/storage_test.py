@@ -1,11 +1,14 @@
 import datetime
+import errno
 import json
 import math
+import pathlib
+import sys
 
 import pandas as pd
 import pytest
 
-from data_pipeline.store import storage as storage_module
+from data_pipeline import _files as files_module
 from data_pipeline.store.errors import StoreError
 from data_pipeline.store.storage import (
     INDEX_COLUMNS,
@@ -187,7 +190,7 @@ def test_a_file_held_open_by_a_reader_is_retried_and_then_written(tmp_path, monk
 
     waits = []
     monkeypatch.setattr(type(tmp_path), "replace", busy_twice)
-    monkeypatch.setattr(storage_module, "_sleep", waits.append)
+    monkeypatch.setattr(files_module, "_sleep", waits.append)
     more, _, _ = append_changes(stored, rows({"2026-06": 4.3}, JULY_4))
     storage.write_observations("fred", more)
     assert len(attempts) == 3
@@ -204,7 +207,7 @@ def test_a_file_that_stays_open_is_a_clear_error_and_the_old_data_survives(tmp_p
         raise PermissionError(13, "the file is being used by another process")
 
     monkeypatch.setattr(type(tmp_path), "replace", always_busy)
-    monkeypatch.setattr(storage_module, "_sleep", lambda _seconds: None)
+    monkeypatch.setattr(files_module, "_sleep", lambda _seconds: None)
     more, _, _ = append_changes(stored, rows({"2026-06": 4.3}, JULY_4))
     with pytest.raises(StoreError, match="another program has it open"):
         storage.write_observations("fred", more)
@@ -220,3 +223,113 @@ def test_latest_prefers_the_newest_publication_among_rows_of_one_fetch():
         ignore_index=True,
     )
     assert values_of(latest(newest_first)) == {"2026-04": 4.1}
+
+
+EVERY_FILE = pytest.mark.parametrize(
+    ("name", "read"),
+    [
+        ("series/fred.parquet", lambda storage: storage.read_observations("fred")),
+        ("index.parquet", lambda storage: storage.read_index()),
+        ("runs.json", lambda storage: storage.read_runs()),
+        ("store.json", lambda storage: storage.prepare()),
+        ("tables/comtrade/MEX.parquet", lambda storage: storage.read_table("comtrade", "MEX")),
+        ("tables/comtrade/schema.json", lambda storage: storage.table_schema("comtrade")),
+        ("documents/sec_filings/AAPL.parquet", lambda storage: storage.read_documents("sec_filings", "AAPL")),
+    ],
+)
+
+
+@EVERY_FILE
+def test_a_damaged_file_is_a_store_error_that_names_it(tmp_path, name, read):
+    path = tmp_path / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"\x00" * 64)  # what a power cut can leave behind
+    with pytest.raises(StoreError, match=r"cannot be read .*restore it from a backup or move it aside") as raised:
+        read(Storage(tmp_path))
+    assert str(path) in str(raised.value)
+
+
+@EVERY_FILE
+def test_a_file_the_system_will_not_open_is_not_called_damaged(tmp_path, monkeypatch, name, read):
+    path = tmp_path / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"\x00" * 64)
+
+    def refused(*_args, **_options):
+        raise PermissionError(errno.EACCES, "Permission denied")  # OneDrive, an antivirus or Excel holds it
+
+    monkeypatch.setattr(pd, "read_parquet", refused)
+    monkeypatch.setattr(pathlib.Path, "read_text", refused)
+    with pytest.raises(StoreError, match=r"could not be opened \(PermissionError: .*Permission denied\)") as raised:
+        read(Storage(tmp_path))
+    assert str(path) in str(raised.value)
+    assert "damaged" not in str(raised.value)
+    assert "backup" not in str(raised.value)
+
+
+def test_a_corruption_that_pyarrow_reports_as_an_oserror_is_still_called_damaged(tmp_path, monkeypatch):
+    def corrupt(*_args, **_options):
+        msg = "Corrupt snappy compressed data."  # what pyarrow raises for a torn page, without an errno
+        raise OSError(msg)
+
+    (tmp_path / "index.parquet").write_bytes(b"\x00" * 64)
+    monkeypatch.setattr(pd, "read_parquet", corrupt)
+    with pytest.raises(StoreError, match=r"cannot be read .*restore it from a backup or move it aside"):
+        Storage(tmp_path).read_index()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="a file opened without sharing is a Windows thing")
+def test_a_file_another_program_holds_exclusively_could_not_be_opened(tmp_path):
+    import ctypes  # Windows only, like the test
+    from ctypes import wintypes
+
+    storage = Storage(tmp_path)
+    storage.write_index(empty_index())
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.CreateFileW.restype = wintypes.HANDLE
+    generic_read, no_sharing, open_existing, normal = 0x80000000, 0, 3, 0x80
+    path = str(tmp_path / "index.parquet")
+    handle = kernel.CreateFileW(path, generic_read, no_sharing, None, open_existing, normal, None)
+    try:  # as Excel holds a file it opened
+        with pytest.raises(StoreError, match=r"index\.parquet: could not be opened"):
+            storage.read_index()
+    finally:
+        kernel.CloseHandle(handle)
+
+
+def test_every_write_reaches_the_disk_before_it_replaces_the_file(tmp_path, monkeypatch):
+    events = []
+    real_fsync, real_replace = files_module.os.fsync, files_module._replace
+    monkeypatch.setattr(files_module.os, "fsync", lambda descriptor: events.append("fsync") or real_fsync(descriptor))
+    monkeypatch.setattr(
+        files_module, "_replace", lambda temporary, path: events.append("replace") or real_replace(temporary, path)
+    )
+    monkeypatch.setattr(files_module, "_sync_folder", lambda _folder: events.append("folder"))
+    storage = Storage(tmp_path)
+    storage.write_observations("fred", rows({"2026-05": 4.1}, JUNE_6))
+    storage.write_runs({"fred": {"ok": 1}})
+    storage.write_document("sec_filings", "AAPL", "0001", "a.htm", b"<html></html>")
+    assert events == ["fsync", "replace", "folder"] * 3
+
+
+@pytest.mark.parametrize("day", ["2026-06-15", "20260615", " 2026-06-15 ", datetime.date(2026, 6, 15)])
+def test_every_date_without_a_time_means_the_end_of_that_day(day):
+    assert to_moment(day) == pd.Timestamp("2026-06-15 23:59:59.999999", tz="UTC")
+
+
+@pytest.mark.parametrize(
+    ("moment", "expected"),
+    [
+        ("2026-06-15T08:00Z", "2026-06-15 08:00"),
+        ("2026-06-15 08:00", "2026-06-15 08:00"),
+        (pd.Timestamp("2026-06-15"), "2026-06-15 00:00"),  # a datetime is an instant, even at midnight
+    ],
+)
+def test_a_time_makes_it_that_instant(moment, expected):
+    assert to_moment(moment) == pd.Timestamp(expected, tz="UTC")
+
+
+@pytest.mark.parametrize("text", ["2026/06/15", "2026-6-15", "15-06-2026", "June 15", ""])
+def test_text_that_is_not_an_iso_date_is_refused(text):
+    with pytest.raises(StoreError, match="is not a date: write it as 2026-06-15"):
+        to_moment(text)

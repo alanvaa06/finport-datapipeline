@@ -1,13 +1,24 @@
 import datetime
+import errno
 import math
+import os
+import signal
+import subprocess
+import sys
+import time
 
+import pandas as pd
 import pytest
 
-from data_pipeline.store.errors import CatalogError, LockHeldError
+from data_pipeline._files import try_lock
+from data_pipeline.store import sync as sync_module
+from data_pipeline.store.api import Store
+from data_pipeline.store.errors import CatalogError, LockHeldError, StoreError
 from data_pipeline.store.model import Failure, Frequency, Observation, Outcome, SeriesData
 from data_pipeline.store.periods import read_period
+from data_pipeline.store.sources.base import utc_today
 from data_pipeline.store.storage import Storage, as_of, latest, to_moment
-from data_pipeline.store.sync import LOCK_FILE, NOT_RETURNED, SourceReport, SyncReport, sync, window_start
+from data_pipeline.store.sync import LOCK_FILE, NOT_RETURNED, SourceReport, SyncReport, lock, sync, window_start
 
 from .helpers import NOW, FakeSource, client, entry, monthly
 
@@ -25,6 +36,15 @@ def stored_values(tmp_path, key="fake:UNRATE"):
     frame = latest(Storage(tmp_path).read_observations("fake"))
     frame = frame[frame["key"] == key]
     return dict(zip(frame["period"], frame["value"], strict=True))
+
+
+def lock_is_free(tmp_path):
+    """True when a sync could take the lock now: whatever ran before released it."""
+    try:
+        with lock(tmp_path):
+            return True
+    except LockHeldError:
+        return False
 
 
 def index_row(tmp_path, key="fake:UNRATE"):
@@ -168,19 +188,25 @@ def test_the_daily_budget_persists_between_runs_of_the_same_day(tmp_path):
     assert Storage(tmp_path).read_runs()["fake"]["budget"] == {"day": "2026-06-07", "calls": 1}
 
 
-def test_an_interrupted_run_keeps_what_it_stored_and_frees_the_lock(tmp_path):
-    class Dies(FakeSource):
-        def fetch(self, requests):
-            yield from super().fetch(requests[:1])
-            msg = "power cut"
-            raise RuntimeError(msg)
+class Breaks(FakeSource):
+    """Answers the first request, then fails with `error` as a bug or a stopped process would."""
 
-    source = Dies()
+    def __init__(self, error, name="fake", **options):
+        super().__init__(name, **options)
+        self.error = error
+
+    def fetch(self, requests):
+        yield from super().fetch(requests[:1])
+        raise self.error
+
+
+def test_an_interrupted_run_keeps_what_it_stored_and_frees_the_lock(tmp_path):
+    source = Breaks(KeyboardInterrupt())
     source.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
-    with pytest.raises(RuntimeError, match="power cut"):
+    with pytest.raises(KeyboardInterrupt):
         run(tmp_path, source, entries=[UNRATE, DGS10])
     assert stored_values(tmp_path) == {"2026-05": 4.1}
-    assert not (tmp_path / LOCK_FILE).exists()
+    assert lock_is_free(tmp_path)
     healthy = FakeSource()
     healthy.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
     healthy.answers["DGS10"] = monthly(DGS10, {"2026-05": 4.4})
@@ -188,11 +214,119 @@ def test_an_interrupted_run_keeps_what_it_stored_and_frees_the_lock(tmp_path):
     assert (report.sources[0].ok, report.sources[0].new) == (2, 1)
 
 
-def test_a_second_sync_is_refused_while_the_lock_exists(tmp_path):
-    (tmp_path / LOCK_FILE).write_text("123", encoding="ascii")
-    with pytest.raises(LockHeldError, match="Delete it by hand"):
-        run(tmp_path, FakeSource())
+def test_the_calls_of_an_interrupted_run_count_against_the_daily_budget(tmp_path):
+    http = client()
+    source = Breaks(KeyboardInterrupt(), daily_budget=3, client=http)
+    source.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
+    with pytest.raises(KeyboardInterrupt):
+        run(tmp_path, source, entries=[UNRATE, DGS10], http=http)
+    assert Storage(tmp_path).read_runs()["fake"]["budget"] == {"day": "2026-06-06", "calls": 1}
+
+
+def test_a_source_that_breaks_fails_its_own_series_and_the_next_source_still_runs(tmp_path):
+    broken = Breaks(RuntimeError("a bug in the parser"))
+    broken.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
+    other = FakeSource("other")
+    wanted = entry("X", source="other")
+    other.answers["X"] = monthly(wanted, {"2026-05": 1.0})
+    report = sync(Storage(tmp_path), [UNRATE, DGS10, wanted], {"fake": broken, "other": other}, client(), NOW)
+    fake, healthy = report.sources
+    assert fake.ok == 1
+    reason = "source_error: the sync of this source stopped: RuntimeError: a bug in the parser"
+    assert fake.failed == (("fake:DGS10", reason),)
+    assert (healthy.source, healthy.ok) == ("other", 1)
+    assert report.exit_code == 1
+    assert index_row(tmp_path, "fake:DGS10")["status"] == "failed"
+    assert Storage(tmp_path).read_runs()["fake"]["failed"] == 1
+    assert lock_is_free(tmp_path)
+
+
+def test_a_damaged_file_of_one_source_fails_that_source_only(tmp_path):
+    fake, other = FakeSource(), FakeSource("other")
+    wanted = entry("X", source="other")
+    fake.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
+    other.answers["X"] = monthly(wanted, {"2026-05": 1.0})
+    sources = {"fake": fake, "other": other}
+    sync(Storage(tmp_path), [UNRATE, wanted], sources, client(), NOW)
+    Storage(tmp_path).series_path("fake").write_bytes(b"\x00" * 4096)  # torn by a power cut
+    report = sync(Storage(tmp_path), [UNRATE, wanted], sources, client(), LATER)
+    (key, reason), = report.sources[0].failed
+    assert key == "fake:UNRATE"
+    assert "fake.parquet: cannot be read" in reason
+    assert (report.sources[1].ok, len(other.seen)) == (1, 2)
+    assert report.exit_code == 1
+
+
+def test_a_second_sync_is_refused_while_another_holds_the_lock(tmp_path):
+    source = FakeSource()
+    with lock(tmp_path), pytest.raises(LockHeldError, match=f"another sync is running .*pid {os.getpid()}"):
+        run(tmp_path, source)
+    assert source.seen == []
+
+
+def test_a_lock_left_by_a_sync_that_died_is_taken_over(tmp_path):
+    (tmp_path / LOCK_FILE).write_text("123", encoding="ascii")  # nothing holds it any more
+    source = FakeSource()
+    source.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
+    assert run(tmp_path, source).exit_code == 0
+    assert lock_is_free(tmp_path)
+
+
+def test_the_lock_file_is_never_deleted_and_says_nothing_once_released(tmp_path):
+    with lock(tmp_path):
+        assert f'"pid": {os.getpid()}' in (tmp_path / LOCK_FILE).read_text(encoding="ascii")
+    assert (tmp_path / LOCK_FILE).read_bytes() == b""  # no stale holder for the next refusal to name
+
+
+def test_a_sync_that_opened_the_lock_file_just_before_it_was_released_still_excludes_the_next(tmp_path):
+    # Sync B opens sync.lock while A holds it; A releases; B locks what it opened. Had A deleted
+    # the file, B would hold a lock on a file nobody else sees, and C would create and lock another.
+    with lock(tmp_path):
+        late = os.open(tmp_path / LOCK_FILE, os.O_RDWR)
+    try:
+        assert try_lock(late)
+        with pytest.raises(LockHeldError):
+            run(tmp_path, FakeSource())
+    finally:
+        os.close(late)
+
+
+HOLD_THE_LOCK = """
+import os, pathlib, sys, time
+from data_pipeline.store.sync import lock
+with lock(pathlib.Path(sys.argv[1])):
+    print(os.getpid(), flush=True)
+    time.sleep(120)
+"""
+
+
+def run_once_the_lock_is_free(tmp_path, source, seconds=20.0):
+    """The system frees the lock of a process that died soon after, not at the same instant."""
+    deadline = time.monotonic() + seconds
+    while True:
+        try:
+            return run(tmp_path, source)
+        except LockHeldError:
+            if time.monotonic() > deadline:
+                raise
+            time.sleep(0.1)
+
+
+def test_a_sync_killed_without_any_cleanup_does_not_block_the_next_one(tmp_path):
+    # The way a panel's Stop button ends a run: no finally, no atexit, the lock file stays behind.
+    holder = subprocess.Popen([sys.executable, "-c", HOLD_THE_LOCK, str(tmp_path)], stdout=subprocess.PIPE, text=True)
+    try:
+        pid = int(holder.stdout.readline())
+        with pytest.raises(LockHeldError, match=rf"another sync is running on this store \(pid {pid} on "):
+            run(tmp_path, FakeSource())
+        os.kill(pid, signal.SIGTERM)  # TerminateProcess on Windows; on POSIX the default action, no finally
+    finally:
+        holder.kill()
+        holder.wait()
     assert (tmp_path / LOCK_FILE).exists()
+    source = FakeSource()
+    source.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
+    assert run_once_the_lock_is_free(tmp_path, source).exit_code == 0
 
 
 def test_an_invalid_catalog_stops_before_any_download(tmp_path):
@@ -200,7 +334,7 @@ def test_an_invalid_catalog_stops_before_any_download(tmp_path):
     with pytest.raises(CatalogError, match="declared more than once"):
         run(tmp_path, source, entries=[UNRATE, UNRATE])
     assert source.seen == []
-    assert not (tmp_path / LOCK_FILE).exists()
+    assert lock_is_free(tmp_path)
 
 
 def test_only_sources_and_only_keys_restrict_the_run(tmp_path):
@@ -398,3 +532,175 @@ def test_a_version_repeated_with_a_later_date_adds_nothing(tmp_path):
     report = run(tmp_path, source, now=LATER)
     assert (report.sources[0].new, report.sources[0].revised) == (0, 0)
     assert len(Storage(tmp_path).read_observations("fake")) == 1
+
+
+def test_each_series_is_stamped_with_the_time_it_was_downloaded(tmp_path):
+    # A run that starts at 12:00 and crosses midnight UTC: DGS10 arrives on the next day.
+    source = FakeSource()
+    source.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
+    source.answers["DGS10"] = monthly(DGS10, {"2026-05": 4.4})
+
+    def clock():
+        return NOW + datetime.timedelta(hours=6 * len(source.seen))
+
+    run(tmp_path, source, entries=[UNRATE, DGS10], clock=clock)
+    stored = Storage(tmp_path).read_observations("fake")
+    stamps = dict(zip(stored["key"], stored["fetched_at"], strict=True))
+    assert stamps == {
+        "fake:UNRATE": pd.Timestamp("2026-06-06 18:00", tz="UTC"),
+        "fake:DGS10": pd.Timestamp("2026-06-07 00:00", tz="UTC"),
+    }
+    known = as_of(stored, to_moment("2026-06-06"))
+    assert list(known["key"]) == ["fake:UNRATE"]
+    assert index_row(tmp_path, "fake:DGS10")["last_fetched_at"] == pd.Timestamp("2026-06-07 00:00", tz="UTC")
+
+
+def test_failure_reasons_are_scrubbed_before_they_are_stored_or_printed(tmp_path):
+    source = FakeSource()
+    source.answers["UNRATE"] = Failure(UNRATE, Outcome.SOURCE_ERROR, "HTTP 500: token=TOPSECRET42 rejected")
+    report = run(tmp_path, source, http=client(secrets=("TOPSECRET42",)))
+    assert report.sources[0].failed == (("fake:UNRATE", "source_error: HTTP 500: token=*** rejected"),)
+    assert index_row(tmp_path)["reason"] == "source_error: HTTP 500: token=*** rejected"
+
+
+def quarterly(catalog_entry, values):
+    observations = tuple(
+        Observation(*read_period(period, Frequency.QUARTERLY), value) for period, value in values.items()
+    )
+    return SeriesData(catalog_entry, catalog_entry.key, "Q", Frequency.QUARTERLY, observations=observations)
+
+
+def test_a_series_whose_frequency_changes_fails_and_keeps_its_data(tmp_path):
+    source = FakeSource()
+    source.answers["UNRATE"] = monthly(UNRATE, {"2026-01": 10.0, "2026-02": 11.0, "2026-03": 12.0})
+    run(tmp_path, source)
+    source.answers["UNRATE"] = quarterly(UNRATE, {"2026Q1": 33.0})
+    report = run(tmp_path, source, now=LATER)
+    (key, reason), = report.sources[0].failed
+    assert key == "fake:UNRATE"
+    assert reason.startswith("source_error: the source now sends this series as Q; the store holds it as M")
+    assert "to store it as Q, sync it with full (data-pipeline sync --full --key fake:UNRATE, " in reason
+    assert "Store.sync(keys=['fake:UNRATE'], full=True))" in reason
+    assert report.exit_code == 1
+    assert stored_values(tmp_path) == {"2026-01": 10.0, "2026-02": 11.0, "2026-03": 12.0}
+    row = index_row(tmp_path)
+    assert (row["status"], row["frequency"], row["last_period"]) == ("failed", "M", "2026-03")
+
+
+def test_a_full_sync_stores_a_series_at_its_new_frequency_and_keeps_the_old_one_as_history(tmp_path):
+    source = FakeSource()
+    source.answers["UNRATE"] = monthly(UNRATE, {"2026-01": 10.0, "2026-02": 11.0, "2026-03": 12.0})
+    source.answers["DGS10"] = monthly(DGS10, {"2026-02": 4.0, "2026-03": 4.1})
+    run(tmp_path, source, entries=[UNRATE, DGS10])
+    source.answers["UNRATE"] = quarterly(UNRATE, {"2026Q1": 33.0})  # a catalog's frequency corrected
+    source.answers["DGS10"] = monthly(DGS10, {"2026-03": 4.1})  # no frequency change: nothing retired
+    assert run(tmp_path, source, entries=[UNRATE, DGS10], now=LATER).exit_code == 1
+    report = run(tmp_path, source, entries=[UNRATE, DGS10], now=LATER + datetime.timedelta(days=1), full=True)
+    assert (report.sources[0].ok, report.sources[0].failed, report.exit_code) == (2, (), 0)
+    assert (report.sources[0].new, report.sources[0].revised) == (1, 3)  # each month's value becomes missing
+    store = Store(tmp_path)
+    assert store.series("fake:UNRATE").to_dict("records") == [
+        {"date": pd.Timestamp("2026-03-31"), "period": "2026Q1", "value": 33.0}
+    ]
+    before = store.series("fake:UNRATE", as_of=LATER.date())
+    assert list(zip(before["period"], before["value"], strict=True)) == [
+        ("2026-01", 10.0),
+        ("2026-02", 11.0),
+        ("2026-03", 12.0),
+    ]
+    assert len(store.revisions("fake:UNRATE")) == 7  # append-only: every stored row is still there
+    assert list(store.series("fake:DGS10")["period"]) == ["2026-02", "2026-03"]
+    row = index_row(tmp_path)
+    assert (row["status"], row["frequency"], row["last_period"]) == ("ok", "Q", "2026Q1")
+
+
+def test_a_full_sync_retires_the_dated_versions_of_the_old_frequency_too(tmp_path):
+    source = FakeSource()
+    source.answers["UNRATE"] = vintages(UNRATE, UNRATE_VINTAGES)
+    run(tmp_path, source)
+    source.answers["UNRATE"] = quarterly(UNRATE, {"2026Q1": 33.0})
+    run(tmp_path, source, now=LATER, full=True)
+    store = Store(tmp_path)
+    assert list(store.series("fake:UNRATE")["period"]) == ["2026Q1"]
+    assert list(store.series("fake:UNRATE", as_of="2026-06-05")["value"]) == [4.1, 4.2]
+
+
+@pytest.mark.parametrize(
+    ("options", "message"),
+    [
+        ({"only_sources": ["fredd"]}, r"no catalog entry has source 'fredd' \(sources in the catalog: fake\)"),
+        ({"only_keys": ["fake:UNRAT", "fake:DGS10"]}, "no catalog entry has key 'fake:UNRAT'"),
+        ({"only_sources": ["fake"], "only_keys": ["other:X"]}, "no catalog entry has key 'other:X'"),
+    ],
+)
+def test_a_source_or_key_the_catalog_does_not_declare_is_an_error_not_an_empty_run(tmp_path, options, message):
+    source = FakeSource()
+    with pytest.raises(StoreError, match=message):
+        run(tmp_path, source, entries=[UNRATE, DGS10], **options)
+    assert source.seen == []
+    assert lock_is_free(tmp_path)
+
+
+def test_sources_and_keys_that_select_nothing_together_are_an_error(tmp_path):
+    other = entry("X", source="other")
+    with pytest.raises(StoreError, match="select no catalog entry"):
+        sync(Storage(tmp_path), [UNRATE, other], {"fake": FakeSource(), "other": FakeSource("other")}, client(), NOW,
+             only_sources=["fake"], only_keys=["other:X"])
+
+
+def test_a_start_moved_earlier_asks_for_the_history_before_what_was_asked(tmp_path):
+    source = FakeSource()
+    source.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
+    run(tmp_path, source, entries=[entry("UNRATE", start=datetime.date(2020, 1, 1))])
+    run(tmp_path, source, entries=[entry("UNRATE", start=datetime.date(1990, 1, 1))], now=LATER)
+    run(tmp_path, source, entries=[entry("UNRATE", start=datetime.date(1990, 1, 1))], now=LATER)
+    run(tmp_path, source, entries=[UNRATE], now=LATER)  # no start: the whole history
+    run(tmp_path, source, entries=[UNRATE], now=LATER)
+    assert [request.since for request in source.seen] == [
+        datetime.date(2020, 1, 1),
+        datetime.date(1990, 1, 1),
+        datetime.date(2024, 5, 1),
+        None,
+        datetime.date(2024, 5, 1),
+    ]
+
+
+def test_sources_read_today_from_the_clock_of_the_sync(tmp_path):
+    seen = []
+
+    class Dated(FakeSource):
+        def fetch(self, requests):
+            seen.append(utc_today())
+            yield from super().fetch(requests)
+
+    later = datetime.datetime(2031, 1, 2, 3, 0, tzinfo=datetime.UTC)
+    run(tmp_path, Dated(), now=later, clock=lambda: later)
+    assert seen == [datetime.date(2031, 1, 2)]
+    assert utc_today() != datetime.date(2031, 1, 2)  # outside a sync: the system's clock
+
+
+def test_the_budget_day_follows_the_clock_not_the_start_of_the_run(tmp_path):
+    http = client()
+    first, second = FakeSource(daily_budget=5, client=http), FakeSource("other", daily_budget=5, client=http)
+    wanted = entry("X", source="other")
+    first.answers["UNRATE"] = monthly(UNRATE, {"2026-05": 4.1})
+    second.answers["X"] = monthly(wanted, {"2026-05": 1.0})
+    late = NOW.replace(hour=23, minute=30)
+
+    def clock():  # every request takes an hour: the first one ends after midnight UTC
+        return late + datetime.timedelta(hours=len(first.seen) + len(second.seen))
+
+    sync(Storage(tmp_path), [UNRATE, wanted], {"fake": first, "other": second}, http, late, clock=clock)
+    runs = Storage(tmp_path).read_runs()
+    assert runs["fake"]["budget"] == {"day": "2026-06-07", "calls": 1}
+    assert runs["other"]["budget"] == {"day": "2026-06-07", "calls": 1}
+
+
+def test_a_lock_that_fails_for_another_reason_is_an_error_that_names_the_file(tmp_path, monkeypatch):
+    def no_locks(_descriptor):
+        raise OSError(errno.ENOLCK, "No locks available")
+
+    monkeypatch.setattr(sync_module, "try_lock", no_locks)
+    with pytest.raises(StoreError, match=r"sync\.lock: could not be locked \(OSError: .*No locks available") as raised:
+        run(tmp_path, FakeSource())
+    assert not isinstance(raised.value, LockHeldError)

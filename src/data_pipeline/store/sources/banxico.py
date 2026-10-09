@@ -118,7 +118,7 @@ class Banxico:
             headers={"Bmx-Token": self._token or "", "Accept": "application/json"},
             per_minute=self.requests_per_minute,
         )
-        text = self._client.scrub(response.text[:300])
+        text = self._client.excerpt(response.text, 300)
         if response.status_code != OK:
             if "token" in text.lower():
                 msg = f"Banxico rejected the token: {text}"
@@ -127,7 +127,7 @@ class Banxico:
             return Failure(entry, outcome, f"HTTP {response.status_code}: {text}")
         payload: dict[str, Any] = response.json()
         if "error" in payload:
-            return Failure(entry, Outcome.NOT_FOUND, self._client.scrub(str(payload["error"])[:300]))
+            return Failure(entry, Outcome.NOT_FOUND, self._client.excerpt(str(payload["error"]), 300))
         found = payload["bmx"]["series"]
         if not found:
             return Failure(entry, Outcome.NOT_FOUND, NO_DATA)

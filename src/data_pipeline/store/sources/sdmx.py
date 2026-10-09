@@ -301,7 +301,7 @@ class Sdmx:
         response = self._get(flow, key, request.since)
         if response.status_code != OK:
             outcome = Outcome.NOT_FOUND if response.status_code in NOT_FOUND else Outcome.SOURCE_ERROR
-            return Failure(entry, outcome, f"HTTP {response.status_code}: {self._client.scrub(response.text[:200])}")
+            return Failure(entry, outcome, f"HTTP {response.status_code}: {self._client.excerpt(response.text, 200)}")
         return read_csv(response.text, entry)
 
     def _get(self, flow: str, key: str, since: datetime.date | None) -> httpx.Response:
