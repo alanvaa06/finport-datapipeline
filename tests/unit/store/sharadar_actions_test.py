@@ -62,15 +62,20 @@ def fetch(handler, requests, credentials=CREDENTIALS):
 
 
 def keyed(rows):
-    """{(frequency, period, action, contraticker, item): value}, the way the store tells the rows apart."""
+    """{(frequency, period, ticker, action, contraticker, item): value}, the way the store tells the rows apart."""
     return {tuple(row[column] for column in KEY_COLUMNS): row["value"] for row in rows}
+
+
+def of(identifier, rows):
+    """The rows of an answer about `identifier`."""
+    return [{**row, "ticker": identifier} for row in rows]
 
 
 def test_it_is_a_table_source_without_a_daily_budget():
     assert SharadarActions.kind is Kind.TABLE
     assert SharadarActions.daily_budget is None
     assert SharadarActions.requests_per_minute == 120
-    assert SharadarActions.held_by == ("action", "contraticker", "item")
+    assert SharadarActions.held_by == ("ticker", "action", "contraticker", "item")
 
 
 def test_the_store_holds_an_action_by_the_columns_the_source_reads_back():
@@ -95,10 +100,10 @@ def test_validate_rejects_what_the_source_does_not_accept(identifier, params, me
 
 
 def test_an_action_row_keeps_what_sharadar_says_and_n_a_is_empty():
-    rows = {row["action"]: row for row in read_rows(RECORDED) if row["action"] != "dividend"}
+    rows = {row["action"]: row for row in read_rows(RECORDED, "XTEST") if row["action"] != "dividend"}
     split, spinoff = rows["split"], rows["spinoff"]
     assert set(split) == {*KEY_COLUMNS, "date", *VALUE_COLUMNS, *ATTRIBUTE_COLUMNS}
-    assert (split["frequency"], split["period"], split["contraticker"], split["item"]) == ("D", "2026-03-03", "", "1")
+    assert [split[column] for column in KEY_COLUMNS] == ["D", "2026-03-03", "XTEST", "split", "", "1"]
     assert (split["value"], split["withdrawn"], split["date"]) == (2.0, 0.0, datetime.date(2026, 3, 3))
     assert (split["name"], split["contraname"]) == ("TEST CORP", "")
     assert (spinoff["contraticker"], spinoff["contraname"]) == ("XSPUN", "SPUN CORP")
@@ -108,16 +113,21 @@ def test_an_action_row_keeps_what_sharadar_says_and_n_a_is_empty():
 
 def test_two_dividends_on_one_day_are_both_kept_and_numbered_by_value():
     expected = {
-        ("D", "2026-02-10", "dividend", "", "1"): 0.1,
-        ("D", "2026-02-10", "dividend", "", "2"): 0.5,
+        ("D", "2026-02-10", "XTEST", "dividend", "", "1"): 0.1,
+        ("D", "2026-02-10", "XTEST", "dividend", "", "2"): 0.5,
     }
     dividends = [row for row in RECORDED if row["action"] == "dividend"]
-    assert keyed(read_rows(dividends)) == expected
-    assert keyed(read_rows(dividends[::-1])) == expected  # whatever the order of the answer
+    assert keyed(read_rows(dividends, "XTEST")) == expected
+    assert keyed(read_rows(dividends[::-1], "XTEST")) == expected  # whatever the order of the answer
+
+
+def test_the_ticker_of_a_row_is_the_one_that_was_asked_for_whatever_the_answer_says():
+    rows = read_rows(of("OTHER", RECORDED), "XTEST")
+    assert {row["ticker"] for row in rows} == {"XTEST"}
 
 
 def test_a_missing_value_is_numbered_last_among_its_likes():
-    rows = read_rows([action("2026-02-10", value="N/A"), action("2026-02-10", value=0.3)])
+    rows = read_rows([action("2026-02-10", value="N/A"), action("2026-02-10", value=0.3)], "XTEST")
     assert [(row["item"], row["value"] == 0.3) for row in rows] == [("1", True), ("2", False)]
 
 
@@ -126,7 +136,8 @@ def test_the_other_company_tells_two_actions_of_a_day_apart():
         [
             action("2025-06-30", "spinoff", 1.0, contraticker="XONE"),
             action("2025-06-30", "spinoff", 2.0, contraticker="XTWO"),
-        ]
+        ],
+        "XTEST",
     )
     assert [(row["contraticker"], row["item"]) for row in rows] == [("XONE", "1"), ("XTWO", "1")]
 
@@ -136,16 +147,17 @@ def test_two_actions_alike_but_for_a_name_are_numbered_the_same_whatever_the_ord
     first = {**action("2026-02-10", value=0.5), field: "ALPHA CORP"}
     second = {**action("2026-02-10", value=0.5), field: "BETA CORP"}
     for answered in ([first, second], [second, first]):
-        assert {row[field]: row["item"] for row in read_rows(answered)} == {"ALPHA CORP": "1", "BETA CORP": "2"}
+        numbered = {row[field]: row["item"] for row in read_rows(answered, "XTEST")}
+        assert numbered == {"ALPHA CORP": "1", "BETA CORP": "2"}
 
 
 def test_two_rows_alike_in_every_field_are_both_kept():
-    rows = read_rows([action("2026-02-10", value=0.25), action("2026-02-10", value=0.25)])
+    rows = read_rows([action("2026-02-10", value=0.25), action("2026-02-10", value=0.25)], "XTEST")
     assert [(row["item"], row["value"]) for row in rows] == [("1", 0.25), ("2", 0.25)]
 
 
 def test_a_value_or_an_other_company_sent_as_null_is_stored_as_missing():
-    (row,) = read_rows([action("2026-02-10", value=None, contraticker=None, contraname=None)])
+    (row,) = read_rows([action("2026-02-10", value=None, contraticker=None, contraname=None)], "XTEST")
     assert math.isnan(row["value"])
     assert (row["contraticker"], row["contraname"]) == ("", "")
 
@@ -155,16 +167,16 @@ def test_a_value_or_an_other_company_sent_as_null_is_stored_as_missing():
 # what the store holds after an answer of the recorded actions: Request.held, in the order of KEY_COLUMNS
 HELD = frozenset(
     {
-        ("D", "2025-06-30", "spinoff", "XSPUN", "1"),
-        ("D", "2026-02-10", "dividend", "", "1"),
-        ("D", "2026-02-10", "dividend", "", "2"),
-        ("D", "2026-03-03", "split", "", "1"),
+        ("D", "2025-06-30", "XTEST", "spinoff", "XSPUN", "1"),
+        ("D", "2026-02-10", "XTEST", "dividend", "", "1"),
+        ("D", "2026-02-10", "XTEST", "dividend", "", "2"),
+        ("D", "2026-03-03", "XTEST", "split", "", "1"),
     }
 )
 
 
 def test_nothing_is_withdrawn_when_nothing_is_held_or_everything_held_is_still_sent():
-    rows = read_rows(RECORDED)
+    rows = read_rows(RECORDED, "XTEST")
     assert withdrawals(frozenset(), rows) == ()
     assert withdrawals(HELD, rows) == ()
 
@@ -172,12 +184,13 @@ def test_nothing_is_withdrawn_when_nothing_is_held_or_everything_held_is_still_s
 def test_a_held_action_the_answer_no_longer_has_comes_back_marked_as_withdrawn():
     # the answer starts on 2026-02-10, the day of its only dividend left: the second one of that day,
     # on the answer's first day itself, is gone. The spin-off, older than the answer, is not touched.
-    rows = read_rows(RECORDED[:2])
+    rows = read_rows(RECORDED[:2], "XTEST")
     (marked,) = withdrawals(HELD, rows)
     assert math.isnan(marked.pop("value"))
     assert marked == {
         "frequency": "D",
         "period": "2026-02-10",
+        "ticker": "XTEST",
         "date": datetime.date(2026, 2, 10),
         "action": "dividend",
         "contraticker": "",
@@ -189,12 +202,12 @@ def test_a_held_action_the_answer_no_longer_has_comes_back_marked_as_withdrawn()
 
 
 def test_the_actions_withdrawn_after_the_earliest_day_of_the_answer_are_marked_in_order():
-    rows = read_rows(RECORDED[:1])  # only the split of 2026-03-03
+    rows = read_rows(RECORDED[:1], "XTEST")  # only the split of 2026-03-03
     held = {
-        ("D", "2026-03-03", "split", "", "1"),
-        ("D", "2026-05-12", "dividend", "", "2"),
-        ("D", "2026-05-12", "dividend", "", "1"),
-        ("D", "2026-03-03", "dividend", "", "1"),
+        ("D", "2026-03-03", "XTEST", "split", "", "1"),
+        ("D", "2026-05-12", "XTEST", "dividend", "", "2"),
+        ("D", "2026-05-12", "XTEST", "dividend", "", "1"),
+        ("D", "2026-03-03", "XTEST", "dividend", "", "1"),
     }
     marked = withdrawals(held, rows)
     assert [(row["period"], row["action"], row["item"]) for row in marked] == [
@@ -206,7 +219,7 @@ def test_the_actions_withdrawn_after_the_earliest_day_of_the_answer_are_marked_i
 
 
 def test_an_answer_speaks_only_for_the_days_it_covers():
-    rows = read_rows(RECORDED[:1])  # a short, recent answer: only the split of 2026-03-03
+    rows = read_rows(RECORDED[:1], "XTEST")  # a short, recent answer: only the split of 2026-03-03
     assert withdrawals(HELD, rows) == ()  # the dividends and the spin-off are older than its first day
 
 
@@ -242,13 +255,18 @@ def test_a_call_asks_the_actions_table_for_one_ticker_from_the_first_day():
 
 
 def test_what_the_store_holds_decides_which_actions_are_marked_as_withdrawn():
-    held = frozenset({("D", "2026-02-10", "dividend", "", "3")})
+    held = frozenset({("D", "2026-02-10", "XTEST", "dividend", "", "3")})
     (batch,) = fetch(lambda _request: answer(RECORDED), [Request(ticker(), held=held)])
     *sent, marked = batch.tables[0].rows
     assert len(sent) == 4
-    assert [marked[column] for column in KEY_COLUMNS] == ["D", "2026-02-10", "dividend", "", "3"]
+    assert [marked[column] for column in KEY_COLUMNS] == ["D", "2026-02-10", "XTEST", "dividend", "", "3"]
     assert marked["withdrawn"] == 1.0
     assert {row["withdrawn"] for row in sent} == {0.0}
+
+
+def test_the_ticker_stored_is_the_one_asked_for_whatever_the_answer_says():
+    (batch,) = fetch(lambda _request: answer(of("OTHER", RECORDED)), [Request(ticker())])
+    assert {row["ticker"] for row in batch.tables[0].rows} == {"XTEST"}
 
 
 def test_the_start_of_the_entry_is_the_first_day_asked():
@@ -456,6 +474,41 @@ def test_a_dividend_whose_day_is_corrected_is_withdrawn_from_the_old_day(store, 
     ]
 
 
+def test_the_tables_of_several_tickers_read_together_say_whose_each_row_is(tmp_path, vendor, clock):
+    # both tickers have an item 1 on 2026-02-10: without the ticker the rows could not be told apart
+    vendor.rows["XOTHER"] = of("XOTHER", [action("2026-01-15", value=0.3), action("2026-02-10", value=0.7)])
+    both = open_store(tmp_path, vendor, clock)
+    both.add("sharadar_actions", ["XTEST", "XOTHER"])
+    both.sync()
+    dividends = both.table("sharadar_actions", withdrawn=0, action="dividend")
+    rows = zip(dividends["ticker"], dividends["period"], dividends["item"], dividends["value"], strict=True)
+    assert sorted(rows) == [
+        ("XOTHER", "2026-01-15", "1", 0.3),
+        ("XOTHER", "2026-02-10", "1", 0.7),
+        ("XTEST", "2026-02-10", "1", 0.1),
+        ("XTEST", "2026-02-10", "2", 0.5),
+    ]
+
+
+def test_a_withdrawal_in_one_ticker_marks_nothing_in_the_other(tmp_path, vendor, clock):
+    vendor.rows["XOTHER"] = of("XOTHER", [action("2026-01-15", value=0.3), action("2026-02-10", value=0.7)])
+    both = open_store(tmp_path, vendor, clock)
+    both.add("sharadar_actions", ["XTEST", "XOTHER"])
+    assert sync_at(both, clock, NOW) == (6, 0)
+    path = tmp_path / "store" / "tables" / "sharadar_actions" / "XOTHER.parquet"
+    before = pd.read_parquet(path)
+    # XTEST loses its 0.1: its 0.5 becomes item 1 (1 revised) and its item 2 is marked (1 revised);
+    # XOTHER answers what it answered, and has nothing to add
+    vendor.rows["XTEST"] = [row for row in RECORDED if row["value"] != 0.1]
+    assert sync_at(both, clock, LATER) == (0, 2)
+    marked = both.table("sharadar_actions", withdrawn=1)
+    assert list(zip(marked["ticker"], marked["period"], marked["item"], strict=True)) == [("XTEST", "2026-02-10", "2")]
+    assert both.table("sharadar_actions", "XOTHER", withdrawn=1).empty
+    assert pd.read_parquet(path).equals(before)  # not a row of XOTHER was written
+    other = both.table("sharadar_actions", "XOTHER", withdrawn=0)
+    assert list(zip(other["period"], other["value"], strict=True)) == [("2026-01-15", 0.3), ("2026-02-10", 0.7)]
+
+
 def test_the_lower_of_two_dividends_of_a_day_withdrawn_leaves_the_other_once(store, vendor, clock):
     # The answer keeps the 0.5, which is now the only dividend of the day, so item 1: the stored item 1
     # (0.1) takes another value (1 revised). The stored item 2 (0.5) is held, on a day the answer
@@ -545,11 +598,11 @@ def test_show_prints_the_citation_and_the_newest_rows(store, tmp_path, monkeypat
     lines = result.output.splitlines()
     assert lines[0] == "[Sharadar: XTEST, 2026-03-03, fetched 2026-06-06]"
     assert lines[1].startswith("Corporate actions of XTEST (Sharadar) | 4 rows")
-    header = ["frequency", "period", "action", "contraticker", "item", "value", "withdrawn", "name", "contraname"]
-    assert lines[2].split() == header
+    header = ["frequency", "period", "ticker", "action", "contraticker", "item", "value", "withdrawn", "name"]
+    assert lines[2].split() == [*header, "contraname"]
     rows = [line.split("  ") for line in lines[3:]]  # the cells are told apart by two spaces
     assert len(rows) == 4
-    assert rows[-1][:7] == ["D", "2026-03-03", "split", "", "1", "2.0", "0.0"]  # the newest action, as sent
+    assert rows[-1][:8] == ["D", "2026-03-03", "XTEST", "split", "", "1", "2.0", "0.0"]  # the newest action, as sent
 
 
 def test_show_prints_a_withdrawn_action_as_a_row_of_its_own(store, vendor, clock, tmp_path, monkeypatch):
@@ -564,7 +617,8 @@ def test_show_prints_a_withdrawn_action_as_a_row_of_its_own(store, vendor, clock
     assert lines[1].startswith("Corporate actions of XTEST (Sharadar) | 5 rows")
     rows = [line.split("  ") for line in lines[3:]]
     assert len(rows) == 5
-    assert [row for row in rows if row[6] == "1.0"] == [["D", "2026-02-10", "dividend", "", "2", "nan", "1.0", "", ""]]
+    marks = [row for row in rows if row[7] == "1.0"]
+    assert marks == [["D", "2026-02-10", "XTEST", "dividend", "", "2", "nan", "1.0", "", ""]]
 
 
 def test_status_never_calls_the_actions_stale(store, clock):

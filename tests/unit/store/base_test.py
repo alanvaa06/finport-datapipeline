@@ -143,5 +143,5 @@ def test_every_source_says_what_it_tells_its_stored_rows_apart_by():
     built = {name: sources.create(name, http, Credentials()) for name in sources.REGISTRY}
     held_by = {name: source.held_by for name, source in built.items()}
     assert held_by.pop("comtrade") == ("partner", "flow", ("product", hs_level))
-    assert held_by.pop("sharadar_actions") == ("action", "contraticker", "item")
+    assert held_by.pop("sharadar_actions") == ("ticker", "action", "contraticker", "item")
     assert set(held_by.values()) == {()}

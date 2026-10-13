@@ -3,11 +3,13 @@
 One catalog id is one ticker, of a stock or of an ETF: both are asked of Sharadar's `actions`
 table. One call brings every action of a ticker, on every run.
 
-An action is told apart by its `period` (its day, as `YYYY-MM-DD`), Sharadar's word for it
-(`dividend`, `split`, ...), the other company it involves, if any, and `item`: `1`, `2`, ...
-among the actions that share the other three. They are numbered by ascending value, then by the
-names, so the numbering does not depend on the order of the answer. Without `item` a second
-dividend on the same day would be dropped without notice.
+An action is told apart by its `ticker`, its `period` (its day, as `YYYY-MM-DD`), Sharadar's
+word for it (`dividend`, `split`, ...), the other company it involves, if any, and `item`: `1`,
+`2`, ... among the actions that share the day, the word and the other company. The ticker is
+the catalog id, there so that reading the tables of several tickers at once says whose each row
+is. Actions are numbered by ascending value, then by the names, so the numbering does not depend
+on the order of the answer. Without `item` a second dividend on the same day would be dropped
+without notice.
 
 `item` is text, like every key. `name` and `contraname` are stored as sent with the row and
 never compared: a row keeps the names it came with until its value changes.
@@ -55,7 +57,7 @@ from data_pipeline.store.sources.base import HeldBy, missing_key, number, reject
 from data_pipeline.store.sources.sharadar import REQUESTS_PER_MINUTE, Sharadar, check_ticker, per_ticker, text
 
 TABLE = "actions"
-KEY_COLUMNS = ("frequency", "period", "action", "contraticker", "item")
+KEY_COLUMNS = ("frequency", "period", "ticker", "action", "contraticker", "item")
 VALUE_COLUMNS = ("value", "withdrawn")
 ATTRIBUTE_COLUMNS = ("name", "contraname")
 # days: the table has a frequency only so that the store says what it holds; actions come when they come
@@ -71,8 +73,9 @@ def numbering(pair: tuple[float, Row]) -> tuple[bool, float, str, str]:
     return missing, 0.0 if missing else value, str(row["contraname"]), str(row["name"])
 
 
-def read_rows(items: Sequence[Mapping[str, Any]]) -> tuple[Row, ...]:
-    """The rows of an actions answer as table rows, each with its `item`."""
+def read_rows(items: Sequence[Mapping[str, Any]], ticker: str) -> tuple[Row, ...]:
+    """The rows of an actions answer as table rows, each with the ticker that was asked for and
+    its `item`."""
     alike: dict[tuple[str, str, str], list[tuple[float, Row]]] = {}
     for item in items:
         day = datetime.date.fromisoformat(str(item["date"]))
@@ -85,6 +88,7 @@ def read_rows(items: Sequence[Mapping[str, Any]]) -> tuple[Row, ...]:
         row: Row = {
             "frequency": Frequency.DAILY.value,
             "period": day.isoformat(),
+            "ticker": ticker,
             "action": action,
             "contraticker": contraticker,
             "date": day,
@@ -110,14 +114,15 @@ def withdrawals(held: Collection[tuple[str, ...]], rows: Sequence[Row]) -> tuple
     answered = {tuple(str(row[column]) for column in KEY_COLUMNS) for row in rows}
     earliest = min(str(row["period"]) for row in rows)
     gone = sorted(
-        (frequency, period, action, contraticker, item)
-        for frequency, period, action, contraticker, item in held
-        if period >= earliest and (frequency, period, action, contraticker, item) not in answered
+        (frequency, period, ticker, action, contraticker, item)
+        for frequency, period, ticker, action, contraticker, item in held
+        if period >= earliest and (frequency, period, ticker, action, contraticker, item) not in answered
     )
     return tuple(
         {
             "frequency": frequency,
             "period": period,
+            "ticker": ticker,
             "date": datetime.date.fromisoformat(period),
             "action": action,
             "contraticker": contraticker,
@@ -127,7 +132,7 @@ def withdrawals(held: Collection[tuple[str, ...]], rows: Sequence[Row]) -> tuple
             "name": "",
             "contraname": "",
         }
-        for frequency, period, action, contraticker, item in gone
+        for frequency, period, ticker, action, contraticker, item in gone
     )
 
 
@@ -136,7 +141,7 @@ class SharadarActions:
     kind = Kind.TABLE
     requests_per_minute = REQUESTS_PER_MINUTE
     daily_budget: int | None = None
-    held_by: HeldBy = ("action", "contraticker", "item")
+    held_by: HeldBy = ("ticker", "action", "contraticker", "item")
 
     def __init__(self, client: Client, credentials: Credentials) -> None:
         self._client = client
@@ -155,7 +160,7 @@ class SharadarActions:
 
     def _ticker(self, api: Sharadar, request: Request) -> FetchBatch:
         entry = request.entry
-        rows = read_rows(api.rows(TABLE, entry.source_id, entry.start))
+        rows = read_rows(api.rows(TABLE, entry.source_id, entry.start), entry.source_id)
         data = TableData(
             entry=entry,
             key=entry.key,
