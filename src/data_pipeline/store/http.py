@@ -4,7 +4,8 @@ wait ends the request at once), a stop for a source that is down (after BREAKER 
 row fail every attempt, the rest of its requests in this client fail at once, without a call),
 and secrets scrubbed from every message it raises and from the log lines
 httpx and httpcore write (a key sent as a query parameter would otherwise show up at INFO level,
-and in a redirect's Location at DEBUG level).
+and in a redirect's Location at DEBUG level). A secret is hidden as it is and as a URL encodes
+it: a key with a "+", a "/", a "=" or a space is not in its own URL as it was typed.
 
 Non-retryable answers (200, 400, 401, 404...) are returned as they are: each source reads its
 own error format. A redirect is followed only within the same host and over https; any other is
@@ -15,6 +16,7 @@ header, the URL or a POST body).
 import datetime
 import email.utils
 import logging
+import re
 import time
 import types
 from collections.abc import Callable, Mapping, Sequence
@@ -51,11 +53,34 @@ def retry_after(response: httpx.Response) -> float | None:
     return max(0.0, (moment - datetime.datetime.now(datetime.UTC)).total_seconds())
 
 
+def _written(secret: str) -> re.Pattern[str]:
+    """`secret` as a text may hold it: as it is, or as a URL encodes it.
+
+    Each character that is not a letter or a digit is matched as it is or as the %XX of its UTF-8
+    bytes (the hex digits in either case, a space as + too), so any mix of the two is found. httpx
+    alone writes three: a query value as abc%2Bdef+g (abc%2Bdef%20g before 0.28), a path as
+    abc+def%20g, and a URL given whole as it came. A source that echoes the URL may write %2b.
+    """
+    parts = []
+    for char in secret:
+        plain = re.escape(char)
+        if char.isascii() and char.isalnum():  # never encoded: a key of only these is looked for as before
+            parts.append(plain)
+            continue
+        # surrogatepass: half a surrogate pair (bytes of the environment that are not text) has
+        # no UTF-8 bytes, and hiding a secret never raises
+        encoded = "".join(f"%{byte:02X}" for byte in char.encode("utf-8", "surrogatepass"))
+        # the encoded form first: a "%" of the secret that the text holds as "%25" is taken whole
+        forms = [f"(?i:{encoded})", plain, *([r"\+"] if char == " " else [])]
+        parts.append(f"(?:{'|'.join(forms)})")
+    return re.compile("".join(parts))
+
+
 def scrub(text: str, secrets: Sequence[str]) -> str:
-    """Replace every secret found in `text` with ***."""
+    """Replace every secret found in `text` with ***, as it is or as a URL encodes it."""
     for secret in secrets:
         if secret:
-            text = text.replace(secret, HIDDEN)
+            text = _written(secret).sub(HIDDEN, text)
     return text
 
 

@@ -34,7 +34,7 @@ class AnswerError(Exception):
 
 def check_ticker(entry: CatalogEntry) -> None:
     """Raise CatalogError when the id is not a ticker in upper case."""
-    if not TICKER.match(entry.source_id):
+    if not TICKER.fullmatch(entry.source_id):  # not match() and "$", which a last line break passes
         msg = f"{entry.key}: a SEC id is a ticker in upper case, such as AAPL or BRK-B"
         raise CatalogError(msg)
 

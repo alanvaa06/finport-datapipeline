@@ -89,6 +89,19 @@ def test_fred_end_to_end():
     assert check("FRED_API_KEY", KEY, transport=fred(down=True), today=TODAY).verdict is Verdict.UNKNOWN
 
 
+def test_a_key_the_url_encodes_never_shows_in_the_detail_of_a_check():
+    awkward = "abc+def/ghi=jk l"  # sent as abc%2Bdef%2Fghi%3Djk+l: the value as typed is not in the URL
+
+    def echo(request):
+        return httpx.Response(400, text=json.dumps({"error_message": f"Bad Request. {request.url.query.decode()}"}))
+
+    rejected = check("FRED_API_KEY", awkward, transport=httpx.MockTransport(echo), today=TODAY)
+    assert rejected.verdict is Verdict.REJECTED
+    assert rejected.detail == "FRED rejected the key: " + json.dumps(
+        {"error_message": "Bad Request. series_id=UNRATE&api_key=***&file_type=json"}
+    )
+
+
 def test_an_empty_value_is_rejected_without_a_request():
     assert check("FRED_API_KEY", "  ", transport=fred(down=True)).verdict is Verdict.REJECTED
 

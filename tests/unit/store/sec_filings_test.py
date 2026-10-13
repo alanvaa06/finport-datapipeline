@@ -146,6 +146,7 @@ def test_ten_years_before_a_leap_day():
     ("ticker", "params", "message"),
     [
         ("aapl", {}, "a SEC id is a ticker in upper case"),
+        ("AAPL\n", {}, "a SEC id is a ticker in upper case"),
         ("AAPL", {"forms": "10-K"}, "'forms' must be a non-empty list"),
         ("AAPL", {"forms": []}, "'forms' must be a non-empty list"),
         ("AAPL", {"forms": ["10-K", "../x"]}, "not a SEC form: ../X"),

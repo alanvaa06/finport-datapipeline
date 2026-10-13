@@ -88,6 +88,10 @@ Store core:
   the atomic file write (`data_pipeline._files`).
 - A sync removes the temporary files that a process killed mid-write left in the store
   (`<file>.<8 hex>.tmp`), once they are an hour old.
+- A key is hidden in failure reasons, in the detail of a key check and in the log lines of httpx
+  also in the form its URL encodes it. A key with a `+`, a `/`, a `=` or a space goes out as
+  `abc%2Bdef%2Fghi%3Djk+l` in a query (FRED) and as `abc+def/ghi=jk%20l` in a path (INEGI), and
+  used to show that way. A key of letters and digits only was never affected.
 
 Sources:
 
@@ -112,6 +116,8 @@ Sources:
   no longer reported as "unexpected answer": it is named on the company it hit and stops the
   source. Filings count as known from the end of the day the SEC received them, like the XBRL facts
   they carry.
+- SEC XBRL and SEC filings refuse an id with a line break after the ticker, which used to pass as
+  a ticker.
 - BLS decides where each series' walk back stops on its own, so a series discontinued before the
   first 20-year window loads alone as it does in a group. A note of the API is about a series only
   when it names its whole id: `CUUR0000SA0` is no longer taken for absent by a note about
