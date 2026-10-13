@@ -242,24 +242,25 @@ A ticker without actions has no table: `store.table("sharadar_actions", ticker)`
 `UnknownSeriesError` for it, and `status` lists it as `missing`.
 
 The store keeps no close adjusted for dividends: Sharadar restates it over the whole history on
-every dividend. Work it out from the raw close and the actions:
+every dividend. Work it out from `close` and the dividends. Both are in today's shares: after a
+split Sharadar restates the `close` of the earlier days, and the `value` of the earlier
+dividends with it.
 
 ```python
 import pandas as pd
 
-close = store.table("sharadar_prices", "AAPL").set_index("date")["closeunadj"]
-actions = store.table("sharadar_actions", "AAPL", withdrawn=0)
+close = store.table("sharadar_prices", "AAPL").set_index("date")["close"]
+dividends = store.table("sharadar_actions", "AAPL", withdrawn=0, action="dividend")
 factor = pd.Series(1.0, index=close.index)
-for day, action, value in actions[["date", "action", "value"]].itertuples(index=False):
+for day, value in dividends[["date", "value"]].itertuples(index=False):
     before = close.index < day
     if pd.isna(value) or not before.any():
         continue
-    if action == "split":  # `value` shares after the split for each one before
-        factor[before] /= value
-    elif action == "dividend":  # paid to whoever held the share the day before
-        factor[before] *= 1 - value / close[before].iloc[-1]
+    factor[before] *= 1 - value / close[before].iloc[-1]  # paid to whoever held the day before
 adjusted = close * factor
 ```
+
+The recipe leaves spin-offs out.
 
 A ticker that is no longer listed never gets a new day: give its entry a large
 `stale_after_days`, or `status` calls it stale.

@@ -1742,17 +1742,14 @@ URL = "https://api.sharadar.com/v1.0/data/stocks"
 
 def adjusted_close(store: Store, ticker: str) -> pd.Series:
     """The recipe of the README, word for word."""
-    close = store.table("sharadar_prices", ticker).set_index("date")["closeunadj"]
-    actions = store.table("sharadar_actions", ticker, withdrawn=0)
+    close = store.table("sharadar_prices", ticker).set_index("date")["close"]
+    dividends = store.table("sharadar_actions", ticker, withdrawn=0, action="dividend")
     factor = pd.Series(1.0, index=close.index)
-    for day, action, value in actions[["date", "action", "value"]].itertuples(index=False):
+    for day, value in dividends[["date", "value"]].itertuples(index=False):
         before = close.index < day
         if pd.isna(value) or not before.any():
             continue
-        if action == "split":  # `value` shares after the split for each one before
-            factor[before] /= value
-        elif action == "dividend":  # paid to whoever held the share the day before
-            factor[before] *= 1 - value / close[before].iloc[-1]
+        factor[before] *= 1 - value / close[before].iloc[-1]  # paid to whoever held the day before
     return close * factor
 
 
@@ -1819,7 +1816,7 @@ Expected:
 
 - [ ] **Step 5: If criterion 5 fails**
 
-It is the one most likely to fail: the recipe was written before a split was seen in the actions table. Look at the day of the largest gap and at the actions near it, correct the recipe in the README (and in the script) or take it out, and say what was found to the user in the chat. Storing the data is not blocked.
+It is the one most likely to fail: the recipe takes a dividend as stated in today's shares and leaves spin-offs out, and neither was checked with a paid key. Look at the day of the largest gap and at the actions near it, correct the recipe in the README (and in the script) or take it out, and say what was found to the user in the chat. Storing the data is not blocked.
 
 - [ ] **Step 6: Write back what the shapes turned out to be**
 
@@ -1863,4 +1860,5 @@ Asked for by the reviewers:
   more: the one line of the core this branch changes.
 - The live test became two tests and five calls: it also reads the actions of an ETF and asks
   for a ticker that does not exist.
-- The README recipe reads the actions with `withdrawn=0` and skips a missing value.
+- The README recipe works from `close` and the dividends, which Sharadar states in today's
+  shares; it reads them with `withdrawn=0`, skips a missing value and leaves spin-offs out.

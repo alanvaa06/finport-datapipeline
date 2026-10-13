@@ -10,7 +10,7 @@ Builds on: `2026-10-05-comtrade-tables-design.md` (the table kind) and
 
 Store in `data_pipeline.store` the daily prices and the corporate actions of the US stocks and
 ETFs the user lists, as Sharadar publishes them, so that a consumer can read a price series and
-work out any adjusted series from the raw close and the actions.
+work out a series adjusted for dividends from the closes and the actions.
 
 ## Locked decisions
 
@@ -20,7 +20,7 @@ work out any adjusted series from the raw close and the actions.
 | Universe | The tickers listed in the catalog, tens to a few thousand. Not the whole Sharadar universe |
 | Instruments | Stocks (Sharadar table `stocks`) and ETFs (table `funds`) |
 | What is stored of a price row | Every column Sharadar sends except `closeadj` (close adjusted for dividends) and `lastupdated`. Nothing is derived |
-| Adjusted series | Left to the consumer: raw close plus the actions table. A recipe goes in the README |
+| Adjusted series | Left to the consumer: `close` plus the dividends of the actions table. A recipe goes in the README |
 | How a sync asks | One call per ticker with its whole history, every run. No incremental window |
 | Reading as of a day | Rows are dated by when they were downloaded, as in Comtrade. Not versioned |
 | An action Sharadar no longer sends | Marked as withdrawn with a new row; nothing is deleted |
@@ -101,8 +101,7 @@ is a cost in memory on every run. The index row therefore has no frequency, and 
 comes from the threshold the source gives.
 
 The split-adjusted columns change when a later split restates them; `closeunadj` does not. A
-consumer that needs a series that never moves, or exact returns, reads `closeunadj` and the
-actions table.
+consumer that needs a series that never moves reads `closeunadj`.
 
 ### Actions: `tables/sharadar_actions/<TICKER>.parquet`
 
@@ -114,7 +113,7 @@ actions table.
 | `contraticker` | key | The other company of the action (a merger, a spin-off); empty when Sharadar sends `N/A` |
 | `item` | key | `1`, `2`, ...: tells apart actions that share day, action and contraticker. Text, like every key |
 | `date` | | `period` as a date |
-| `value` | value | The amount of a dividend, the ratio of a split; missing when Sharadar sends `N/A` |
+| `value` | value | The amount of a dividend, in today's shares like `close`; the ratio of a split; missing when Sharadar sends none |
 | `withdrawn` | value | 0 on a row Sharadar sends; 1 on a row that marks an action it no longer sends |
 | `name`, `contraname` | attribute | Company names, as sent with the row; `N/A` is stored empty |
 
@@ -163,6 +162,10 @@ Sharadar restates the split-adjusted columns of every earlier day. The next run 
 rows with new values; `append_rows` appends them as new rows and keeps the old ones. `Store.table`
 returns the latest row of each day; with `as_of` it returns what the store held at that moment.
 `closeunadj` does not change, so a split adds one new row per earlier day and nothing else.
+
+The amount of a dividend is taken to be in today's shares, as `close` is: a split then
+restates the `value` of every earlier dividend, and those action rows are stored again in the
+same way.
 
 `as_of` earlier than the first sync of a ticker returns no prices. Dating a row by its own day
 would fix that for `closeunadj` only: the split-adjusted columns of a 2015 row downloaded today
@@ -306,17 +309,17 @@ numbers (see "Data terms"). The check that fails a fixture holding a real token 
    and the actions of all of them completes; a second sync right after adds no rows.
 4. For AAPL, the first day stored and the closes around its split of 2020-08-31 agree with the
    probe notes of 2026-10-12.
-5. For AAPL, the close adjusted for dividends worked out with the README recipe from
-   `closeunadj` and the actions agrees with Sharadar's `closeadj`, read with one call outside
-   the store, to within 0.002 on every day.
+5. For AAPL, the close adjusted for dividends worked out with the README recipe from `close`
+   and the dividends agrees with Sharadar's `closeadj`, read with one call outside the store,
+   to within 0.002 on every day.
 6. `data-pipeline setup` reports the user's key as working and an invented one as rejected.
 
 Criteria 2 to 6 call Sharadar with a paid key and are run only after the user says so. Their
 results are reported to the user and are not committed.
 
-Criterion 5 is the one most likely to fail: the recipe is written before a split has been seen
-in the actions table. If it fails, the recipe is corrected or taken out of the README; storing
-the data is not blocked.
+Criterion 5 is the one most likely to fail: the recipe takes a dividend as stated in today's
+shares and leaves spin-offs out, and neither was checked with a paid key. If it fails, the
+recipe is corrected or taken out of the README; storing the data is not blocked.
 
 ## Documentation
 
@@ -332,13 +335,14 @@ The free tier does not show these, so the design assumes them until a paid key i
 
 - The table `funds` has the columns of `stocks`.
 - A paid key gets the whole history of `actions` from `date.gte` on.
-- A split appears in `actions` with the action `split` and its ratio in `value`.
+- A split appears in `actions` with the action `split` and its ratio in `value`, as it does
+  for a ticker of the free tier.
 - The `actions` table holds the actions of ETFs too.
 - An unknown ticker with a paid key answers HTTP 200 with no rows.
 
 Two more are not shapes, and the acceptance run settles them: whether `actions` ever holds two
 rows with the same day, action and contraticker (hence `item`), and whether a dividend `value`
-is the amount as paid (criterion 5).
+is in today's shares for the whole history, as the recipe takes it (criterion 5).
 
 What the live tests find about the shape of an answer is written back into this spec.
 
@@ -357,6 +361,8 @@ each decided during the reviews of the code:
 - The ticker rule refuses a trailing line break; an action row must carry its fields.
 - One line of the core changed, for the console line of a long source name.
 - A ticker without actions writes no table (the first text said "an empty table").
+- The README recipe works from `close` and the dividends, both in today's shares. The first
+  one worked from the raw close and took a dividend as the amount paid.
 
 ## Out of scope
 

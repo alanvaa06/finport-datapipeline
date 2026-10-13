@@ -16,8 +16,8 @@ that never reads it.
 them on every earlier day when a ticker splits again: the next run stores those days once more,
 and the rows before stay. `closeunadj` is the close as it traded and never changes. Sharadar's
 `closeadj`, the close adjusted for dividends too, is not stored: it is restated over the whole
-history on every dividend. Nor is `lastupdated`. Nothing is derived: an adjusted series is the
-consumer's work, from `closeunadj` and the actions of `sharadar_actions`.
+history on every dividend. Nor is `lastupdated`. Nothing is derived: a series adjusted for
+dividends is the consumer's work, from `close` and the dividends of `sharadar_actions`.
 """
 
 import datetime
