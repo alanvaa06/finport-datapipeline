@@ -13,3 +13,7 @@ dist/
 .env.lock
 .idea/
 .vscode/
+
+# Research notes and vendor reports: private, never published
+reports/
+research_notes/
