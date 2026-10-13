@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Read this first:** the plan below is as it was written. Review and three decisions of the owner changed what was built: see "After the plan" at the end before using any task as a reference. Task 8 was brought up to date.
+
 **Goal:** Store the daily prices and the corporate actions of the US stocks and ETFs listed in the catalog, as Sharadar publishes them, in two table sources, with no change to the core.
 
 **Architecture:** Two table sources, `sharadar_prices` and `sharadar_actions`, share one module for the call and for the ways Sharadar refuses. Each asks one table for the whole history of one ticker on every run; the store's own `append_rows` keeps what changed, so a split shows up as new rows for the earlier days. A new key, `SHARADAR_API_KEY`, joins the registry with a check that asks for a ticker outside Sharadar's free tier.
@@ -1703,7 +1705,7 @@ Expected: a line that starts with `[x]` and says Sharadar treated the request as
 - [ ] **Step 3: The live test**
 
 Run: `.venv/Scripts/python -m pytest -m live tests/live/sharadar_live_test.py -q`
-Expected: `1 passed` (criterion 2). If the assertion on `{"dividend", "split"}` fails, Sharadar names a split another way: read the words the script of Step 4 prints, then correct the README recipe, the live test and the spec's assumptions.
+Expected: `2 passed` (criterion 2; five real calls). If the assertion on `{"dividend", "split"}` fails, Sharadar names a split another way: read the words the script of Step 4 prints, then correct the README recipe, the live test and the spec's assumptions.
 
 - [ ] **Step 4: The acceptance script**
 
@@ -1741,11 +1743,11 @@ URL = "https://api.sharadar.com/v1.0/data/stocks"
 def adjusted_close(store: Store, ticker: str) -> pd.Series:
     """The recipe of the README, word for word."""
     close = store.table("sharadar_prices", ticker).set_index("date")["closeunadj"]
-    actions = store.table("sharadar_actions", ticker)
+    actions = store.table("sharadar_actions", ticker, withdrawn=0)
     factor = pd.Series(1.0, index=close.index)
     for day, action, value in actions[["date", "action", "value"]].itertuples(index=False):
         before = close.index < day
-        if not before.any():
+        if pd.isna(value) or not before.any():
             continue
         if action == "split":  # `value` shares after the split for each one before
             factor[before] /= value
@@ -1800,7 +1802,7 @@ def main() -> int:
 
         actions = store.table("sharadar_actions", "AAPL")
         print("the words Sharadar uses for AAPL's actions:", sorted(set(actions["action"])))
-        repeated = actions.duplicated(["day", "action", "contraticker"], keep=False)
+        repeated = actions.duplicated(["period", "action", "contraticker"], keep=False)
         print(f"actions of AAPL that share day, action and contraticker: {int(repeated.sum())}")
         print("columns of a funds table:", list(store.table("sharadar_prices", "SPY").columns))
     return 0
@@ -1823,6 +1825,42 @@ It is the one most likely to fail: the recipe was written before a split was see
 
 In the spec, under "Assumptions the live test settles", turn each assumption into what was seen, in terms of shape only: the columns of `funds`, the word for a split and what its `value` holds, whether two rows can share day, action and contraticker, whether an unknown ticker answers with no rows. No values, no judgments. Commit that with `docs(specs): what a paid key showed of Sharadar's answers`.
 
-- [ ] **Step 7: Report**
+- [ ] **Step 7: Look for withdrawals a few weeks later**
+
+Nobody has measured how often Sharadar corrects or withdraws an action. After the store has synced for a few weeks, count the marks: `store.table("sharadar_actions", "<TICKER>", withdrawn=1)` for each ticker of the catalog (a ticker without actions raises `UnknownSeriesError`: skip it). Tell the user the count; it says whether the marking earns its keep.
+
+- [ ] **Step 8: Report**
 
 Tell the user, criterion by criterion, what passed. Paste no Sharadar value into anything that is committed.
+
+---
+
+## After the plan
+
+What was built differs from Tasks 1 to 7 above. The spec was brought up to date and is the
+reference; the code blocks above are not.
+
+Decided by the owner during the reviews:
+
+- Prices have no `frequency` column: `KEY_COLUMNS = ("period",)`. With it, a sync built the set
+  of days held for every ticker on every run, for a source that never reads it. Task 2's tests
+  were adapted (the index row has no frequency; `show` starts with `period`).
+- An action Sharadar no longer sends is marked as withdrawn. The actions table has the keys
+  `frequency, period, action, contraticker, item` (`period` was `day`), the values `value,
+  withdrawn`, `held_by = ("action", "contraticker", "item")` and a staleness threshold that
+  never triggers. A stored action is marked only from the answer's earliest day on.
+- A ticker without actions stays as it is: no table, `missing` in `status`. Documented.
+
+Asked for by the reviewers:
+
+- A refusal (401 or 403) fails the entries left of its table, not of the whole source; the
+  prices source asks `stocks` first, then `funds`.
+- `check_ticker` uses `fullmatch`. An answer without a list of rows in `data` reports an
+  excerpt of what Sharadar said. A not-found reason names the first day asked for.
+- An action row must carry `value` and `contraticker`, and an `action` that is a word. `item`
+  is numbered by value, then by the names.
+- `SourceReport.lines` in `sync.py` leaves a space after a source name of 12 characters or
+  more: the one line of the core this branch changes.
+- The live test became two tests and five calls: it also reads the actions of an ETF and asks
+  for a ticker that does not exist.
+- The README recipe reads the actions with `withdrawn=0` and skips a missing value.

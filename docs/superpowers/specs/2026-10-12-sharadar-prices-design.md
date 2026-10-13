@@ -1,7 +1,7 @@
 # Design — Sharadar daily prices and corporate actions
 
 Date: 2026-10-12
-Status: Approved
+Status: Approved; brought up to date with what was built (see "What changed while building")
 Builds on: `2026-10-05-comtrade-tables-design.md` (the table kind) and
 `2026-10-06-credentials-design.md` (the key registry). This is the first of two pieces of
 "Equity into the store" (roadmap row 6); Sharadar fundamentals is the next spec.
@@ -23,14 +23,16 @@ work out any adjusted series from the raw close and the actions.
 | Adjusted series | Left to the consumer: raw close plus the actions table. A recipe goes in the README |
 | How a sync asks | One call per ticker with its whole history, every run. No incremental window |
 | Reading as of a day | Rows are dated by when they were downloaded, as in Comtrade. Not versioned |
+| An action Sharadar no longer sends | Marked as withdrawn with a new row; nothing is deleted |
 | What the repository holds | Code and hand-written fixtures. No Sharadar data and no assessment of it |
 
 Why `closeadj` is left out: Sharadar restates it over the whole history of a ticker on every
 dividend. In a store that never deletes, that is a full copy of the history per dividend.
 
 Why the whole history every run: it is what `sec_xbrl` does, and it cannot miss a split. After
-any run the latest version of every row is what Sharadar publishes that day, corrections to old
-days included.
+a run, the latest version of every day and of every action Sharadar sends is what it publishes
+that day. What it stops sending is another matter: an action is marked as withdrawn, within the
+rule given below; a price day stays as it was.
 
 ## Data terms
 
@@ -65,13 +67,13 @@ evaluating the data or the service without Sharadar's written approval. So:
   attrs: {commercial_ok: "no"}
 ```
 
-- An id is a Sharadar ticker in upper case: letters, digits, `.` and `-`, at most 12
-  characters. `validate` rejects anything else.
+- An id is a Sharadar ticker in upper case: a letter or a digit, then letters, digits, `.` and
+  `-`, at most 12 characters in all. `validate` rejects anything else.
 - `sharadar_prices` takes one field of its own, `table`: `stocks` (the default) or `funds`.
   Any other value, and any other field, is a `CatalogError`.
 - `sharadar_actions` takes no field of its own.
 - The shared field `start`, when given, is the first day asked for. Without it the source asks
-  from 1900-01-01.
+  from 1900-01-01. What is stored before `start` is not asked again and stays as it is.
 - A ticker that is no longer listed never gets a new day, so it would show as stale: its entry
   sets `stale_after_days` to a large number.
 
@@ -85,7 +87,6 @@ scrubbed from messages and logs. Without it nothing is requested and every entry
 
 | Column | Role | Meaning |
 |---|---|---|
-| `frequency` | key | Always `D` |
 | `period` | key | The day, `YYYY-MM-DD` |
 | `date` | | The day as a date |
 | `open`, `high`, `low`, `close` | value | Adjusted for splits and stock dividends, as Sharadar sends them |
@@ -93,8 +94,11 @@ scrubbed from messages and logs. Without it nothing is requested and every entry
 | `closeunadj` | value | The close as it traded, never adjusted |
 | `fetched_at`, `published_at` | | As for every stored row; `published_at` is empty |
 
-`frequency` and `period` are there so that a later change to an incremental sync finds
-`Request.held` filled without migrating any stored table.
+The table has no `frequency` column, on purpose. With `frequency` and `period` together, a
+sync builds for every catalog entry, before its first call, the set of periods the store holds
+(`Request.held`). This source never reads it, and with thousands of days per ticker that set
+is a cost in memory on every run. The index row therefore has no frequency, and its staleness
+comes from the threshold the source gives.
 
 The split-adjusted columns change when a later split restates them; `closeunadj` does not. A
 consumer that needs a series that never moves, or exact returns, reads `closeunadj` and the
@@ -104,17 +108,54 @@ actions table.
 
 | Column | Role | Meaning |
 |---|---|---|
-| `day` | key | The day of the action, `YYYY-MM-DD` |
+| `frequency` | key | Always `D`. It is there so that the store tells the source what it holds |
+| `period` | key | The day of the action, `YYYY-MM-DD` |
 | `action` | key | Sharadar's own word: `dividend`, `split`, and the others it defines |
 | `contraticker` | key | The other company of the action (a merger, a spin-off); empty when Sharadar sends `N/A` |
-| `item` | key | `1`, `2`, ...: tells apart actions that share day, action and contraticker |
-| `date` | | `day` as a date |
+| `item` | key | `1`, `2`, ...: tells apart actions that share day, action and contraticker. Text, like every key |
+| `date` | | `period` as a date |
 | `value` | value | The amount of a dividend, the ratio of a split; missing when Sharadar sends `N/A` |
-| `name`, `contraname` | attribute | Company names, as sent; `N/A` is stored empty |
+| `withdrawn` | value | 0 on a row Sharadar sends; 1 on a row that marks an action it no longer sends |
+| `name`, `contraname` | attribute | Company names, as sent with the row; `N/A` is stored empty |
 
-`item` numbers the rows that share `day`, `action` and `contraticker` by ascending `value`
-(missing last), so the numbering does not depend on the order of the answer. Without it a
-second dividend on the same day would be dropped without notice.
+`item` numbers the rows that share day, action and contraticker by ascending `value` (missing
+last), then by `contraname` and `name`, so the numbering does not depend on the order of the
+answer. Without it a second dividend on the same day would be dropped without notice. A row
+must carry `date`, `action`, `value` and `contraticker`; an `action` that is not a word (empty,
+`N/A`) fails the ticker.
+
+Attributes are stored with the row and never compared: a row keeps the names it came with until
+its value changes.
+
+### An action Sharadar no longer sends
+
+Every field that describes an action is part of its key and the store never deletes. So when
+Sharadar corrects the day of a dividend, or withdraws one, the stored row would stay current
+next to the new one. Instead the source adds a row for the stored action with `withdrawn` 1 and
+no value. A reader asks for the current actions with `withdrawn=0`. An action that comes back
+is stored again with `withdrawn` 0.
+
+The source knows what is stored through `Request.held` (`held_by` is `action`, `contraticker`
+and `item`), and it marks under one rule:
+
+**An answer speaks only for the days it covers, from its earliest action on.** A stored action
+earlier than the earliest day in the answer is left alone, and an answer with no actions marks
+nothing.
+
+The rule exists because a short answer is not a withdrawal. An entry whose `start` moves
+forward gets a shorter answer, and a request Sharadar treats as its free tier may get a shorter
+history rather than a refusal. Under the rule neither can mark the older actions.
+
+What the rule costs: the earliest action of a ticker, if Sharadar withdraws it or moves it to a
+later day, is not noticed and stays current. To rebuild a ticker from what Sharadar publishes
+today, the user deletes `tables/sharadar_actions/<TICKER>.parquet` and syncs.
+
+A mark lands on a key, not on an event: when the lower of two dividends of a day is withdrawn,
+item 1 takes the value that remains and item 2 is marked. The current rows are right; the
+stored history is not a log of which dividend went away.
+
+The index row of an actions table counts marked rows: its last period can be the day of a
+withdrawn action.
 
 ### What a split does
 
@@ -132,13 +173,15 @@ already know every later split.
 Three modules, as with the SEC:
 
 - `store/sources/sharadar.py`: what both sources share. The URL, the ticker rule, one call
-  that returns the rows of an answer, and how Sharadar refuses.
+  that returns the rows of an answer, how Sharadar refuses, and the loop over tickers.
 - `store/sources/sharadar_prices.py`: `SharadarPrices` and the reading of price rows.
-- `store/sources/sharadar_actions.py`: `SharadarActions` and the reading of action rows.
+- `store/sources/sharadar_actions.py`: `SharadarActions`, the reading of action rows and the
+  marking of the ones withdrawn.
 
-Both classes: `kind = Kind.TABLE`, `requests_per_minute = 120`, `daily_budget = None`,
-`held_by = ()`. `REGISTRY` and `TITLES` gain `sharadar_prices` and `sharadar_actions`, both
-titled `Sharadar`.
+Both classes: `kind = Kind.TABLE`, `requests_per_minute = 120` (an assumption: Sharadar
+publishes no rate for this API), `daily_budget = None`. `held_by` is `()` for prices and
+`("action", "contraticker", "item")` for actions. `REGISTRY` and `TITLES` gain
+`sharadar_prices` and `sharadar_actions`, both titled `Sharadar`.
 
 ### The call
 
@@ -155,39 +198,49 @@ value, contraticker, contraname`.
   Sharadar's cap of 10000 rows and may be cut short: set `start` in the entry". A daily series
   reaches 10,000 rows after about 40 years.
 - A day that comes twice in a price answer fails that ticker with `SOURCE_ERROR`.
+- The prices source asks its `stocks` entries first, then its `funds` entries.
 
 The index row of a ticker: name `Daily prices of <TICKER> (Sharadar <table>)` or
-`Corporate actions of <TICKER> (Sharadar)`; `attrs.table` for prices; staleness 10 days for
-prices (the store's threshold for a daily series) and none for actions, unless the entry sets
-its own.
+`Corporate actions of <TICKER> (Sharadar)`; `attrs.table` for prices. Staleness: 10 days for
+prices (the store's threshold for a daily series). An actions table has a frequency only so
+that the store says what it holds, so the source gives it a threshold that never triggers
+(36,500 days). An entry's own `stale_after_days` wins in both.
 
 ### How Sharadar refuses
 
 | Answer | Outcome |
 |---|---|
-| HTTP 403 | `KEY_ERROR` for this entry and the rest of the source: "Sharadar treated the request as its free tier: check SHARADAR_API_KEY and that the plan includes the table `<table>`" |
+| HTTP 401 | `KEY_ERROR` for this entry and the ones left of its table: "Sharadar rejected the key (HTTP 401): check SHARADAR_API_KEY" |
+| HTTP 403 | `KEY_ERROR` for this entry and the ones left of its table: "Sharadar treated the request as its free tier (HTTP 403): check SHARADAR_API_KEY and that the plan includes the table `<table>`". The entries of the other table are still asked |
 | HTTP 429 after the client's retries | The source stops as for a quota; the next run resumes |
-| HTTP 200, no rows, prices | `NOT_FOUND`: "Sharadar has no prices for `<TICKER>` in its table `<table>`; an ETF needs `table: funds`" |
-| HTTP 200, no rows, actions | The entry is recorded as reached and no table is written: a company without actions is normal. Reading its table raises `UnknownSeriesError`, as for any id without a stored table |
+| HTTP 200, no rows, prices | `NOT_FOUND`: "Sharadar has no prices for `<TICKER>` in its table `<table>`", then "from `<start>` on" when the entry has a `start`, then "; an ETF needs `table: funds`" when the table asked was `stocks` |
+| HTTP 200, no rows, actions | The entry is recorded as reached and no table is written: a company without actions is normal. Reading its table raises `UnknownSeriesError`, as for any id without a stored table, and `status` lists it as `missing` |
+| HTTP 200 without a list of rows in `data` | `SOURCE_ERROR` for that ticker, with an excerpt of what Sharadar said |
 | Any other status, an answer that is not JSON, a row without a field | `SOURCE_ERROR` for that ticker |
 | A network failure | `NETWORK_ERROR` for that ticker |
 
 Sharadar does not reject a wrong key: it answers as its free tier, HTTP 200 for the few
 tickers that tier covers and HTTP 403 for the rest. So a run with a wrong key stores real data
-for the free tickers it meets and fails from the first ticker outside them.
+for the free tickers it meets and fails from the first ticker outside them. The 401 is handled
+in case Sharadar ever sends one.
 
 ### The key
 
 - `credentials.py`: the constant `SHARADAR = "SHARADAR_API_KEY"` and its `Key` record, added
   last in `REGISTRY`: label `Sharadar`, scope `US equities - prices & actions`, how
   `Subscribe at https://sharadar.com/subscribe and copy the key from your account`.
-- `keys_check.py`: a probe through `sharadar_prices` with the entry `GOOGL` and `start` one
-  year back. GOOGL was outside the free tier on 2026-10-12, so an answer with rows means a
-  paid key. The verdict is wrong if GOOGL ever joins the free tier.
+- `keys_check.py`: a probe through `sharadar_prices` with the entry `GOOGL` and `start` 400
+  days back, the window every other probe uses. GOOGL was outside the free tier on 2026-10-12,
+  so an answer with rows means a paid key. The verdict is wrong if GOOGL ever joins the free
+  tier.
 
 ## Changes to the core
 
-None. `sync`, `storage` and `api` are used as they are.
+One line. `SourceReport.lines` in `sync.py` padded the source name to 12 characters, so a
+longer name ran into the text of its line; it now always leaves a space. Names up to 11
+characters print as before.
+
+Nothing else: `storage` and `api` are used as they are.
 
 The id `CON` (a Russell 2000 ticker, and a device name on Windows) writes and reads as
 `CON.parquet` on Windows 11 build 26200, tested on 2026-10-12, so `Storage.table_path` is left
@@ -199,15 +252,21 @@ supported for such ids.
 - **Size of the catalog.** Two calls per ticker per run, each with the whole history, so the
   calls and the download of a run grow with the catalog. The quota of a paid key is not
   verified. If a run cannot finish inside it, every run starts again from the first entry and
-  the last ones are never refreshed. The way out is the incremental sync, a change to the
-  sources only.
+  the last ones are never refreshed (the `funds` entries first, since they are asked last).
+  The way out is an incremental sync, a change to the sources only.
 - **Account quota.** The two sources are paced and counted separately; Sharadar counts them
   together.
+- **What Sharadar stops sending.** The earliest action of a ticker, if withdrawn, stays current
+  (see above). A price day Sharadar stops sending stays as it was: prices have no marking.
+- **A ticker without actions** has no table and shows as `missing` in `status`, which then
+  exits with 1. How many tickers of a real catalog are like that is not known yet.
+- **Tables of many tickers at once.** `Store.table("sharadar_prices")` without an id returns
+  the rows of every ticker with no column that says whose they are, as for every table source.
 
 ## Error handling
 
 The failure policy of the base spec applies: an unknown ticker fails alone; a network failure
-or an unexpected answer fails that ticker; a refused key skips the rest of the source; an
+or an unexpected answer fails that ticker; a refused key skips the rest of its table; an
 exhausted quota stops the source and the rest waits for the next run. Nothing is filled in.
 
 ## Testing
@@ -215,29 +274,34 @@ exhausted quota stops the source and the rest waits for the next run. Nothing is
 Fixtures are written by hand in the shape of Sharadar's answers, with invented tickers and
 numbers (see "Data terms"). The check that fails a fixture holding a real token stays as it is.
 
-- Reading rows: a price answer (the six value columns, `D` and the day, `closeadj` and
+- Reading rows: a price answer (the six value columns and the day, `closeadj` and
   `lastupdated` left out, a missing value as NaN), a repeated day; an action answer (`N/A` as
-  empty or missing, `item` numbered by value whatever the order of the answer, two dividends
-  on one day both kept).
+  empty or missing, `item` numbered by value and names whatever the order of the answer, two
+  dividends on one day both kept, the fields a row must carry).
 - Sources: `date.gte` always sent, from `start` or 1900-01-01; the table chosen by `table`;
-  the key as `api_key` and scrubbed from errors; missing credential; 403 as `KEY_ERROR` for
-  the rest; persistent 429; no rows for prices and for actions; the cap of 10,000 rows; an
-  answer that is not JSON; `validate` (a ticker in lower case, an unknown field, a `table`
-  that is neither `stocks` nor `funds`); the index row.
+  the key as `api_key` and scrubbed from errors; missing credential; 401 and 403 as `KEY_ERROR`
+  for the rest of the table only; persistent 429; no rows for prices and for actions; the cap
+  of 10,000 rows; an answer that is not JSON or has no rows in `data`; `validate`; the index
+  row.
+- Withdrawals: what is marked and what is not (before the answer's earliest day, an empty
+  answer), a day corrected, the lower of two dividends withdrawn, a short answer, an action
+  that comes back, the same answer twice.
 - Sync and API: a split (a second answer with the earlier days restated) appends one row per
-  earlier day and `as_of` reads across it; a second sync right after a first adds nothing;
-  `Store.table` with a filter on `period` and on `action`; `status`; `show`.
-- Storage: a table whose id is `CON` is written and read back; a table that is not versioned
+  earlier day and `as_of` reads across it; a second sync right after a first adds nothing; no
+  set of held days is built for prices; `Store.table` with filters; `status`; `show`.
+- Storage: a table whose id is `CON` is written and read back. A table that is not versioned
   and has attribute columns round-trips (the first one in the store).
 - Credentials and checks: the registry test names seven keys; `PROBED` covers the new key; the
   probe gives `ok` on rows and `rejected` on 403.
-- One live test, off by default, skipped without the credential. It checks shapes (columns,
-  types, a first day before the default window), never values.
+- Two live tests, off by default, skipped without the credential: five calls in all. They check
+  shapes (columns, a first day before the default window, the words for a dividend and a
+  split, the actions of an ETF, what a ticker Sharadar does not have is answered with), never
+  values.
 
 ## Acceptance criteria
 
 1. Every unit test passes; ruff and mypy are clean; the existing tests stay green.
-2. The live test passes with the user's key.
+2. The live tests pass with the user's key.
 3. A load of AAPL, MSFT, GOOGL and BRK.B (stocks), SPY and QQQ (funds), one delisted ticker,
    and the actions of all of them completes; a second sync right after adds no rows.
 4. For AAPL, the first day stored and the closes around its split of 2020-08-31 agree with the
@@ -256,22 +320,43 @@ the data is not blocked.
 
 ## Documentation
 
-- README: a Sharadar section with the catalog example and the recipe for a close adjusted for
-  dividends; Sharadar added to "Data terms" (see above).
+- README: a Sharadar section with the catalog example, what a withdrawn action is and how to
+  read the current ones, and the recipe for a close adjusted for dividends; Sharadar added to
+  "Data terms" (see above).
 - CHANGELOG.
 - The plan, in `docs/superpowers/plans/`.
 
-## Assumptions the live test settles
+## Assumptions the live tests settle
 
 The free tier does not show these, so the design assumes them until a paid key is used:
 
 - The table `funds` has the columns of `stocks`.
+- A paid key gets the whole history of `actions` from `date.gte` on.
 - A split appears in `actions` with the action `split` and its ratio in `value`.
-- `actions` may hold two rows with the same day, action and contraticker (hence `item`).
-- A dividend `value` is the amount as paid.
+- The `actions` table holds the actions of ETFs too.
 - An unknown ticker with a paid key answers HTTP 200 with no rows.
 
-What the live test finds about the shape of an answer is written back into this spec.
+Two more are not shapes, and the acceptance run settles them: whether `actions` ever holds two
+rows with the same day, action and contraticker (hence `item`), and whether a dividend `value`
+is the amount as paid (criterion 5).
+
+What the live tests find about the shape of an answer is written back into this spec.
+
+## What changed while building
+
+The design above is what was built. It differs from the one first approved in these points,
+each decided during the reviews of the code:
+
+- Prices lost their `frequency` column (the owner's choice), for the cost in memory explained
+  above. It had been kept for a later incremental sync.
+- Actions gained `frequency`, `period` (it was `day`) and `withdrawn`, and the marking of
+  withdrawn actions (the owner's choice). The first design left a corrected action current.
+- A refusal (401, 403) is about one table, not the whole source.
+- An answer without rows in `data` reports what Sharadar said; a not-found reason names the
+  first day asked for; the hint about `funds` is given only for `stocks`.
+- The ticker rule refuses a trailing line break; an action row must carry its fields.
+- One line of the core changed, for the console line of a long source name.
+- A ticker without actions writes no table (the first text said "an empty table").
 
 ## Out of scope
 
@@ -279,6 +364,7 @@ What the live test finds about the shape of an answer is written back into this 
   sector, delisting flag) and `events`: the next spec.
 - A source for Nasdaq Data Link, where Sharadar sells its commercial license.
 - An incremental sync, the whole Sharadar universe, and the bulk files.
+- Marking a price day Sharadar stops sending.
 - Any derived column in the store, the close adjusted for dividends included.
 - Turning the lists in `docs/catalogs/` into catalogs.
 - Intraday prices, non-US markets (EODHD), options.
