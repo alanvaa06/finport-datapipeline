@@ -408,6 +408,23 @@ def test_report_lines_are_ascii_and_say_what_happened():
     assert report.exit_code == 1
 
 
+def test_a_source_name_of_twelve_characters_or_more_keeps_a_space_before_the_text():
+    missing = (("sharadar_prices:XTEST", "key_error: SHARADAR_API_KEY is missing"),)
+    assert SourceReport("sharadar_prices", 3, (), 3, 0, 3, False, 0).lines() == [
+        "[ok]  sharadar_prices 3 series, 3 new, 0 revised, 3 calls",
+    ]
+    assert SourceReport("sharadar_prices", 0, missing, 0, 0, 0, False, 0).lines() == [
+        "[x]   sharadar_prices key_error: SHARADAR_API_KEY is missing",
+    ]
+    # up to eleven characters the columns line up as before: the name, padded to twelve
+    assert SourceReport("fred", 3, (), 3, 0, 3, False, 0).lines() == [
+        "[ok]  fred        3 series, 3 new, 0 revised, 3 calls",
+    ]
+    assert SourceReport("sec_filings", 3, (), 3, 0, 3, False, 0).lines() == [
+        "[ok]  sec_filings 3 series, 3 new, 0 revised, 3 calls",
+    ]
+
+
 def test_a_name_declared_in_the_catalog_replaces_the_name_of_the_source(tmp_path):
     named = entry("UNRATE", name="Unemployment rate, curated")
     source = FakeSource()
