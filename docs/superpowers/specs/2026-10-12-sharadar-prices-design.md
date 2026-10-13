@@ -73,7 +73,8 @@ evaluating the data or the service without Sharadar's written approval. So:
   Any other value, and any other field, is a `CatalogError`.
 - `sharadar_actions` takes no field of its own.
 - The shared field `start`, when given, is the first day asked for. Without it the source asks
-  from 1900-01-01. What is stored before `start` is not asked again and stays as it is.
+  from 1900-01-01. What is stored before `start` is not asked again and stays as it is: after
+  a later split those days keep the basis they had, while the later ones are restated.
 - A ticker that is no longer listed never gets a new day, so it would show as stale: its entry
   sets `stale_after_days` to a large number.
 
@@ -147,9 +148,12 @@ The rule exists because a short answer is not a withdrawal. An entry whose `star
 forward gets a shorter answer, and a request Sharadar treats as its free tier may get a shorter
 history rather than a refusal. Under the rule neither can mark the older actions.
 
-What the rule costs: the earliest action of a ticker, if Sharadar withdraws it or moves it to a
-later day, is not noticed and stays current. To rebuild a ticker from what Sharadar publishes
-today, the user deletes `tables/sharadar_actions/<TICKER>.parquet` and syncs.
+What the rule costs: every stored action dated before the first one the answer still has is
+left alone, whatever became of it. So the earliest actions of a ticker, if Sharadar withdraws
+them or moves them later, stay current, and with a `start` so does everything stored before it.
+An answer with a gap in the middle marks what it lacks, and the next whole answer stores those
+actions again. To rebuild a ticker from what Sharadar publishes today, the user deletes
+`tables/sharadar_actions/<TICKER>.parquet` and syncs.
 
 A mark lands on a key, not on an event: when the lower of two dividends of a day is withdrawn,
 item 1 takes the value that remains and item 2 is marked. The current rows are right; the
@@ -198,7 +202,7 @@ value, contraticker, contraname`.
 
 - `date.gte` is always sent. A call without a date filter is answered with a recent window,
   not the whole history.
-- One ticker per call. An answer holds at most 10,000 rows and is cut there without notice.
+- One ticker per call. An answer holds at most 10,000 rows, and one that long may be cut short.
   An answer of 10,000 rows or more fails that ticker with `SOURCE_ERROR`, "the answer reached
   Sharadar's cap of 10000 rows and may be cut short: set `start` in the entry". A daily series
   reaches 10,000 rows after about 40 years.
@@ -221,8 +225,8 @@ that the store says what it holds, so the source gives it a threshold that never
 | HTTP 200, no rows, prices | `NOT_FOUND`: "Sharadar has no prices for `<TICKER>` in its table `<table>`", then "from `<start>` on" when the entry has a `start`, then "; an ETF needs `table: funds`" when the table asked was `stocks` |
 | HTTP 200, no rows, actions | The entry is recorded as reached and no table is written: a company without actions is normal. Reading its table raises `UnknownSeriesError`, as for any id without a stored table, and `status` lists it as `missing` |
 | HTTP 200 without a list of rows in `data` | `SOURCE_ERROR` for that ticker, with an excerpt of what Sharadar said |
-| Any other status, an answer that is not JSON, a row without a field | `SOURCE_ERROR` for that ticker |
-| A network failure | `NETWORK_ERROR` for that ticker |
+| Any other status but those below, an answer that is not JSON, a row without a field | `SOURCE_ERROR` for that ticker |
+| A network failure, or HTTP 500, 502, 503 or 504 after the client's retries | `NETWORK_ERROR` for that ticker |
 
 Sharadar does not reject a wrong key: it answers as its free tier, HTTP 200 for the few
 tickers that tier covers and HTTP 403 for the rest. So a run with a wrong key stores real data
@@ -261,8 +265,8 @@ supported for such ids.
   The way out is an incremental sync, a change to the sources only.
 - **Account quota.** The two sources are paced and counted separately; Sharadar counts them
   together.
-- **What Sharadar stops sending.** The earliest action of a ticker, if withdrawn, stays current
-  (see above). A price day Sharadar stops sending stays as it was: prices have no marking.
+- **What Sharadar stops sending.** The actions of a ticker stored before the first one an
+  answer still has stay current, whatever became of them (see above). A price day Sharadar stops sending stays as it was: prices have no marking.
 - **A ticker without actions** has no table and shows as `missing` in `status`, which then
   exits with 1. How many tickers of a real catalog are like that is not known yet.
 - **Tables of many tickers at once.** `Store.table("sharadar_prices")` without an id returns

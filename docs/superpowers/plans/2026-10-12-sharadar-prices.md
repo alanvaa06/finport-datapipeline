@@ -1794,8 +1794,10 @@ def main() -> int:
         theirs = pd.Series({pd.Timestamp(row["date"]): row["closeadj"] for row in answer.json()["data"]})
         ours = adjusted_close(store, "AAPL")
         gap = (ours - theirs.reindex(ours.index)).abs()
-        print(f"criterion 5: largest gap {gap.max():.4f}, on {gap.idxmax().date()}, over {len(gap)} days")
-        print("criterion 5:", "PASS" if gap.max() <= TOLERANCE else "FAIL")
+        missing = int(gap.isna().sum())  # days one of the two series lacks: they cannot pass
+        print(f"criterion 5: largest gap {gap.max():.4f}, on {gap.idxmax().date()}, over {len(gap) - missing} days")
+        print(f"criterion 5: days without a pair to compare: {missing}")
+        print("criterion 5:", "PASS" if missing == 0 and gap.max() <= TOLERANCE else "FAIL")
 
         actions = store.table("sharadar_actions", "AAPL")
         print("the words Sharadar uses for AAPL's actions:", sorted(set(actions["action"])))
@@ -1816,7 +1818,7 @@ Expected:
 
 - [ ] **Step 5: If criterion 5 fails**
 
-It is the one most likely to fail: the recipe takes a dividend as stated in today's shares and leaves spin-offs out, and neither was checked with a paid key. Look at the day of the largest gap and at the actions near it, correct the recipe in the README (and in the script) or take it out, and say what was found to the user in the chat. Storing the data is not blocked.
+It is the one most likely to fail: the recipe takes a dividend as stated in today's shares and leaves spin-offs out, and neither was checked with a paid key. Look at the day of the largest gap and at the actions near it (two dividends on one day are compounded by the recipe, not added, which differs a little for a large special dividend), correct the recipe in the README (and in the script) or take it out, and say what was found to the user in the chat. Storing the data is not blocked.
 
 - [ ] **Step 6: Write back what the shapes turned out to be**
 
@@ -1839,16 +1841,17 @@ reference; the code blocks above are not.
 
 Decided by the owner during the reviews:
 
-- Prices have no `frequency` column: `KEY_COLUMNS = ("period",)`. With it, a sync built the set
-  of days held for every ticker on every run, for a source that never reads it. Task 2's tests
-  were adapted (the index row has no frequency; `show` starts with `period`).
-- An action Sharadar no longer sends is marked as withdrawn. The actions table has the keys
-  `frequency, period, action, contraticker, item` (`period` was `day`), the values `value,
-  withdrawn`, `held_by = ("action", "contraticker", "item")` and a staleness threshold that
-  never triggers. A stored action is marked only from the answer's earliest day on.
+- Prices have no `frequency` column. With it, a sync built the set of days held for every
+  ticker on every run, for a source that never reads it. Task 2's tests were adapted (the
+  index row has no frequency).
+- An action Sharadar no longer sends is marked as withdrawn. The actions table has `period`
+  where it had `day`, a `frequency` so that the store says what it holds, the values `value,
+  withdrawn`, and a staleness threshold that never triggers. A stored action is marked only
+  from the answer's earliest day on. Its keys and `held_by` are in the next point but one.
 - A ticker without actions stays as it is: no table, `missing` in `status`. Documented.
 - Both tables carry `ticker`, the catalog id, as a key column: prices are keyed by `ticker,
-  period`, and actions by `frequency, period, ticker, action, contraticker, item`.
+  period`, and actions by `frequency, period, ticker, action, contraticker, item`, with
+  `held_by = ("ticker", "action", "contraticker", "item")`.
 
 Asked for by the reviewers:
 
