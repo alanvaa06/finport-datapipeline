@@ -168,7 +168,7 @@ its own.
 | HTTP 403 | `KEY_ERROR` for this entry and the rest of the source: "Sharadar treated the request as its free tier: check SHARADAR_API_KEY and that the plan includes the table `<table>`" |
 | HTTP 429 after the client's retries | The source stops as for a quota; the next run resumes |
 | HTTP 200, no rows, prices | `NOT_FOUND`: "Sharadar has no prices for `<TICKER>` in its table `<table>`; an ETF needs `table: funds`" |
-| HTTP 200, no rows, actions | The entry is stored as reached, with an empty table: a company without actions is normal |
+| HTTP 200, no rows, actions | The entry is recorded as reached and no table is written: a company without actions is normal. Reading its table raises `UnknownSeriesError`, as for any id without a stored table |
 | Any other status, an answer that is not JSON, a row without a field | `SOURCE_ERROR` for that ticker |
 | A network failure | `NETWORK_ERROR` for that ticker |
 
