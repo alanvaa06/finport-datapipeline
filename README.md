@@ -219,16 +219,16 @@ Each run asks for the whole history of each ticker, two calls per ticker, and st
 changed. An entry with a `start` asks from that day on, and what is stored before it stays as it
 is.
 
-A price row holds its day (`period`), then `open`, `high`, `low`, `close` and `volume` adjusted
-for splits, as Sharadar sends them, and `closeunadj`, the close as it traded. When a ticker
+A price row holds its `ticker` and its day (`period`), then `open`, `high`, `low`, `close` and
+`volume` adjusted for splits, as Sharadar sends them, and `closeunadj`, the close as it traded. When a ticker
 splits, Sharadar restates the adjusted columns of every earlier day: the next sync stores those
 days again and keeps the rows it had, so `as_of` still reads what the store held before.
 `closeunadj` never changes. Sharadar does not say when it restated a row, so prices read as of a
 date from your first sync on.
 
-An action row holds its day (`period`), Sharadar's word for the action (`dividend`, `split`,
-...), its `value` and the other company it involves, if any; `item` (`1`, `2`, ...) tells apart
-the actions that share all of those. The store never deletes, so an action Sharadar no longer
+An action row holds its `ticker`, its day (`period`), Sharadar's word for the action
+(`dividend`, `split`, ...), its `value` and the other company it involves, if any; `item` (`1`,
+`2`, ...) tells apart the actions that share all of those. The store never deletes, so an action Sharadar no longer
 sends, because it corrected its day or withdrew it, gets a row with `withdrawn` 1 and no value.
 Read the current actions with `withdrawn=0`.
 
@@ -240,6 +240,10 @@ rebuild the actions of a ticker from what Sharadar publishes today, delete
 
 A ticker without actions has no table: `store.table("sharadar_actions", ticker)` raises
 `UnknownSeriesError` for it, and `status` lists it as `missing`.
+
+Without an id, `table` reads every ticker stored, and `ticker` says whose each row is:
+`store.table("sharadar_prices", period="2026-03-04")` is that day of all of them. It opens
+every ticker's file to do so.
 
 The store keeps no close adjusted for dividends: Sharadar restates it over the whole history on
 every dividend. Work it out from `close` and the dividends. Both are in today's shares: after a

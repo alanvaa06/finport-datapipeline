@@ -87,6 +87,7 @@ scrubbed from messages and logs. Without it nothing is requested and every entry
 
 | Column | Role | Meaning |
 |---|---|---|
+| `ticker` | key | The catalog id asked for, whatever the answer calls it |
 | `period` | key | The day, `YYYY-MM-DD` |
 | `date` | | The day as a date |
 | `open`, `high`, `low`, `close` | value | Adjusted for splits and stock dividends, as Sharadar sends them |
@@ -109,6 +110,7 @@ consumer that needs a series that never moves reads `closeunadj`.
 |---|---|---|
 | `frequency` | key | Always `D`. It is there so that the store tells the source what it holds |
 | `period` | key | The day of the action, `YYYY-MM-DD` |
+| `ticker` | key | The catalog id asked for, whatever the answer calls it |
 | `action` | key | Sharadar's own word: `dividend`, `split`, and the others it defines |
 | `contraticker` | key | The other company of the action (a merger, a spin-off); empty when Sharadar sends `N/A` |
 | `item` | key | `1`, `2`, ...: tells apart actions that share day, action and contraticker. Text, like every key |
@@ -134,8 +136,8 @@ next to the new one. Instead the source adds a row for the stored action with `w
 no value. A reader asks for the current actions with `withdrawn=0`. An action that comes back
 is stored again with `withdrawn` 0.
 
-The source knows what is stored through `Request.held` (`held_by` is `action`, `contraticker`
-and `item`), and it marks under one rule:
+The source knows what is stored through `Request.held` (`held_by` is `ticker`, `action`,
+`contraticker` and `item`), and it marks under one rule:
 
 **An answer speaks only for the days it covers, from its earliest action on.** A stored action
 earlier than the earliest day in the answer is left alone, and an answer with no actions marks
@@ -183,7 +185,7 @@ Three modules, as with the SEC:
 
 Both classes: `kind = Kind.TABLE`, `requests_per_minute = 120` (an assumption: Sharadar
 publishes no rate for this API), `daily_budget = None`. `held_by` is `()` for prices and
-`("action", "contraticker", "item")` for actions. `REGISTRY` and `TITLES` gain
+`("ticker", "action", "contraticker", "item")` for actions. `REGISTRY` and `TITLES` gain
 `sharadar_prices` and `sharadar_actions`, both titled `Sharadar`.
 
 ### The call
@@ -264,7 +266,8 @@ supported for such ids.
 - **A ticker without actions** has no table and shows as `missing` in `status`, which then
   exits with 1. How many tickers of a real catalog are like that is not known yet.
 - **Tables of many tickers at once.** `Store.table("sharadar_prices")` without an id returns
-  the rows of every ticker with no column that says whose they are, as for every table source.
+  the rows of every ticker, each with its `ticker`, and opens every ticker's file to do so.
+  The tickers come in the order of their ids, not of the catalog.
 
 ## Error handling
 
@@ -291,7 +294,8 @@ numbers (see "Data terms"). The check that fails a fixture holding a real token 
   that comes back, the same answer twice.
 - Sync and API: a split (a second answer with the earlier days restated) appends one row per
   earlier day and `as_of` reads across it; a second sync right after a first adds nothing; no
-  set of held days is built for prices; `Store.table` with filters; `status`; `show`.
+  set of held days is built for prices; `Store.table` with filters, and across tickers;
+  `status`; `show`.
 - Storage: a table whose id is `CON` is written and read back. A table that is not versioned
   and has attribute columns round-trips (the first one in the store).
 - Credentials and checks: the registry test names seven keys; `PROBED` covers the new key; the
@@ -355,6 +359,8 @@ each decided during the reviews of the code:
   above. It had been kept for a later incremental sync.
 - Actions gained `frequency`, `period` (it was `day`) and `withdrawn`, and the marking of
   withdrawn actions (the owner's choice). The first design left a corrected action current.
+- Both tables gained `ticker`, the catalog id (the owner's choice), so that a read of several
+  tickers at once says whose each row is.
 - A refusal (401, 403) is about one table, not the whole source.
 - An answer without rows in `data` reports what Sharadar said; a not-found reason names the
   first day asked for; the hint about `funds` is given only for `stocks`.

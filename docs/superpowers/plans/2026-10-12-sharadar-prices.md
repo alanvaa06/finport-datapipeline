@@ -1847,6 +1847,8 @@ Decided by the owner during the reviews:
   withdrawn`, `held_by = ("action", "contraticker", "item")` and a staleness threshold that
   never triggers. A stored action is marked only from the answer's earliest day on.
 - A ticker without actions stays as it is: no table, `missing` in `status`. Documented.
+- Both tables carry `ticker`, the catalog id, as a key column: prices are keyed by `ticker,
+  period`, and actions by `frequency, period, ticker, action, contraticker, item`.
 
 Asked for by the reviewers:
 
