@@ -24,7 +24,7 @@ from .helpers import NOW, client, entry, fixture
 # Every ticker, name and number here is invented: Sharadar's license forbids sharing its data.
 KEY_VALUE = "sharadar-key-of-the-tests"
 CREDENTIALS = Credentials({keys.SHARADAR: KEY_VALUE})
-RECORDED = json.loads(fixture("sharadar_prices.json"))["data"]
+INVENTED = json.loads(fixture("sharadar_prices.json"))["data"]
 
 
 def ticker(identifier="XTEST", **fields):
@@ -90,7 +90,7 @@ def test_validate_accepts_a_ticker_with_a_dot_and_both_tables():
 
 
 def test_a_price_row_keeps_the_six_values_and_drops_the_rest():
-    newest, *_others, oldest = read_rows(RECORDED, "XTEST")
+    newest, *_others, oldest = read_rows(INVENTED, "XTEST")
     assert set(newest) == {*KEY_COLUMNS, "date", *VALUE_COLUMNS}  # no closeadj, no lastupdated
     assert newest["ticker"] == "XTEST"
     assert (newest["period"], newest["date"]) == ("2026-03-04", datetime.date(2026, 3, 4))
@@ -119,7 +119,7 @@ def test_a_call_asks_one_table_for_one_ticker_from_the_first_day():
 
     def handler(request):
         seen.append(request)
-        return answer(RECORDED)
+        return answer(INVENTED)
 
     fetch(handler, [Request(ticker()), Request(ticker("XFUND", params={"table": "funds"}))])
     stocks, funds = seen
@@ -138,14 +138,14 @@ def test_the_start_of_an_entry_is_the_first_day_asked_for():
 
     def handler(request):
         seen.append(request.url.params["date.gte"])
-        return answer(RECORDED)
+        return answer(INVENTED)
 
     fetch(handler, [Request(ticker(start=datetime.date(2020, 1, 1)))])
     assert seen == ["2020-01-01"]
 
 
 def test_an_answer_is_one_table_of_the_ticker():
-    (batch,) = fetch(lambda _request: answer(RECORDED), [Request(ticker())])
+    (batch,) = fetch(lambda _request: answer(INVENTED), [Request(ticker())])
     (table,) = batch.tables
     assert (table.key, table.name) == ("sharadar_prices:XTEST", "Daily prices of XTEST (Sharadar stocks)")
     assert (table.key_columns, table.value_columns) == (KEY_COLUMNS, VALUE_COLUMNS)
@@ -179,8 +179,8 @@ def test_a_403_fails_every_ticker_left_and_stops():
     def handler(request):
         calls.append(request.url.params["ticker"])
         if request.url.params["ticker"] == "XFREE":
-            return answer(RECORDED)
-        return httpx.Response(403, json={"error": "Exceeds free tier"})
+            return answer(INVENTED)
+        return httpx.Response(403, json={"error": "refused"})
 
     requests = [Request(ticker("XFREE")), Request(ticker("XPAID")), Request(ticker("XNEXT"))]
     stored, refused = fetch(handler, requests)
@@ -199,7 +199,7 @@ def test_a_401_is_a_rejected_key_and_fails_every_ticker_left():
 
     def handler(request):
         calls.append(request.url.params["ticker"])
-        return httpx.Response(401, json={"error": "Unauthorized"})
+        return httpx.Response(401, json={"error": "no"})
 
     batches = fetch(handler, [Request(ticker()), Request(ticker("XOTHER"))])
     refused = [failure for batch in batches for failure in batch.failures]
@@ -214,8 +214,8 @@ def test_a_401_is_a_rejected_key_and_fails_every_ticker_left():
 def test_a_403_on_one_table_does_not_fail_the_tickers_of_the_other():
     def handler(request):
         if request.url.path.endswith("/funds"):
-            return httpx.Response(403, json={"error": "Exceeds free tier"})
-        return answer(RECORDED)
+            return httpx.Response(403, json={"error": "refused"})
+        return answer(INVENTED)
 
     requests = [Request(ticker("XFUND", params={"table": "funds"})), Request(ticker()), Request(ticker("XOTHER"))]
     batches = fetch(handler, requests)
@@ -255,7 +255,7 @@ def test_a_failed_call_fails_its_ticker_and_the_next_one_goes_on():
     def handler(request):
         if request.url.params["ticker"] == "XDOWN":
             return httpx.Response(500)
-        return answer(RECORDED)
+        return answer(INVENTED)
 
     failed, found = fetch(handler, [Request(ticker("XDOWN")), Request(ticker())])
     assert failed.failures[0].outcome is Outcome.NETWORK_ERROR
@@ -270,7 +270,7 @@ def test_a_failed_call_fails_its_ticker_and_the_next_one_goes_on():
         (httpx.Response(200, json={"count": 0}), "no list of rows in `data`"),
         (httpx.Response(200, json={"data": "none"}), "no list of rows in `data`"),
         (httpx.Response(200, json=[1, 2]), "no list of rows in `data`"),
-        (httpx.Response(200, json={"error": "Table not found"}), "Table not found"),
+        (httpx.Response(200, json={"error": "nothing by that name"}), "nothing by that name"),
         (httpx.Response(200, json={"data": [1]}), "unexpected answer \\(TypeError"),
         (httpx.Response(200, json={"data": [{"date": "2026-03-04", "close": 1.0}]}), "unexpected answer \\(KeyError"),
         (httpx.Response(200, json={"data": [{"date": "4 March"}]}), "unexpected answer \\(ValueError"),
@@ -286,7 +286,7 @@ def test_a_source_error_is_the_error_of_one_ticker_alone():
     def handler(request):
         if request.url.params["ticker"] == "XBAD":
             return httpx.Response(400, text="bad request")
-        return answer(RECORDED)
+        return answer(INVENTED)
 
     failed, found = fetch(handler, [Request(ticker("XBAD")), Request(ticker())])
     assert failed.failures[0].outcome is Outcome.SOURCE_ERROR
@@ -302,7 +302,7 @@ def test_a_day_that_comes_twice_is_refused_rather_than_stored_once():
 
 def test_an_answer_at_the_row_cap_is_refused_rather_than_stored_cut_short(monkeypatch):
     monkeypatch.setattr(sharadar, "MAX_ROWS", 4)
-    (batch,) = fetch(lambda _request: answer(RECORDED), [Request(ticker())])
+    (batch,) = fetch(lambda _request: answer(INVENTED), [Request(ticker())])
     assert batch.failures[0].outcome is Outcome.SOURCE_ERROR
     assert "cap of 4 rows and may be cut short: set `start` in the entry" in batch.failures[0].reason
 
@@ -325,7 +325,7 @@ class Vendor:
     """A fake Sharadar whose answers the test can change between syncs: (table, ticker) -> rows."""
 
     def __init__(self):
-        self.rows = {("stocks", "XTEST"): RECORDED}
+        self.rows = {("stocks", "XTEST"): INVENTED}
         self.calls = 0
 
     def __call__(self, request):
@@ -361,11 +361,11 @@ def store(tmp_path, vendor, clock):
 
 
 def split_three_for_one():
-    """The recorded answer after a later 3-for-1 split, with one new day: every earlier day comes
+    """The invented answer after a later 3-for-1 split, with one new day: every earlier day comes
     restated, and its close as it traded does not change."""
     restated = [
         {**row, **{column: row[column] / 3 for column in ("open", "high", "low", "close")}, "volume": row["volume"] * 3}
-        for row in RECORDED
+        for row in INVENTED
     ]
     return [price("2026-06-30", close=7.0), *restated]
 

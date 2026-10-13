@@ -29,7 +29,7 @@ from .helpers import NOW, client, entry, fixture
 # Every ticker, name and number here is invented: Sharadar's license forbids sharing its data.
 KEY_VALUE = "sharadar-key-of-the-tests"
 CREDENTIALS = Credentials({keys.SHARADAR: KEY_VALUE})
-RECORDED = json.loads(fixture("sharadar_actions.json"))["data"]
+INVENTED = json.loads(fixture("sharadar_actions.json"))["data"]
 
 
 def ticker(identifier="XTEST", **fields):
@@ -100,7 +100,7 @@ def test_validate_rejects_what_the_source_does_not_accept(identifier, params, me
 
 
 def test_an_action_row_keeps_what_sharadar_says_and_n_a_is_empty():
-    rows = {row["action"]: row for row in read_rows(RECORDED, "XTEST") if row["action"] != "dividend"}
+    rows = {row["action"]: row for row in read_rows(INVENTED, "XTEST") if row["action"] != "dividend"}
     split, spinoff = rows["split"], rows["spinoff"]
     assert set(split) == {*KEY_COLUMNS, "date", *VALUE_COLUMNS, *ATTRIBUTE_COLUMNS}
     assert [split[column] for column in KEY_COLUMNS] == ["D", "2026-03-03", "XTEST", "split", "", "1"]
@@ -116,13 +116,13 @@ def test_two_dividends_on_one_day_are_both_kept_and_numbered_by_value():
         ("D", "2026-02-10", "XTEST", "dividend", "", "1"): 0.1,
         ("D", "2026-02-10", "XTEST", "dividend", "", "2"): 0.5,
     }
-    dividends = [row for row in RECORDED if row["action"] == "dividend"]
+    dividends = [row for row in INVENTED if row["action"] == "dividend"]
     assert keyed(read_rows(dividends, "XTEST")) == expected
     assert keyed(read_rows(dividends[::-1], "XTEST")) == expected  # whatever the order of the answer
 
 
 def test_the_ticker_of_a_row_is_the_one_that_was_asked_for_whatever_the_answer_says():
-    rows = read_rows(of("OTHER", RECORDED), "XTEST")
+    rows = read_rows(of("OTHER", INVENTED), "XTEST")
     assert {row["ticker"] for row in rows} == {"XTEST"}
 
 
@@ -164,7 +164,7 @@ def test_a_value_or_an_other_company_sent_as_null_is_stored_as_missing():
 
 # -- the actions Sharadar no longer sends ------------------------------------------------------
 
-# what the store holds after an answer of the recorded actions: Request.held, in the order of KEY_COLUMNS
+# what the store holds after an answer of the invented actions: Request.held, in the order of KEY_COLUMNS
 HELD = frozenset(
     {
         ("D", "2025-06-30", "XTEST", "spinoff", "XSPUN", "1"),
@@ -176,7 +176,7 @@ HELD = frozenset(
 
 
 def test_nothing_is_withdrawn_when_nothing_is_held_or_everything_held_is_still_sent():
-    rows = read_rows(RECORDED, "XTEST")
+    rows = read_rows(INVENTED, "XTEST")
     assert withdrawals(frozenset(), rows) == ()
     assert withdrawals(HELD, rows) == ()
 
@@ -184,7 +184,7 @@ def test_nothing_is_withdrawn_when_nothing_is_held_or_everything_held_is_still_s
 def test_a_held_action_the_answer_no_longer_has_comes_back_marked_as_withdrawn():
     # the answer starts on 2026-02-10, the day of its only dividend left: the second one of that day,
     # on the answer's first day itself, is gone. The spin-off, older than the answer, is not touched.
-    rows = read_rows(RECORDED[:2], "XTEST")
+    rows = read_rows(INVENTED[:2], "XTEST")
     (marked,) = withdrawals(HELD, rows)
     assert math.isnan(marked.pop("value"))
     assert marked == {
@@ -202,7 +202,7 @@ def test_a_held_action_the_answer_no_longer_has_comes_back_marked_as_withdrawn()
 
 
 def test_the_actions_withdrawn_after_the_earliest_day_of_the_answer_are_marked_in_order():
-    rows = read_rows(RECORDED[:1], "XTEST")  # only the split of 2026-03-03
+    rows = read_rows(INVENTED[:1], "XTEST")  # only the split of 2026-03-03
     held = {
         ("D", "2026-03-03", "XTEST", "split", "", "1"),
         ("D", "2026-05-12", "XTEST", "dividend", "", "2"),
@@ -219,7 +219,7 @@ def test_the_actions_withdrawn_after_the_earliest_day_of_the_answer_are_marked_i
 
 
 def test_an_answer_speaks_only_for_the_days_it_covers():
-    rows = read_rows(RECORDED[:1], "XTEST")  # a short, recent answer: only the split of 2026-03-03
+    rows = read_rows(INVENTED[:1], "XTEST")  # a short, recent answer: only the split of 2026-03-03
     assert withdrawals(HELD, rows) == ()  # the dividends and the spin-off are older than its first day
 
 
@@ -235,7 +235,7 @@ def test_a_call_asks_the_actions_table_for_one_ticker_from_the_first_day():
 
     def handler(request):
         seen.append(request)
-        return answer(RECORDED)
+        return answer(INVENTED)
 
     (batch,) = fetch(handler, [Request(ticker())])
     (request,) = seen
@@ -256,7 +256,7 @@ def test_a_call_asks_the_actions_table_for_one_ticker_from_the_first_day():
 
 def test_what_the_store_holds_decides_which_actions_are_marked_as_withdrawn():
     held = frozenset({("D", "2026-02-10", "XTEST", "dividend", "", "3")})
-    (batch,) = fetch(lambda _request: answer(RECORDED), [Request(ticker(), held=held)])
+    (batch,) = fetch(lambda _request: answer(INVENTED), [Request(ticker(), held=held)])
     *sent, marked = batch.tables[0].rows
     assert len(sent) == 4
     assert [marked[column] for column in KEY_COLUMNS] == ["D", "2026-02-10", "XTEST", "dividend", "", "3"]
@@ -265,7 +265,7 @@ def test_what_the_store_holds_decides_which_actions_are_marked_as_withdrawn():
 
 
 def test_the_ticker_stored_is_the_one_asked_for_whatever_the_answer_says():
-    (batch,) = fetch(lambda _request: answer(of("OTHER", RECORDED)), [Request(ticker())])
+    (batch,) = fetch(lambda _request: answer(of("OTHER", INVENTED)), [Request(ticker())])
     assert {row["ticker"] for row in batch.tables[0].rows} == {"XTEST"}
 
 
@@ -281,7 +281,7 @@ def test_the_start_of_the_entry_is_the_first_day_asked():
     assert request.url.params["date.gte"] == "2020-01-01"
 
 
-def test_a_ticker_without_actions_is_an_empty_table_not_a_failure():
+def test_a_ticker_without_actions_yields_no_rows_and_is_not_a_failure():
     (batch,) = fetch(lambda _request: answer([]), [Request(ticker())])
     assert batch.failures == ()
     assert batch.tables[0].rows == ()
@@ -337,7 +337,7 @@ class Vendor:
     It keeps the rows from the first day asked (`date.gte`) on."""
 
     def __init__(self):
-        self.rows = {"XTEST": RECORDED}
+        self.rows = {"XTEST": INVENTED}
         self.asked = []  # the first day of each call
 
     def __call__(self, request):
@@ -397,7 +397,7 @@ def current(store, **filters):
 
 
 def original_four():
-    """The recorded actions as (period, action, item), whatever the order they are read in."""
+    """The invented actions as (period, action, item), whatever the order they are read in."""
     return [
         ("2025-06-30", "spinoff", "1"),
         ("2026-02-10", "dividend", "1"),
@@ -433,7 +433,7 @@ def test_a_table_that_is_not_versioned_keeps_its_attribute_columns(store):
 
 def test_a_second_sync_adds_nothing_and_a_new_action_adds_one_row(store, vendor, clock):
     assert sync_at(store, clock, LATER) == (0, 0)
-    vendor.rows["XTEST"] = [action("2026-05-12", value=0.5), *RECORDED]
+    vendor.rows["XTEST"] = [action("2026-05-12", value=0.5), *INVENTED]
     assert sync_at(store, clock, LATEST) == (1, 0)
     assert store.info("sharadar_actions:XTEST").last_period == "2026-05-12"
 
@@ -443,7 +443,7 @@ def test_a_dividend_added_on_a_day_that_has_one_renumbers_the_dividends_after_it
     # and the stored 0.1 and 0.5 move to items 2 and 3. Against the store, items 1 and 2 are keys it
     # already has with another value (2 revised) and item 3 is a key it has not (1 new). No stored
     # row is touched, and a read gives the newest row of each key: the three dividends, once each.
-    vendor.rows["XTEST"] = [action("2026-02-10", value=0.05), *RECORDED]
+    vendor.rows["XTEST"] = [action("2026-02-10", value=0.05), *INVENTED]
     assert sync_at(store, clock, LATER) == (1, 2)
     dividends = current(store, action="dividend")
     assert list(dividends["value"]) == [0.05, 0.1, 0.5]
@@ -455,7 +455,7 @@ def test_a_dividend_whose_day_is_corrected_is_withdrawn_from_the_old_day(store, 
     # 10th (item 1, as stored) and the 0.5 as the first of the 11th: a key the store has not (1 new).
     # The stored 0.5 sits at item 2 of the 10th, a day the answer covers, and it is not in the answer:
     # it is stored again, marked (1 revised). Everything else is unchanged.
-    vendor.rows["XTEST"] = [{**row, "date": "2026-02-11"} if row["value"] == 0.5 else row for row in RECORDED]
+    vendor.rows["XTEST"] = [{**row, "date": "2026-02-11"} if row["value"] == 0.5 else row for row in INVENTED]
     assert sync_at(store, clock, LATER) == (1, 1)
     dividends = current(store, action="dividend")
     assert list(zip(dividends["period"], dividends["value"], strict=True)) == [
@@ -499,7 +499,7 @@ def test_a_withdrawal_in_one_ticker_marks_nothing_in_the_other(tmp_path, vendor,
     before = pd.read_parquet(path)
     # XTEST loses its 0.1: its 0.5 becomes item 1 (1 revised) and its item 2 is marked (1 revised);
     # XOTHER answers what it answered, and has nothing to add
-    vendor.rows["XTEST"] = [row for row in RECORDED if row["value"] != 0.1]
+    vendor.rows["XTEST"] = [row for row in INVENTED if row["value"] != 0.1]
     assert sync_at(both, clock, LATER) == (0, 2)
     marked = both.table("sharadar_actions", withdrawn=1)
     assert list(zip(marked["ticker"], marked["period"], marked["item"], strict=True)) == [("XTEST", "2026-02-10", "2")]
@@ -513,7 +513,7 @@ def test_the_lower_of_two_dividends_of_a_day_withdrawn_leaves_the_other_once(sto
     # The answer keeps the 0.5, which is now the only dividend of the day, so item 1: the stored item 1
     # (0.1) takes another value (1 revised). The stored item 2 (0.5) is held, on a day the answer
     # covers, and is not in it: marked (1 revised). Without the mark the table would show 0.5 twice.
-    vendor.rows["XTEST"] = [row for row in RECORDED if row["value"] != 0.1]
+    vendor.rows["XTEST"] = [row for row in INVENTED if row["value"] != 0.1]
     assert sync_at(store, clock, LATER) == (0, 2)
     dividends = current(store, action="dividend")
     assert list(zip(dividends["item"], dividends["value"], strict=True)) == [("1", 0.5)]
@@ -521,7 +521,7 @@ def test_the_lower_of_two_dividends_of_a_day_withdrawn_leaves_the_other_once(sto
 
 def test_a_short_answer_marks_nothing_of_the_days_before_it(store, vendor, clock):
     # What Sharadar answers a key it does not accept is a short, recent history, not an error
-    vendor.rows["XTEST"] = RECORDED[:1]  # only the split of 2026-03-03
+    vendor.rows["XTEST"] = INVENTED[:1]  # only the split of 2026-03-03
     assert sync_at(store, clock, LATER) == (0, 0)
     assert keys_of(current(store)) == original_four()
     assert store.table("sharadar_actions", "XTEST", withdrawn=1).empty
@@ -535,9 +535,9 @@ def test_an_answer_without_actions_marks_nothing_of_what_is_held(store, vendor, 
 
 
 def test_a_withdrawn_action_that_comes_back_is_stored_again(store, vendor, clock):
-    vendor.rows["XTEST"] = [{**row, "date": "2026-02-11"} if row["value"] == 0.5 else row for row in RECORDED]
+    vendor.rows["XTEST"] = [{**row, "date": "2026-02-11"} if row["value"] == 0.5 else row for row in INVENTED]
     sync_at(store, clock, LATER)
-    vendor.rows["XTEST"] = RECORDED
+    vendor.rows["XTEST"] = INVENTED
     # the 0.5 is back at item 2 of the 10th (1 revised: its key was marked) and the copy of the 11th is
     # now the one gone (1 revised: it is held, within the days covered, and no longer in the answer)
     assert sync_at(store, clock, LATEST) == (0, 2)
@@ -550,7 +550,7 @@ def test_a_withdrawn_action_that_comes_back_is_stored_again(store, vendor, clock
 def test_the_same_answer_twice_adds_nothing_the_second_time_also_when_it_marks_a_withdrawal(
     store, vendor, clock, tmp_path
 ):
-    vendor.rows["XTEST"] = [row for row in RECORDED if row["value"] != 0.1]
+    vendor.rows["XTEST"] = [row for row in INVENTED if row["value"] != 0.1]
     assert sync_at(store, clock, LATER) == (0, 2)
     path = tmp_path / "store" / "tables" / "sharadar_actions" / "XTEST.parquet"
     assert len(pd.read_parquet(path)) == 6  # the four of the first run, and the two it changed
@@ -580,7 +580,7 @@ def test_an_entry_with_a_start_marks_only_the_days_it_asks_for(store, vendor, cl
     # The first run, with no start, stored the four actions. The entry now asks from 2026-02-10 on,
     # and the split of 2026-03-03 is not in the answer: it is marked (1 revised). The spin-off of
     # 2025-06-30 is not in the answer either, but it is before the first day asked: it stays current.
-    vendor.rows["XTEST"] = [row for row in RECORDED if row["action"] != "split"]
+    vendor.rows["XTEST"] = [row for row in INVENTED if row["action"] != "split"]
     since = open_store(tmp_path, vendor, clock)
     since.add("sharadar_actions", ["XTEST"], start=datetime.date(2026, 2, 10))
     assert sync_at(since, clock, LATER) == (0, 1)
@@ -607,7 +607,7 @@ def test_show_prints_the_citation_and_the_newest_rows(store, tmp_path, monkeypat
 
 def test_show_prints_a_withdrawn_action_as_a_row_of_its_own(store, vendor, clock, tmp_path, monkeypatch):
     # the 0.5 moves to the next day: the old place is marked, and the store holds five rows, four current
-    vendor.rows["XTEST"] = [{**row, "date": "2026-02-11"} if row["value"] == 0.5 else row for row in RECORDED]
+    vendor.rows["XTEST"] = [{**row, "date": "2026-02-11"} if row["value"] == 0.5 else row for row in INVENTED]
     sync_at(store, clock, LATER)
     monkeypatch.setattr(cli_module, "open_store", lambda root, _catalog, _env: Store(root))
     arguments = ["show", "--root", str(tmp_path / "store"), "sharadar_actions:XTEST"]

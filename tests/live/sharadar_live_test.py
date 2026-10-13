@@ -3,7 +3,8 @@
 Needs SHARADAR_API_KEY in the environment or in ./.env, a plan with prices and actions, and
 network access. It exists to notice when Sharadar changes the shape of its answers, and it
 settles what the free tier does not show: the `funds` table, a split among the actions, the
-actions of an ETF, and what a ticker Sharadar does not have is answered with.
+actions of an ETF, the whole history of the actions, and what a ticker Sharadar does not have is
+answered with.
 
 It checks shapes only, never a value: Sharadar's license forbids publishing its data. Whether a
 dividend's value is the amount as paid is not a shape: the acceptance run settles it.
@@ -40,6 +41,8 @@ def test_sharadar_still_answers_in_the_expected_shape(tmp_path):
         first = prices["date"].min().date()
         assert first < today - datetime.timedelta(days=366 * (DEFAULT_WINDOW_YEARS + 1))  # the whole history came
     actions = store.table("sharadar_actions", "AAPL")
+    oldest = actions["date"].min().date()
+    assert oldest < today - datetime.timedelta(days=366 * (DEFAULT_WINDOW_YEARS + 1))  # not a recent window only
     assert {"dividend", "split"} <= set(actions["action"])  # the words the README recipe reads
     amounts = actions[actions["action"].isin(["dividend", "split"])]["value"].dropna()
     assert (amounts > 0).all()

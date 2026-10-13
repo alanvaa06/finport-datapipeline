@@ -8,8 +8,8 @@ Sharadar does not reject a wrong key: it answers as its free tier, with data for
 tickers that tier covers and HTTP 403 for every other one. So a 403 means the key is wrong or
 the plan lacks the table, and it is the only sign of either.
 
-An answer holds at most 10,000 rows and is cut there without notice: one that long is refused
-rather than stored cut short.
+An answer holds at most 10,000 rows: one that long may be cut short, so it is refused rather
+than stored.
 
 Sharadar's license is for personal use and forbids sharing its data: this library ships no
 answer of Sharadar's, and each user brings a key and a license of their own.
