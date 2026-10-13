@@ -16,6 +16,8 @@ to avoid look-ahead bias. How far back that works depends on the source: see
   retired.
 - **Tables:** goods trade from UN Comtrade, and the XBRL facts that companies report to the SEC.
   Each version of a fact is dated with the day it was filed.
+- **Equity prices:** daily prices and corporate actions of US stocks and ETFs from Sharadar, with
+  your own subscription. See [Equity prices](#equity-prices).
 - **Documents:** SEC filings (10-K, 10-Q, 8-K with their exhibits, 20-F, 40-F), stored as the
   files the SEC publishes.
 - **On your disk:** the store is plain Parquet and JSON in a folder you choose. Reading needs no
@@ -66,6 +68,7 @@ you to run `git rm --cached .env`.
 | `INEGI_TOKEN` | INEGI | Mexico CPI and jobs |
 | `COMTRADE_API_KEY` | UN Comtrade | Goods trade |
 | `SEC_EDGAR_UA` | SEC EDGAR | Filings and XBRL facts; not a key, a contact: `Your Name you@domain.com` |
+| `SHARADAR_API_KEY` | Sharadar | US stock and ETF prices and corporate actions; a paid subscription |
 
 The World Bank, the BIS, the ECB, Eurostat, the OECD, the IMF and DBnomics need no key.
 
@@ -125,6 +128,7 @@ store.frame(["fred:UNRATE", "fred:DGS10"])       # one column per series
 store.revisions("fred:UNRATE")                   # every stored version of every period
 store.table("comtrade", "MEX", flow="X")         # one row per partner, product and period
 store.table("sec_xbrl", "AAPL", concept="Assets", as_of="2024-03-01")  # as filed by that day
+store.table("sharadar_prices", "AAPL")           # one row per day: open, high, low, close, volume
 store.documents("sec_filings", "AAPL", form="10-K")  # the files on disk, with their path
 ```
 
@@ -192,6 +196,74 @@ staleness threshold: the euro members' national policy rates, which end in 1998,
 unemployment rates and producer prices, published months late, and a few more. `catalog` shows
 them with `[stale]`.
 
+## Equity prices
+
+`sharadar_prices` and `sharadar_actions` store the daily prices and the corporate actions of US
+stocks and ETFs from [Sharadar](https://sharadar.com), with your own subscription. A catalog
+lists the tickers:
+
+```yaml
+- source: sharadar_prices
+  ids: [AAPL, MSFT, BRK.B]
+  attrs: {commercial_ok: "no"}
+- source: sharadar_prices
+  table: funds            # ETFs are in Sharadar's `funds` table; stocks, the default, in `stocks`
+  ids: [SPY, QQQ]
+  attrs: {commercial_ok: "no"}
+- source: sharadar_actions
+  ids: [AAPL, MSFT, BRK.B, SPY, QQQ]
+  attrs: {commercial_ok: "no"}
+```
+
+Each run asks for the whole history of each ticker, two calls per ticker, and stores what
+changed. An entry with a `start` asks from that day on, and what is stored before it stays as it
+is.
+
+A price row holds its day (`period`), then `open`, `high`, `low`, `close` and `volume` adjusted
+for splits, as Sharadar sends them, and `closeunadj`, the close as it traded. When a ticker
+splits, Sharadar restates the adjusted columns of every earlier day: the next sync stores those
+days again and keeps the rows it had, so `as_of` still reads what the store held before.
+`closeunadj` never changes. Sharadar does not say when it restated a row, so prices read as of a
+date from your first sync on.
+
+An action row holds its day (`period`), Sharadar's word for the action (`dividend`, `split`,
+...), its `value` and the other company it involves, if any; `item` (`1`, `2`, ...) tells apart
+the actions that share all of those. The store never deletes, so an action Sharadar no longer
+sends, because it corrected its day or withdrew it, gets a row with `withdrawn` 1 and no value.
+Read the current actions with `withdrawn=0`.
+
+An answer speaks only for the days it covers, from its earliest action on: an action stored
+before that day is left alone, so a short answer never marks the older history. The price of
+that rule is that the earliest action of a ticker, if Sharadar withdraws it, stays current. To
+rebuild the actions of a ticker from what Sharadar publishes today, delete
+`tables/sharadar_actions/<TICKER>.parquet` in the store and sync.
+
+A ticker without actions has no table: `store.table("sharadar_actions", ticker)` raises
+`UnknownSeriesError` for it, and `status` lists it as `missing`.
+
+The store keeps no close adjusted for dividends: Sharadar restates it over the whole history on
+every dividend. Work it out from the raw close and the actions:
+
+```python
+import pandas as pd
+
+close = store.table("sharadar_prices", "AAPL").set_index("date")["closeunadj"]
+actions = store.table("sharadar_actions", "AAPL", withdrawn=0)
+factor = pd.Series(1.0, index=close.index)
+for day, action, value in actions[["date", "action", "value"]].itertuples(index=False):
+    before = close.index < day
+    if pd.isna(value) or not before.any():
+        continue
+    if action == "split":  # `value` shares after the split for each one before
+        factor[before] /= value
+    elif action == "dividend":  # paid to whoever held the share the day before
+        factor[before] *= 1 - value / close[before].iloc[-1]
+adjusted = close * factor
+```
+
+A ticker that is no longer listed never gets a new day: give its entry a large
+`stale_after_days`, or `status` calls it stale.
+
 ## Data terms
 
 This library ships code, not data. Each user brings their own keys, and the data goes to that
@@ -201,12 +273,18 @@ flag:
 - `yes`: Eurostat, the World Bank.
 - `restricted`: the IMF, the BIS, the OECD, and DBnomics, which mirrors IMF and OECD data under
   their terms.
-- `no`: FRED.
+- `no`: FRED, Sharadar.
 - `unverified`: Banxico, INEGI and the ECB. Their terms have not been reviewed for this flag;
   read them before a commercial use.
 
 FRED limits redistribution of large datasets and the use of its data to train machine-learning
 models. Check those terms before you build a commercial product on it.
+
+Sharadar's [Personal Use License](https://sharadar.com/terms) is for one person's own use. It
+forbids sharing its data and publishing assessments of it, which is why this repository holds
+none of either: the fixtures of its tests are invented. A professional or commercial use needs a
+commercial license, which Sharadar sells through Nasdaq Data Link; that service has another API,
+which this library does not read.
 
 ## Development
 
