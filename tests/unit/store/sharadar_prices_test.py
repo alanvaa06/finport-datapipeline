@@ -3,17 +3,23 @@ import json
 import math
 import re
 
+import click.testing
 import httpx
+import pandas as pd
 import pytest
 
 from data_pipeline import credentials as keys
 from data_pipeline.credentials import Credentials
+from data_pipeline.store import cli as cli_module
+from data_pipeline.store.api import Store
+from data_pipeline.store.cli import cli
 from data_pipeline.store.errors import CatalogError, QuotaExhaustedError
 from data_pipeline.store.model import Kind, Outcome, Request
 from data_pipeline.store.sources import sharadar
 from data_pipeline.store.sources.sharadar_prices import KEY_COLUMNS, VALUE_COLUMNS, SharadarPrices, read_rows
+from data_pipeline.store.sync import held_periods
 
-from .helpers import client, entry, fixture
+from .helpers import NOW, client, entry, fixture
 
 # Every ticker, name and number here is invented: Sharadar's license forbids sharing its data.
 KEY_VALUE = "sharadar-key-of-the-tests"
@@ -300,3 +306,135 @@ def test_the_key_never_shows_in_a_reason():
     (batch,) = fetch(handler, [Request(ticker())])
     assert KEY_VALUE not in batch.failures[0].reason
     assert "api_key=***" in batch.failures[0].reason
+
+
+# -- through the store -------------------------------------------------------------------------
+
+LATER = NOW + datetime.timedelta(days=30)
+
+
+class Vendor:
+    """A fake Sharadar whose answers the test can change between syncs: (table, ticker) -> rows."""
+
+    def __init__(self):
+        self.rows = {("stocks", "XTEST"): RECORDED}
+        self.calls = 0
+
+    def __call__(self, request):
+        self.calls += 1
+        table = request.url.path.rsplit("/", 1)[-1]
+        return answer(self.rows.get((table, request.url.params["ticker"]), []))
+
+
+@pytest.fixture
+def vendor():
+    return Vendor()
+
+
+@pytest.fixture
+def clock():
+    return {"now": NOW}
+
+
+@pytest.fixture
+def store(tmp_path, vendor, clock):
+    (tmp_path / "catalog.yaml").write_text("- source: sharadar_prices\n  ids: [XTEST]\n", encoding="utf-8")
+    (tmp_path / ".env").write_text(f"SHARADAR_API_KEY={KEY_VALUE}\n", encoding="utf-8")
+    built = Store(
+        tmp_path / "store",
+        tmp_path / "catalog.yaml",
+        env_file=tmp_path / ".env",
+        clock=lambda: clock["now"],
+        transport=httpx.MockTransport(vendor),
+        sleep=lambda _seconds: None,
+    )
+    built.report = built.sync()
+    return built
+
+
+def split_three_for_one():
+    """The recorded answer after a later 3-for-1 split, with one new day: every earlier day comes
+    restated, and its close as it traded does not change."""
+    restated = [
+        {**row, **{column: row[column] / 3 for column in ("open", "high", "low", "close")}, "volume": row["volume"] * 3}
+        for row in RECORDED
+    ]
+    return [price("2026-06-30", close=7.0), *restated]
+
+
+def test_a_first_sync_stores_the_whole_history_and_a_second_adds_nothing(store, vendor):
+    assert store.report.exit_code == 0
+    assert (store.report.sources[0].new, store.report.sources[0].revised) == (4, 0)
+    table = store.table("sharadar_prices", "XTEST")
+    assert list(table["period"]) == ["2026-02-27", "2026-03-02", "2026-03-03", "2026-03-04"]
+    assert list(table["closeunadj"]) == [39.0, 40.0, 20.4, 20.8]
+    report = store.sync()
+    assert (report.sources[0].new, report.sources[0].revised) == (0, 0)
+    assert vendor.calls == 2  # one call per ticker per run, the whole history each time
+
+
+def test_sync_builds_no_set_of_held_days_for_a_source_that_reads_none(store, tmp_path):
+    # without a `frequency` column the store has nothing to tell this source about what it holds
+    stored = pd.read_parquet(tmp_path / "store" / "tables" / "sharadar_prices" / "XTEST.parquet")
+    assert "frequency" not in stored.columns
+    assert held_periods(stored, SharadarPrices.held_by) == frozenset()
+
+
+def test_a_split_stores_every_earlier_day_again_and_as_of_reads_what_was_held_before(store, vendor, clock, tmp_path):
+    vendor.rows[("stocks", "XTEST")] = split_three_for_one()
+    clock["now"] = LATER
+    report = store.sync()
+    assert (report.sources[0].new, report.sources[0].revised) == (1, 4)
+    after = store.table("sharadar_prices", "XTEST", period="2026-03-04")
+    assert (after["close"].iloc[0], after["closeunadj"].iloc[0]) == (pytest.approx(20.8 / 3), 20.8)
+    before = store.table("sharadar_prices", "XTEST", period="2026-03-04", as_of=NOW)
+    assert (before["close"].iloc[0], before["closeunadj"].iloc[0]) == (20.8, 20.8)
+    stored = pd.read_parquet(tmp_path / "store" / "tables" / "sharadar_prices" / "XTEST.parquet")
+    assert len(stored) == 9  # four days twice, and the new one: nothing is deleted
+    assert set(stored["fetched_at"]) == {pd.Timestamp(NOW), pd.Timestamp(LATER)}
+    assert stored["published_at"].isna().all()  # dated by the fetch: Sharadar does not say when it restated
+
+
+def test_as_of_before_the_first_sync_reads_no_prices(store):
+    assert store.table("sharadar_prices", "XTEST", as_of=NOW - datetime.timedelta(days=1)).empty
+
+
+def test_the_index_row_of_a_ticker(store):
+    info = store.info("sharadar_prices:XTEST")
+    assert (info.kind, info.name) == ("table", "Daily prices of XTEST (Sharadar stocks)")
+    assert (info.frequency, info.last_period) == ("", "2026-03-04")
+    assert info.label == "[Sharadar: XTEST, 2026-03-04, fetched 2026-06-06]"
+    row = store.index().iloc[0]
+    assert json.loads(row["attrs"]) == {"table": "stocks"}
+    assert row["stale_after_days"] == 10
+
+
+def test_status_uses_the_ten_days_of_a_daily_series(store, clock):
+    clock["now"] = datetime.datetime(2026, 3, 14, tzinfo=datetime.UTC)
+    assert store.status().iloc[0]["state"] == "ok"  # ten days after the last one
+    clock["now"] = datetime.datetime(2026, 3, 15, tzinfo=datetime.UTC)
+    assert store.status().iloc[0]["reason"] == "last data 2026-03-04 (11 days ago)"
+
+
+def test_a_delisted_ticker_is_not_stale_with_its_own_threshold(tmp_path, vendor, clock):
+    (tmp_path / ".env").write_text(f"SHARADAR_API_KEY={KEY_VALUE}\n", encoding="utf-8")
+    store = Store(
+        tmp_path / "store",
+        env_file=tmp_path / ".env",
+        clock=lambda: clock["now"],
+        transport=httpx.MockTransport(vendor),
+        sleep=lambda _seconds: None,
+    )
+    store.add("sharadar_prices", ["XTEST"], stale_after_days=100_000)
+    store.sync()
+    assert store.status().iloc[0]["state"] == "ok"  # 94 days after its last price
+
+
+def test_show_prints_the_citation_and_the_newest_rows(store, tmp_path, monkeypatch):
+    monkeypatch.setattr(cli_module, "open_store", lambda root, _catalog, _env: Store(root))
+    result = click.testing.CliRunner().invoke(cli, ["show", "--root", str(tmp_path / "store"), "sharadar_prices:XTEST"])
+    assert result.exit_code == 0
+    lines = result.output.splitlines()
+    assert lines[0] == "[Sharadar: XTEST, 2026-03-04, fetched 2026-06-06]"
+    assert lines[1] == "Daily prices of XTEST (Sharadar stocks) | 4 rows"
+    assert lines[2].split("  ")[:7] == ["period", "open", "high", "low", "close", "volume", "closeunadj"]
