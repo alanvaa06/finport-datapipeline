@@ -144,6 +144,31 @@ def test_comtrade_probe_asks_for_one_call():
     assert KEY not in str(seen[0].url)
 
 
+def sharadar(status=200, rows=1, seen=None):
+    """A fake Sharadar that answers every call with `status` and `rows` invented price rows."""
+    row = {"date": "2026-10-05", "open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0, "volume": 10, "closeunadj": 1.0}
+
+    def handler(request):
+        if seen is not None:
+            seen.append(request)
+        return httpx.Response(status, json={"count": rows, "data": [row] * rows})
+
+    return httpx.MockTransport(handler)
+
+
+def test_sharadar_end_to_end():
+    seen = []
+    assert check("SHARADAR_API_KEY", KEY, transport=sharadar(seen=seen), today=TODAY).verdict is Verdict.OK
+    (request,) = seen
+    # a ticker outside the free tier, which answers a wrong key as if it were right; about a year of it
+    assert (request.url.params["ticker"], request.url.params["date.gte"]) == ("GOOGL", "2025-09-01")
+    rejected = check("SHARADAR_API_KEY", KEY, transport=sharadar(403), today=TODAY)
+    assert rejected.verdict is Verdict.REJECTED
+    assert "free tier" in rejected.detail
+    assert KEY not in rejected.detail
+    assert check("SHARADAR_API_KEY", KEY, transport=sharadar(rows=0), today=TODAY).verdict is Verdict.UNKNOWN
+
+
 def test_a_sec_404_cannot_tell():
     result = check("SEC_EDGAR_UA", "Ana Ana@example.com", transport=sec(404))
     assert result.verdict is Verdict.UNKNOWN

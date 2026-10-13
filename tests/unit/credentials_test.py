@@ -17,7 +17,7 @@ def no_real_credentials(monkeypatch):
         monkeypatch.delenv(name, raising=False)
 
 
-def test_the_registry_holds_the_six_keys_in_setup_order():
+def test_the_registry_holds_the_seven_keys_in_setup_order():
     assert credentials.NAMES == (
         "FRED_API_KEY",
         "BLS_API_KEY",
@@ -25,6 +25,7 @@ def test_the_registry_holds_the_six_keys_in_setup_order():
         "INEGI_TOKEN",
         "COMTRADE_API_KEY",
         "SEC_EDGAR_UA",
+        "SHARADAR_API_KEY",
     )
 
 

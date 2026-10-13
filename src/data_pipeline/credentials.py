@@ -53,6 +53,7 @@ BANXICO = "BANXICO_TOKEN"
 INEGI = "INEGI_TOKEN"
 COMTRADE = "COMTRADE_API_KEY"
 SEC_UA = "SEC_EDGAR_UA"
+SHARADAR = "SHARADAR_API_KEY"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -101,6 +102,12 @@ REGISTRY: tuple[Key, ...] = (
         "Filings & XBRL facts",
         "Set it to 'Your Name you@domain.com' (https://www.sec.gov/os/accessing-edgar-data)",
         secret=False,
+    ),
+    Key(
+        SHARADAR,
+        "Sharadar",
+        "US equities - prices & actions",
+        "Subscribe at https://sharadar.com/subscribe and copy the key from your account",
     ),
 )
 NAMES: tuple[str, ...] = tuple(key.name for key in REGISTRY)

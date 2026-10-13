@@ -15,6 +15,7 @@ from data_pipeline.store.sources.inegi import Inegi
 from data_pipeline.store.sources.sdmx import PROVIDERS, Sdmx
 from data_pipeline.store.sources.sec_filings import SecFilings
 from data_pipeline.store.sources.sec_xbrl import SecXbrl
+from data_pipeline.store.sources.sharadar_prices import SharadarPrices
 from data_pipeline.store.sources.worldbank import WorldBank
 
 Factory = Callable[[Client, Credentials], Source]
@@ -39,6 +40,7 @@ REGISTRY: Mapping[str, Factory] = {
     "inegi": Inegi,
     "sec_filings": SecFilings,
     "sec_xbrl": SecXbrl,
+    "sharadar_prices": SharadarPrices,
     "worldbank": WorldBank,
     **{name: _sdmx(name) for name in PROVIDERS},
 }
@@ -56,6 +58,7 @@ TITLES: Mapping[str, str] = {
     "oecd": "OECD",
     "sec_filings": "SEC EDGAR",
     "sec_xbrl": "SEC EDGAR",
+    "sharadar_prices": "Sharadar",
     "worldbank": "World Bank",
 }
 
