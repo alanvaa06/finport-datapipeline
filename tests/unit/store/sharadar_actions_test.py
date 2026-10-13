@@ -315,13 +315,17 @@ LATEST = NOW + datetime.timedelta(days=60)
 
 
 class Vendor:
-    """A fake Sharadar whose actions the test can change between syncs: ticker -> rows."""
+    """A fake Sharadar whose actions the test can change between syncs: ticker -> rows.
+    It keeps the rows from the first day asked (`date.gte`) on."""
 
     def __init__(self):
         self.rows = {"XTEST": RECORDED}
+        self.asked = []  # the first day of each call
 
     def __call__(self, request):
-        return answer(self.rows.get(request.url.params["ticker"], []))
+        rows = self.rows.get(request.url.params["ticker"], [])
+        self.asked.append(request.url.params["date.gte"])
+        return answer([row for row in rows if row["date"] >= request.url.params["date.gte"]])
 
 
 @pytest.fixture
@@ -348,6 +352,18 @@ def store(tmp_path, vendor, clock):
     )
     built.report = built.sync()
     return built
+
+
+def open_store(tmp_path, vendor, clock, root="store"):
+    """A Store with no catalog, on `root` under tmp_path: the test adds its entries."""
+    (tmp_path / ".env").write_text(f"SHARADAR_API_KEY={KEY_VALUE}\n", encoding="utf-8")
+    return Store(
+        tmp_path / root,
+        env_file=tmp_path / ".env",
+        clock=lambda: clock["now"],
+        transport=httpx.MockTransport(vendor),
+        sleep=lambda _seconds: None,
+    )
 
 
 def sync_at(store, clock, moment):
@@ -489,10 +505,36 @@ def test_the_same_answer_twice_adds_nothing_the_second_time_also_when_it_marks_a
     assert len(pd.read_parquet(path)) == 6  # the mark is sent again and stores nothing
 
 
-def test_the_table_has_a_daily_frequency_only_so_that_the_store_says_what_it_holds(store):
+def test_the_index_row_says_a_daily_frequency_and_the_threshold_of_the_source(store):
     assert store.info("sharadar_actions:XTEST").frequency == "D"
     row = store.index().set_index("key").loc["sharadar_actions:XTEST"]
     assert row["stale_after_days"] == NEVER_STALE
+
+
+def test_an_entry_own_threshold_wins_over_the_one_of_the_source(tmp_path, vendor, clock):
+    clock["now"] = datetime.datetime(2026, 4, 2, tzinfo=datetime.UTC)  # 30 days after the last action
+    own = open_store(tmp_path, vendor, clock)
+    own.add("sharadar_actions", ["XTEST"], stale_after_days=30)
+    own.sync()
+    assert own.index().iloc[0]["stale_after_days"] == 30
+    assert own.status().iloc[0]["state"] == "ok"
+    clock["now"] = datetime.datetime(2026, 4, 3, tzinfo=datetime.UTC)
+    row = own.status().iloc[0]
+    assert (row["state"], row["reason"]) == ("stale", "last data 2026-03-03 (31 days ago)")
+
+
+def test_an_entry_with_a_start_marks_only_the_days_it_asks_for(store, vendor, clock, tmp_path):
+    # The first run, with no start, stored the four actions. The entry now asks from 2026-02-10 on,
+    # and the split of 2026-03-03 is not in the answer: it is marked (1 revised). The spin-off of
+    # 2025-06-30 is not in the answer either, but it is before the first day asked: it stays current.
+    vendor.rows["XTEST"] = [row for row in RECORDED if row["action"] != "split"]
+    since = open_store(tmp_path, vendor, clock)
+    since.add("sharadar_actions", ["XTEST"], start=datetime.date(2026, 2, 10))
+    assert sync_at(since, clock, LATER) == (0, 1)
+    assert vendor.asked[-1] == "2026-02-10"  # the spin-off was not in the answer because of this
+    assert keys_of(current(since)) == [key for key in original_four() if key[1] != "split"]
+    marked = since.table("sharadar_actions", "XTEST", withdrawn=1)
+    assert list(zip(marked["period"], marked["action"], strict=True)) == [("2026-03-03", "split")]
 
 
 def test_show_prints_the_citation_and_the_newest_rows(store, tmp_path, monkeypatch):
@@ -505,6 +547,24 @@ def test_show_prints_the_citation_and_the_newest_rows(store, tmp_path, monkeypat
     assert lines[1].startswith("Corporate actions of XTEST (Sharadar) | 4 rows")
     header = ["frequency", "period", "action", "contraticker", "item", "value", "withdrawn", "name", "contraname"]
     assert lines[2].split() == header
+    rows = [line.split("  ") for line in lines[3:]]  # the cells are told apart by two spaces
+    assert len(rows) == 4
+    assert rows[-1][:7] == ["D", "2026-03-03", "split", "", "1", "2.0", "0.0"]  # the newest action, as sent
+
+
+def test_show_prints_a_withdrawn_action_as_a_row_of_its_own(store, vendor, clock, tmp_path, monkeypatch):
+    # the 0.5 moves to the next day: the old place is marked, and the store holds five rows, four current
+    vendor.rows["XTEST"] = [{**row, "date": "2026-02-11"} if row["value"] == 0.5 else row for row in RECORDED]
+    sync_at(store, clock, LATER)
+    monkeypatch.setattr(cli_module, "open_store", lambda root, _catalog, _env: Store(root))
+    arguments = ["show", "--root", str(tmp_path / "store"), "sharadar_actions:XTEST"]
+    result = click.testing.CliRunner().invoke(cli, arguments)
+    assert result.exit_code == 0
+    lines = result.output.splitlines()
+    assert lines[1].startswith("Corporate actions of XTEST (Sharadar) | 5 rows")
+    rows = [line.split("  ") for line in lines[3:]]
+    assert len(rows) == 5
+    assert [row for row in rows if row[6] == "1.0"] == [["D", "2026-02-10", "dividend", "", "2", "nan", "1.0", "", ""]]
 
 
 def test_status_never_calls_the_actions_stale(store, clock):

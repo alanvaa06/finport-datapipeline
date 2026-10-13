@@ -29,8 +29,15 @@ An answer speaks only for the days it covers, from its earliest action on. An ac
 before that day is left alone, and an answer without actions marks nothing. Two reasons: an
 answer may be shorter than what is stored with nothing withdrawn, when a key that does not give
 the whole history is answered with a recent part of it instead of an error, and when the `start`
-of an entry moves forward. The price: if Sharadar withdraws the earliest action of a ticker, or
-moves it to a later day, it is not noticed.
+of an entry moves forward.
+
+The rule has a price, and it is more than the earliest action of a ticker: every stored action
+dated before the first one the answer has is left alone. If the earliest actions are withdrawn
+together, or moved to later days, they stay current; with a `start`, so does all that is stored
+before it. An answer with a gap in the middle marks what it lacks, and the next whole answer
+stores those actions again. A mark says that a place in the numbering is empty, not which action
+left: it carries no value and no names, and `as_of` an earlier moment shows what was there. The
+index counts the marked rows: the last period of a ticker can be the day of a withdrawn action.
 
 A ticker without actions is not a failure: its entry is ok in the index and no table is written.
 """
@@ -102,7 +109,11 @@ def withdrawals(held: Collection[tuple[str, ...]], rows: Sequence[Row]) -> tuple
         return ()
     answered = {tuple(str(row[column]) for column in KEY_COLUMNS) for row in rows}
     earliest = min(str(row["period"]) for row in rows)
-    gone = sorted(key for key in held if key not in answered and key[1] >= earliest)
+    gone = sorted(
+        (frequency, period, action, contraticker, item)
+        for frequency, period, action, contraticker, item in held
+        if period >= earliest and (frequency, period, action, contraticker, item) not in answered
+    )
     return tuple(
         {
             "frequency": frequency,
