@@ -63,6 +63,7 @@ def test_it_is_a_table_source_without_a_daily_budget():
     [
         ("aapl", {}, "a Sharadar id is a ticker in upper case"),
         ("BRK B", {}, "a Sharadar id is a ticker in upper case"),
+        ("AAPL\n", {}, "a Sharadar id is a ticker in upper case"),
         ("XTEST", {"table": "bonds"}, "'table' must be one of stocks, funds"),
         ("XTEST", {"adjusted": True}, "unknown field\\(s\\) for source 'sharadar_prices': adjusted"),
     ],
@@ -173,6 +174,38 @@ def test_a_403_fails_every_ticker_left_and_stops():
     assert calls == ["XFREE", "XPAID"]
 
 
+def test_a_401_is_a_rejected_key_and_fails_every_ticker_left():
+    calls = []
+
+    def handler(request):
+        calls.append(request.url.params["ticker"])
+        return httpx.Response(401, json={"error": "Unauthorized"})
+
+    batches = fetch(handler, [Request(ticker()), Request(ticker("XOTHER"))])
+    refused = [failure for batch in batches for failure in batch.failures]
+    assert [(failure.entry.source_id, failure.outcome) for failure in refused] == [
+        ("XTEST", Outcome.KEY_ERROR),
+        ("XOTHER", Outcome.KEY_ERROR),
+    ]
+    assert "rejected the key (HTTP 401)" in refused[0].reason
+    assert calls == ["XTEST"]
+
+
+def test_a_403_on_one_table_does_not_fail_the_tickers_of_the_other():
+    def handler(request):
+        if request.url.path.endswith("/funds"):
+            return httpx.Response(403, json={"error": "Exceeds free tier"})
+        return answer(RECORDED)
+
+    requests = [Request(ticker("XFUND", params={"table": "funds"})), Request(ticker()), Request(ticker("XOTHER"))]
+    batches = fetch(handler, requests)
+    stored = [table.key for batch in batches for table in batch.tables]
+    refused = [failure for batch in batches for failure in batch.failures]
+    assert stored == ["sharadar_prices:XTEST", "sharadar_prices:XOTHER"]
+    assert [(failure.entry.source_id, failure.outcome) for failure in refused] == [("XFUND", Outcome.KEY_ERROR)]
+    assert "the table 'funds'" in refused[0].reason
+
+
 def test_a_persistent_429_stops_the_source_as_an_exhausted_quota():
     with pytest.raises(QuotaExhaustedError, match="HTTP 429"):
         fetch(lambda _request: httpx.Response(429), [Request(ticker())])
@@ -188,6 +221,14 @@ def test_a_ticker_without_prices_is_not_found_and_an_etf_is_pointed_to_its_table
         "Sharadar has no prices for 'XFUND' in its table 'stocks'; an ETF needs `table: funds`"
     )
     assert funds.failures[0].reason == "Sharadar has no prices for 'XGONE' in its table 'funds'"
+
+
+def test_a_ticker_without_prices_since_a_start_names_the_first_day_asked_for():
+    (batch,) = fetch(lambda _request: answer([]), [Request(ticker("XGONE", start=datetime.date(2020, 1, 1)))])
+    assert batch.failures[0].outcome is Outcome.NOT_FOUND
+    assert batch.failures[0].reason == (
+        "Sharadar has no prices for 'XGONE' in its table 'stocks' from 2020-01-01 on; an ETF needs `table: funds`"
+    )
 
 
 def test_a_failed_call_fails_its_ticker_and_the_next_one_goes_on():
@@ -206,8 +247,11 @@ def test_a_failed_call_fails_its_ticker_and_the_next_one_goes_on():
     [
         (httpx.Response(400, text="bad request"), "HTTP 400: bad request"),
         (httpx.Response(200, text="<html>down</html>"), "not JSON"),
-        (httpx.Response(200, json={"count": 0}), "unexpected answer \\(KeyError"),
-        (httpx.Response(200, json={"data": "none"}), "`data` is not a list of rows"),
+        (httpx.Response(200, json={"count": 0}), "no list of rows in `data`"),
+        (httpx.Response(200, json={"data": "none"}), "no list of rows in `data`"),
+        (httpx.Response(200, json=[1, 2]), "no list of rows in `data`"),
+        (httpx.Response(200, json={"error": "Table not found"}), "Table not found"),
+        (httpx.Response(200, json={"data": [1]}), "unexpected answer \\(TypeError"),
         (httpx.Response(200, json={"data": [{"date": "2026-03-04", "close": 1.0}]}), "unexpected answer \\(KeyError"),
         (httpx.Response(200, json={"data": [{"date": "4 March"}]}), "unexpected answer \\(ValueError"),
     ],
@@ -216,6 +260,17 @@ def test_an_unexpected_answer_is_a_source_error(response, reason):
     (batch,) = fetch(lambda _request: response, [Request(ticker())])
     assert batch.failures[0].outcome is Outcome.SOURCE_ERROR
     assert re.search(reason, batch.failures[0].reason)
+
+
+def test_a_source_error_is_the_error_of_one_ticker_alone():
+    def handler(request):
+        if request.url.params["ticker"] == "XBAD":
+            return httpx.Response(400, text="bad request")
+        return answer(RECORDED)
+
+    failed, found = fetch(handler, [Request(ticker("XBAD")), Request(ticker())])
+    assert failed.failures[0].outcome is Outcome.SOURCE_ERROR
+    assert found.tables[0].key == "sharadar_prices:XTEST"
 
 
 def test_a_day_that_comes_twice_is_refused_rather_than_stored_once():

@@ -39,6 +39,7 @@ EARLIEST = datetime.date(1900, 1, 1)
 MAX_ROWS = 10_000
 MISSING_TEXT = "N/A"
 OK = 200
+UNAUTHORIZED = 401
 FORBIDDEN = 403
 
 
@@ -48,7 +49,7 @@ class AnswerError(Exception):
 
 def check_ticker(entry: CatalogEntry) -> None:
     """Raise CatalogError when the id is not a ticker in upper case."""
-    if not TICKER.match(entry.source_id):
+    if not TICKER.fullmatch(entry.source_id):
         msg = f"{entry.key}: a Sharadar id is a ticker in upper case, such as AAPL or BRK.B"
         raise CatalogError(msg)
 
@@ -80,6 +81,9 @@ class Sharadar:
             },
             per_minute=REQUESTS_PER_MINUTE,
         )
+        if response.status_code == UNAUTHORIZED:
+            msg = f"Sharadar rejected the key (HTTP 401): check {keys.SHARADAR}"
+            raise KeyRejectedError(msg)
         if response.status_code == FORBIDDEN:
             msg = (
                 f"Sharadar treated the request as its free tier (HTTP 403): check {keys.SHARADAR} and that "
@@ -94,9 +98,9 @@ class Sharadar:
         except ValueError as exc:  # JSONDecodeError, or bytes that are not text
             msg = f"unexpected answer (not JSON: {self._client.excerpt(response.text, 200)})"
             raise AnswerError(msg) from exc
-        rows = payload["data"]
+        rows = payload.get("data") if isinstance(payload, Mapping) else None
         if not isinstance(rows, list):
-            msg = "unexpected answer (`data` is not a list of rows)"
+            msg = f"unexpected answer (no list of rows in `data`: {self._client.excerpt(response.text, 200)})"
             raise AnswerError(msg)
         if len(rows) >= MAX_ROWS:
             msg = (

@@ -5,7 +5,8 @@ Sharadar's, `stocks` and `funds`: an entry says which with its `table` field, `s
 says nothing.
 
 One call brings the whole history of a ticker, on every run: there is no "since". After a run
-the latest version of every day is what Sharadar publishes that day.
+the latest version of every day is what Sharadar publishes that day. An entry with a `start`
+asks from that day on: the days stored before it are not asked again and keep the values they had.
 
 `open`, `high`, `low`, `close` and `volume` come adjusted for splits, and Sharadar restates
 them on every earlier day when a ticker splits again: the next run stores those days once more,
@@ -106,14 +107,17 @@ class SharadarPrices:
             yield missing_key(requests, keys.SHARADAR)
             return
         api = Sharadar(self._client, self.name, self._key)
-        yield from per_ticker(requests, lambda request: self._ticker(api, request.entry))
+        for table in TABLES:  # a refusal is about one table: the entries of the other are still asked
+            asked = [request for request in requests if table_of(request.entry) == table]
+            yield from per_ticker(asked, lambda request: self._ticker(api, request.entry))
 
     def _ticker(self, api: Sharadar, entry: CatalogEntry) -> FetchBatch:
         table = table_of(entry)
         rows = read_rows(api.rows(table, entry.source_id, entry.start))
         if not rows:
             hint = "; an ETF needs `table: funds`" if table == DEFAULT_TABLE else ""
-            reason = f"Sharadar has no prices for {entry.source_id!r} in its table {table!r}{hint}"
+            since = f" from {entry.start.isoformat()} on" if entry.start else ""
+            reason = f"Sharadar has no prices for {entry.source_id!r} in its table {table!r}{since}{hint}"
             return FetchBatch(failures=(Failure(entry, Outcome.NOT_FOUND, reason),))
         data = TableData(
             entry=entry,
