@@ -8,6 +8,10 @@ One call brings the whole history of a ticker, on every run: there is no "since"
 the latest version of every day is what Sharadar publishes that day. An entry with a `start`
 asks from that day on: the days stored before it are not asked again and keep the values they had.
 
+A day is told apart by `period` alone. The table has no `frequency` column on purpose: with one,
+the store would build for every ticker, on every run, the set of the days it holds, for a source
+that never reads it.
+
 `open`, `high`, `low`, `close` and `volume` come adjusted for splits, and Sharadar restates
 them on every earlier day when a ticker splits again: the next run stores those days once more,
 and the rows before stay. `closeunadj` is the close as it traded and never changes. Sharadar's
@@ -47,7 +51,7 @@ from data_pipeline.store.sources.sharadar import (
 TABLES = ("stocks", "funds")
 DEFAULT_TABLE = "stocks"
 FIELDS = ("table",)
-KEY_COLUMNS = ("frequency", "period")
+KEY_COLUMNS = ("period",)
 VALUE_COLUMNS = ("open", "high", "low", "close", "volume", "closeunadj")
 STALE_AFTER_DAYS = stale_after(Frequency.DAILY)
 
@@ -78,7 +82,6 @@ def read_rows(items: Sequence[Mapping[str, Any]]) -> tuple[Row, ...]:
         seen.add(day)
         rows.append(
             {
-                "frequency": Frequency.DAILY.value,
                 "period": day.isoformat(),
                 "date": day,
                 **{column: number(item[column]) for column in VALUE_COLUMNS},

@@ -86,9 +86,15 @@ def test_validate_accepts_a_ticker_with_a_dot_and_both_tables():
 def test_a_price_row_keeps_the_six_values_and_drops_the_rest():
     newest, *_others, oldest = read_rows(RECORDED)
     assert set(newest) == {*KEY_COLUMNS, "date", *VALUE_COLUMNS}  # no closeadj, no lastupdated
-    assert (newest["frequency"], newest["period"], newest["date"]) == ("D", "2026-03-04", datetime.date(2026, 3, 4))
+    assert (newest["period"], newest["date"]) == ("2026-03-04", datetime.date(2026, 3, 4))
+    assert "frequency" not in newest
     assert [newest[column] for column in VALUE_COLUMNS] == [20.5, 21.0, 20.1, 20.8, 1500000.0, 20.8]
     assert (oldest["close"], oldest["closeunadj"]) == (19.5, 39.0)  # adjusted for the split, and as it traded
+
+
+def test_a_price_row_is_told_apart_by_its_day_alone():
+    # without a `frequency` column the store builds no set of the days it holds, for a source that reads none
+    assert KEY_COLUMNS == ("period",)
 
 
 def test_a_value_sharadar_leaves_empty_is_missing():
