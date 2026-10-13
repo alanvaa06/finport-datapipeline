@@ -207,7 +207,7 @@ def test_validate_wants_a_ticker_in_upper_case_and_no_fields():
     source.validate(company("AAPL"))
     source.validate(company("BRK-B"))
     source.validate(company("BF.B"))
-    for bad in ("aapl", "320193X!", "", "A B"):
+    for bad in ("aapl", "320193X!", "", "A B", "AAPL\n"):  # "$" alone matches before a last line break
         with pytest.raises(CatalogError, match="a SEC id is a ticker in upper case"):
             source.validate(company(bad))
     with pytest.raises(CatalogError, match="unknown field\\(s\\) for source 'sec_xbrl': form"):

@@ -1,11 +1,20 @@
 import json
 import logging
+import urllib.parse
 
 import httpx
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from data_pipeline.store.errors import NetworkError, RateLimitedError
 from data_pipeline.store.http import Client, retry_after, scrub
+
+from .helpers import client as served
+
+# A key that a URL cannot carry as it is. httpx 0.28 sends it as abc%2Bdef%2Fghi%3Djk+l in a query
+# value (0.27 as ...jk%20l) and as abc+def/ghi=jk%20l in a path, and none of them holds the key.
+AWKWARD = "abc+def/ghi=jk l"
 
 
 def test_returns_a_non_retryable_answer_as_it_is():
@@ -65,6 +74,95 @@ def test_waits_between_calls_to_the_same_source_only():
 
 def test_scrub_hides_every_secret_and_ignores_empty_ones():
     assert scrub("key=abc&token=xyz", ["abc", "", "xyz"]) == "key=***&token=***"
+
+
+@pytest.mark.parametrize(
+    "written",
+    [
+        AWKWARD,
+        urllib.parse.quote(AWKWARD, safe=""),  # abc%2Bdef%2Fghi%3Djk%20l
+        urllib.parse.quote_plus(AWKWARD),  # abc%2Bdef%2Fghi%3Djk+l
+        str(httpx.QueryParams({"k": AWKWARD})).removeprefix("k="),  # what this httpx writes in a query
+        "abc%2bdef%2fghi%3djk%20l",  # the hex digits in lower case, as .NET writes them
+        "abc+def/ghi=jk%20l",  # only what a path cannot hold
+        "abc%2Bdef/ghi=jk+l",  # any mix
+    ],
+    ids=["plain", "quote", "quote_plus", "httpx", "lower-hex", "path", "mixed"],
+)
+def test_scrub_hides_a_secret_as_a_url_encodes_it(written):
+    url = f"https://example.test/x?api_key={written}&file_type=json"
+    assert scrub(url, [AWKWARD]) == "https://example.test/x?api_key=***&file_type=json"
+
+
+# Where a source puts its key, and the URL a message or a log line may then show.
+IN_A_QUERY = ("https://example.test/x", {"api_key": AWKWARD}, "https://example.test/x?api_key=***")  # FRED
+IN_A_PATH = (f"https://example.test/2.0/{AWKWARD}", {"type": "json"}, "https://example.test/2.0/***?type=json")  # INEGI
+SENT = pytest.mark.parametrize(("url", "params", "shown"), [IN_A_QUERY, IN_A_PATH], ids=["query", "path"])
+
+
+@SENT
+def test_scrub_hides_a_secret_in_the_url_httpx_builds(url, params, shown):
+    with httpx.Client() as http:
+        built = str(http.build_request("GET", url, params=params).url)
+    assert AWKWARD not in built  # httpx encoded it: looking for the key as it is finds nothing
+    assert scrub(built, [AWKWARD]) == shown
+
+
+@SENT
+def test_a_key_the_url_encodes_never_shows_in_the_message_of_a_failed_request(url, params, shown):
+    def handler(request):
+        msg = f"no route to host for {request.url}"
+        raise httpx.ConnectError(msg)
+
+    with pytest.raises(NetworkError) as raised:
+        served(handler, secrets=(AWKWARD,)).get("fred", url, params=params)
+    assert str(raised.value) == f"fred: ConnectError: no route to host for {shown} after 1 attempt"
+
+
+@SENT
+def test_a_key_the_url_encodes_never_shows_in_the_request_log_of_httpx(caplog, url, params, shown):
+    http = served(lambda _request: httpx.Response(200), secrets=(AWKWARD,))
+    with caplog.at_level(logging.INFO, logger="httpx"):
+        http.get("fred", url, params=params)
+    http.close()
+    logged = [record.getMessage() for record in caplog.records if record.name == "httpx"]
+    assert logged == [f'HTTP Request: GET {shown} "HTTP/1.1 200 OK"']
+
+
+def test_an_excerpt_hides_a_key_the_url_encodes_before_it_is_cut():
+    text = "." * 280 + "api_key=" + urllib.parse.quote_plus(AWKWARD) + " and more"
+    excerpt = served(secrets=(AWKWARD,)).excerpt(text, 300)
+    assert excerpt == "." * 280 + "api_key=***" + " and more"
+
+
+def test_scrub_hides_a_secret_that_is_not_ascii_as_its_utf8_bytes():
+    assert scrub("token=cl%C3%A9%E2%82%AC&x=1 and clé€", ["clé€"]) == "token=***&x=1 and ***"
+
+
+@given(st.text(min_size=1))
+def test_scrub_hides_any_secret_however_a_url_encodes_it(secret):
+    forms = [
+        secret,
+        urllib.parse.quote(secret, safe=""),
+        urllib.parse.quote_plus(secret),
+        str(httpx.QueryParams({"k": secret})).removeprefix("k="),
+    ]
+    assert [scrub(written, [secret]) for written in forms] == ["***"] * len(forms)
+
+
+def test_scrub_hides_a_secret_whose_tilde_an_older_encoder_wrote_as_7e():
+    # httpx and urllib leave "~" as it is; Java's URLEncoder and PHP's urlencode write %7E
+    assert scrub("token=a%7Eb-c&x=1", ["a~b-c"]) == "token=***&x=1"
+
+
+def test_scrub_hides_whole_a_secret_that_holds_a_percent_sign():
+    # "%25" is the secret as it is and the start of the secret encoded: no "25" is left behind
+    assert scrub("key=%2525&x=1 and %25", ["%25"]) == "key=***&x=1 and ***"
+
+
+def test_scrub_never_raises_for_a_secret_that_is_not_text():
+    # bytes of the environment that are not UTF-8 arrive as half surrogate pairs, which have no %XX
+    assert scrub("key=\udcff&x=1", ["\udcff"]) == "key=***&x=1"
 
 
 def test_post_sends_a_json_body_and_counts_as_a_call():
