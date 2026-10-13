@@ -1,15 +1,18 @@
 """Sharadar corporate actions: the dividends, splits and other events of one ticker.
 
-One catalog id is one ticker, of a stock or of an ETF: Sharadar keeps the actions of both in
-one table. One call brings every action of a ticker, on every run.
+One catalog id is one ticker, of a stock or of an ETF: both are asked of Sharadar's `actions`
+table. One call brings every action of a ticker, on every run.
 
 An action is told apart by its day, Sharadar's word for it (`dividend`, `split`, ...), the
 other company it involves, if any, and `item`: `1`, `2`, ... among the actions that share the
-other three. They are numbered by ascending value, so the numbering does not depend on the
-order of the answer. Without `item` a second dividend on the same day would be dropped without
-notice.
+other three. They are numbered by ascending value, then by the names, so the numbering does not
+depend on the order of the answer. Without `item` a second dividend on the same day would be
+dropped without notice.
 
-A ticker without actions is not a failure: its table is empty.
+`item` is text, like every key. `name` and `contraname` are stored as sent with the row and
+never compared: a row keeps the names it came with until its value changes.
+
+A ticker without actions is not a failure: its entry is ok in the index and no table is written.
 """
 
 import datetime
@@ -32,13 +35,24 @@ ATTRIBUTE_COLUMNS = ("name", "contraname")
 Row = dict[str, object]
 
 
+def numbering(pair: tuple[float, Row]) -> tuple[bool, float, str, str]:
+    """How the actions that share a day, a word and an other company are put in order."""
+    value, row = pair
+    missing = math.isnan(value)
+    return missing, 0.0 if missing else value, str(row["contraname"]), str(row["name"])
+
+
 def read_rows(items: Sequence[Mapping[str, Any]]) -> tuple[Row, ...]:
     """The rows of an actions answer as table rows, each with its `item`."""
     alike: dict[tuple[str, str, str], list[tuple[float, Row]]] = {}
     for item in items:
         day = datetime.date.fromisoformat(str(item["date"]))
-        action, contraticker = str(item["action"]), text(item.get("contraticker"))
-        value = number(item.get("value"))
+        action = item["action"]
+        if not (isinstance(action, str) and action):
+            msg = f"an action without a name: {action!r}"
+            raise ValueError(msg)
+        contraticker = text(item["contraticker"])
+        value = number(item["value"])
         row: Row = {
             "day": day.isoformat(),
             "action": action,
@@ -51,8 +65,8 @@ def read_rows(items: Sequence[Mapping[str, Any]]) -> tuple[Row, ...]:
         alike.setdefault((day.isoformat(), action, contraticker), []).append((value, row))
     rows: list[Row] = []
     for group in alike.values():
-        # a missing value goes last; the sort is stable, so equal values keep the answer's order
-        ordered = sorted(group, key=lambda pair: (math.isnan(pair[0]), 0.0 if math.isnan(pair[0]) else pair[0]))
+        # a missing value goes last; rows alike in value and names are the same row, so their order is moot
+        ordered = sorted(group, key=numbering)
         rows.extend({**row, "item": str(position)} for position, (_, row) in enumerate(ordered, start=1))
     return tuple(rows)
 

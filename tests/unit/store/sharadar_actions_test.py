@@ -1,12 +1,16 @@
+import datetime
 import json
 import math
 
+import click.testing
 import httpx
 import pytest
 
 from data_pipeline import credentials as keys
 from data_pipeline.credentials import Credentials
+from data_pipeline.store import cli as cli_module
 from data_pipeline.store.api import Store
+from data_pipeline.store.cli import cli
 from data_pipeline.store.errors import CatalogError, UnknownSeriesError
 from data_pipeline.store.model import Kind, Outcome, Request
 from data_pipeline.store.sources.sharadar_actions import (
@@ -39,6 +43,10 @@ def action(day, word="dividend", value=0.25, contraticker="N/A", contraname="N/A
         "contraticker": contraticker,
         "contraname": contraname,
     }
+
+
+def without(row, field):
+    return {name: found for name, found in row.items() if name != field}
 
 
 def answer(rows):
@@ -113,6 +121,25 @@ def test_the_other_company_tells_two_actions_of_a_day_apart():
     assert [(row["contraticker"], row["item"]) for row in rows] == [("XONE", "1"), ("XTWO", "1")]
 
 
+@pytest.mark.parametrize("field", ["contraname", "name"])
+def test_two_actions_alike_but_for_a_name_are_numbered_the_same_whatever_the_order(field):
+    first = {**action("2026-02-10", value=0.5), field: "ALPHA CORP"}
+    second = {**action("2026-02-10", value=0.5), field: "BETA CORP"}
+    for answered in ([first, second], [second, first]):
+        assert {row[field]: row["item"] for row in read_rows(answered)} == {"ALPHA CORP": "1", "BETA CORP": "2"}
+
+
+def test_two_rows_alike_in_every_field_are_both_kept():
+    rows = read_rows([action("2026-02-10", value=0.25), action("2026-02-10", value=0.25)])
+    assert [(row["item"], row["value"]) for row in rows] == [("1", 0.25), ("2", 0.25)]
+
+
+def test_a_value_or_an_other_company_sent_as_null_is_stored_as_missing():
+    (row,) = read_rows([action("2026-02-10", value=None, contraticker=None, contraname=None)])
+    assert math.isnan(row["value"])
+    assert (row["contraticker"], row["contraname"]) == ("", "")
+
+
 # -- the call and how Sharadar refuses ---------------------------------------------------------
 
 
@@ -137,6 +164,18 @@ def test_a_call_asks_the_actions_table_for_one_ticker_from_the_first_day():
     assert (table.key_columns, table.value_columns) == (KEY_COLUMNS, VALUE_COLUMNS)
     assert (table.attribute_columns, table.versioned, table.stale_after_days) == (ATTRIBUTE_COLUMNS, False, None)
     assert len(table.rows) == 4
+
+
+def test_the_start_of_the_entry_is_the_first_day_asked():
+    seen = []
+
+    def handler(request):
+        seen.append(request)
+        return answer([])
+
+    fetch(handler, [Request(ticker(start=datetime.date(2020, 1, 1)))])
+    (request,) = seen
+    assert request.url.params["date.gte"] == "2020-01-01"
 
 
 def test_a_ticker_without_actions_is_an_empty_table_not_a_failure():
@@ -165,6 +204,22 @@ def test_an_action_without_a_day_is_a_source_error():
     (batch,) = fetch(lambda _request: answer([{"action": "dividend", "value": 1.0}]), [Request(ticker())])
     assert batch.failures[0].outcome is Outcome.SOURCE_ERROR
     assert batch.failures[0].reason.startswith("unexpected answer (KeyError")
+
+
+@pytest.mark.parametrize(
+    ("row", "reason"),
+    [
+        (without(action("2026-02-10"), "value"), "unexpected answer (KeyError: 'value')"),
+        (without(action("2026-02-10"), "contraticker"), "unexpected answer (KeyError: 'contraticker')"),
+        (action("2026-02-10", word=None), "unexpected answer (ValueError: an action without a name: None)"),
+        (action("2026-02-10", word=""), "unexpected answer (ValueError: an action without a name: '')"),
+    ],
+    ids=["no-value", "no-contraticker", "action-is-null", "action-is-empty"],
+)
+def test_a_row_that_lacks_what_its_key_or_its_value_is_made_of_fails_its_ticker(row, reason):
+    (batch,) = fetch(lambda _request: answer([row]), [Request(ticker())])
+    assert [(failure.outcome, failure.reason) for failure in batch.failures] == [(Outcome.SOURCE_ERROR, reason)]
+    assert batch.tables == ()
 
 
 # -- through the store -------------------------------------------------------------------------
@@ -229,6 +284,29 @@ def test_a_second_sync_adds_nothing_and_a_new_action_adds_one_row(store, vendor)
     report = store.sync()
     assert (report.sources[0].new, report.sources[0].revised) == (1, 0)
     assert store.info("sharadar_actions:XTEST").last_period == "2026-05-12"
+
+
+def test_a_dividend_added_on_a_day_that_has_one_renumbers_the_dividends_after_it(store, vendor):
+    # Items go by ascending value. The new 0.05 is the smallest of 2026-02-10, so it takes item 1
+    # and the stored 0.1 and 0.5 move to items 2 and 3. Against the store, items 1 and 2 are keys it
+    # already has with another value (2 revised) and item 3 is a key it has not (1 new). No stored
+    # row is touched, and a read gives the newest row of each key: the three dividends, once each.
+    vendor.rows["XTEST"] = [action("2026-02-10", value=0.05), *RECORDED]
+    report = store.sync()
+    assert (report.sources[0].new, report.sources[0].revised) == (1, 2)
+    dividends = store.table("sharadar_actions", "XTEST", action="dividend")
+    assert list(dividends["value"]) == [0.05, 0.1, 0.5]
+    assert list(dividends["item"]) == ["1", "2", "3"]
+
+
+def test_show_prints_the_citation_and_the_newest_rows(store, tmp_path, monkeypatch):
+    monkeypatch.setattr(cli_module, "open_store", lambda root, _catalog, _env: Store(root))
+    arguments = ["show", "--root", str(tmp_path / "store"), "sharadar_actions:XTEST"]
+    result = click.testing.CliRunner().invoke(cli, arguments)
+    assert result.exit_code == 0
+    lines = result.output.splitlines()
+    assert lines[0] == "[Sharadar: XTEST, 2026-03-03, fetched 2026-06-06]"
+    assert lines[1].startswith("Corporate actions of XTEST (Sharadar) | 4 rows")
 
 
 def test_status_never_calls_the_actions_stale(store):
