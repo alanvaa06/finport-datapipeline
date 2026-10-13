@@ -90,21 +90,23 @@ def test_validate_accepts_a_ticker_with_a_dot_and_both_tables():
 
 
 def test_a_price_row_keeps_the_six_values_and_drops_the_rest():
-    newest, *_others, oldest = read_rows(RECORDED)
+    newest, *_others, oldest = read_rows(RECORDED, "XTEST")
     assert set(newest) == {*KEY_COLUMNS, "date", *VALUE_COLUMNS}  # no closeadj, no lastupdated
+    assert newest["ticker"] == "XTEST"
     assert (newest["period"], newest["date"]) == ("2026-03-04", datetime.date(2026, 3, 4))
     assert "frequency" not in newest
     assert [newest[column] for column in VALUE_COLUMNS] == [20.5, 21.0, 20.1, 20.8, 1500000.0, 20.8]
     assert (oldest["close"], oldest["closeunadj"]) == (19.5, 39.0)  # adjusted for the split, and as it traded
 
 
-def test_a_price_row_is_told_apart_by_its_day_alone():
-    # without a `frequency` column the store builds no set of the days it holds, for a source that reads none
-    assert KEY_COLUMNS == ("period",)
+def test_a_price_row_is_told_apart_by_its_ticker_and_its_day():
+    # a `ticker` so that the rows of several tickers read at once say whose each is; and no `frequency`,
+    # so the store builds no set of the days it holds, for a source that reads none
+    assert KEY_COLUMNS == ("ticker", "period")
 
 
 def test_a_value_sharadar_leaves_empty_is_missing():
-    (row,) = read_rows([price("2026-03-04", volume=None)])
+    (row,) = read_rows([price("2026-03-04", volume=None)], "XTEST")
     assert math.isnan(row["volume"])
     assert row["close"] == 20.0
 
@@ -150,6 +152,12 @@ def test_an_answer_is_one_table_of_the_ticker():
     assert (table.attribute_columns, table.versioned) == ((), False)
     assert (table.stale_after_days, table.attrs) == (10, {"table": "stocks"})
     assert len(table.rows) == 4
+
+
+def test_the_ticker_stored_is_the_one_asked_for_whatever_the_answer_says():
+    (batch,) = fetch(lambda _request: answer([price("2026-03-04", ticker="OTHER")]), [Request(ticker())])
+    (table,) = batch.tables
+    assert [row["ticker"] for row in table.rows] == ["XTEST"]
 
 
 # -- how Sharadar refuses ----------------------------------------------------------------------
@@ -380,6 +388,46 @@ def test_sync_builds_no_set_of_held_days_for_a_source_that_reads_none(store, tmp
     assert held_periods(stored, SharadarPrices.held_by) == frozenset()
 
 
+def test_reading_several_tickers_at_once_says_whose_each_row_is(tmp_path, vendor, clock):
+    (tmp_path / "catalog.yaml").write_text(
+        "- source: sharadar_prices\n  ids: [XTEST]\n- source: sharadar_prices\n  table: funds\n  ids: [XFUND]\n",
+        encoding="utf-8",
+    )
+    (tmp_path / ".env").write_text(f"SHARADAR_API_KEY={KEY_VALUE}\n", encoding="utf-8")
+    # as Sharadar sends them, newest day first
+    vendor.rows[("funds", "XFUND")] = [
+        price("2026-03-04", close=50.0, ticker="XFUND"),
+        price("2026-03-03", close=49.0, ticker="XFUND"),
+        price("2026-03-02", close=48.0, ticker="XFUND"),
+    ]
+    both = Store(
+        tmp_path / "store",
+        tmp_path / "catalog.yaml",
+        env_file=tmp_path / ".env",
+        clock=lambda: clock["now"],
+        transport=httpx.MockTransport(vendor),
+        sleep=lambda _seconds: None,
+    )
+    assert both.sync().exit_code == 0
+
+    one_day = both.table("sharadar_prices", period="2026-03-04")
+    assert list(one_day["ticker"]) == ["XFUND", "XTEST"]
+    assert list(one_day["closeunadj"]) == [50.0, 20.8]
+
+    everything = both.table("sharadar_prices")
+    assert list(everything.columns[:2]) == ["ticker", "period"]
+    assert list(everything["ticker"]) == ["XFUND"] * 3 + ["XTEST"] * 4  # ticker by ticker ...
+    assert list(everything["period"]) == [  # ... each oldest day first
+        "2026-03-02",
+        "2026-03-03",
+        "2026-03-04",
+        "2026-02-27",
+        "2026-03-02",
+        "2026-03-03",
+        "2026-03-04",
+    ]
+
+
 def test_a_split_stores_every_earlier_day_again_and_as_of_reads_what_was_held_before(store, vendor, clock, tmp_path):
     vendor.rows[("stocks", "XTEST")] = split_three_for_one()
     clock["now"] = LATER
@@ -437,4 +485,4 @@ def test_show_prints_the_citation_and_the_newest_rows(store, tmp_path, monkeypat
     lines = result.output.splitlines()
     assert lines[0] == "[Sharadar: XTEST, 2026-03-04, fetched 2026-06-06]"
     assert lines[1] == "Daily prices of XTEST (Sharadar stocks) | 4 rows"
-    assert lines[2].split("  ")[:7] == ["period", "open", "high", "low", "close", "volume", "closeunadj"]
+    assert lines[2].split("  ")[:8] == ["ticker", "period", "open", "high", "low", "close", "volume", "closeunadj"]

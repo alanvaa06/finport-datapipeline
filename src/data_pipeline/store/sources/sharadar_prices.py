@@ -8,9 +8,10 @@ One call brings the whole history of a ticker, on every run: there is no "since"
 the latest version of every day is what Sharadar publishes that day. An entry with a `start`
 asks from that day on: the days stored before it are not asked again and keep the values they had.
 
-A day is told apart by `period` alone. The table has no `frequency` column on purpose: with one,
-the store would build for every ticker, on every run, the set of the days it holds, for a source
-that never reads it.
+A row is told apart by its `ticker` and its day (`period`). The ticker is the catalog id, there so
+that reading the tables of several tickers at once says whose each row is. The table has no
+`frequency` column on purpose: with one, the store would build for every ticker, on every run,
+the set of the days it holds, for a source that never reads it.
 
 `open`, `high`, `low`, `close` and `volume` come adjusted for splits, and Sharadar restates
 them on every earlier day when a ticker splits again: the next run stores those days once more,
@@ -51,7 +52,7 @@ from data_pipeline.store.sources.sharadar import (
 TABLES = ("stocks", "funds")
 DEFAULT_TABLE = "stocks"
 FIELDS = ("table",)
-KEY_COLUMNS = ("period",)
+KEY_COLUMNS = ("ticker", "period")
 VALUE_COLUMNS = ("open", "high", "low", "close", "volume", "closeunadj")
 STALE_AFTER_DAYS = stale_after(Frequency.DAILY)
 
@@ -69,9 +70,9 @@ def table_of(entry: CatalogEntry) -> str:
     return table
 
 
-def read_rows(items: Sequence[Mapping[str, Any]]) -> tuple[Row, ...]:
-    """The rows of a price answer as table rows. A day that comes twice is an AnswerError: one
-    of the two would be dropped without notice."""
+def read_rows(items: Sequence[Mapping[str, Any]], ticker: str) -> tuple[Row, ...]:
+    """The rows of a price answer as table rows, each with the ticker that was asked for. A day
+    that comes twice is an AnswerError: one of the two would be dropped without notice."""
     rows: list[Row] = []
     seen: set[datetime.date] = set()
     for item in items:
@@ -82,6 +83,7 @@ def read_rows(items: Sequence[Mapping[str, Any]]) -> tuple[Row, ...]:
         seen.add(day)
         rows.append(
             {
+                "ticker": ticker,
                 "period": day.isoformat(),
                 "date": day,
                 **{column: number(item[column]) for column in VALUE_COLUMNS},
@@ -116,7 +118,7 @@ class SharadarPrices:
 
     def _ticker(self, api: Sharadar, entry: CatalogEntry) -> FetchBatch:
         table = table_of(entry)
-        rows = read_rows(api.rows(table, entry.source_id, entry.start))
+        rows = read_rows(api.rows(table, entry.source_id, entry.start), entry.source_id)
         if not rows:
             hint = "; an ETF needs `table: funds`" if table == DEFAULT_TABLE else ""
             since = f" from {entry.start.isoformat()} on" if entry.start else ""
