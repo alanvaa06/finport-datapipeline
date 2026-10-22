@@ -159,7 +159,14 @@ def test_comtrade_probe_asks_for_one_call():
 
 def sharadar(status=200, rows=1, seen=None):
     """A fake Sharadar that answers every call with `status` and `rows` invented price rows."""
-    row = {"date": "2026-10-05", "open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0, "volume": 10, "closeadj": 1.0,
+    row = {
+        "date": "2026-10-05",
+        "open": 1.0,
+        "high": 1.0,
+        "low": 1.0,
+        "close": 1.0,
+        "volume": 10,
+        "closeadj": 1.0,
         "closeunadj": 1.0,
     }
 
