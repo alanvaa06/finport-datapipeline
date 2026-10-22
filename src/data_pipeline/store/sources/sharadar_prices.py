@@ -15,10 +15,12 @@ the set of the days it holds, for a source that never reads it.
 
 `open`, `high`, `low`, `close` and `volume` come adjusted for splits, and Sharadar restates
 them on every earlier day when a ticker splits again: the next run stores those days once more,
-and the rows before stay. `closeunadj` is the close as it traded and never changes. Sharadar's
-`closeadj`, the close adjusted for dividends too, is not stored: it is restated over the whole
-history on every dividend. Nor is `lastupdated`. Nothing is derived: a series adjusted for
-dividends is the consumer's work, from `close` and the dividends of `sharadar_actions`.
+and the rows before stay. `closeunadj` is the close as it traded and never changes.
+
+`closeadj` is the close adjusted for splits, dividends and spin-offs, as Sharadar computes it.
+Sharadar restates it over the whole history of a ticker on every dividend, so each dividend
+stores every earlier day of the ticker again, and the rows before stay readable with `as_of`.
+`lastupdated` is not stored. Nothing is derived: every column is what Sharadar published.
 """
 
 import datetime
@@ -53,7 +55,7 @@ TABLES = ("stocks", "funds")
 DEFAULT_TABLE = "stocks"
 FIELDS = ("table",)
 KEY_COLUMNS = ("ticker", "period")
-VALUE_COLUMNS = ("open", "high", "low", "close", "volume", "closeunadj")
+VALUE_COLUMNS = ("open", "high", "low", "close", "volume", "closeadj", "closeunadj")
 STALE_AFTER_DAYS = stale_after(Frequency.DAILY)
 
 Row = dict[str, object]
