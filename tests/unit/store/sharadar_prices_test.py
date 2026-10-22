@@ -89,14 +89,17 @@ def test_validate_accepts_a_ticker_with_a_dot_and_both_tables():
 # -- reading rows ------------------------------------------------------------------------------
 
 
-def test_a_price_row_keeps_the_six_values_and_drops_the_rest():
+def test_a_price_row_keeps_the_seven_values_and_drops_the_rest():
     newest, *_others, oldest = read_rows(INVENTED, "XTEST")
-    assert set(newest) == {*KEY_COLUMNS, "date", *VALUE_COLUMNS}  # no closeadj, no lastupdated
+    assert set(newest) == {*KEY_COLUMNS, "date", *VALUE_COLUMNS}  # no lastupdated
+    assert "closeadj" in VALUE_COLUMNS
+    assert "lastupdated" not in newest
     assert newest["ticker"] == "XTEST"
     assert (newest["period"], newest["date"]) == ("2026-03-04", datetime.date(2026, 3, 4))
     assert "frequency" not in newest
-    assert [newest[column] for column in VALUE_COLUMNS] == [20.5, 21.0, 20.1, 20.8, 1500000.0, 20.8]
-    assert (oldest["close"], oldest["closeunadj"]) == (19.5, 39.0)  # adjusted for the split, and as it traded
+    assert [newest[column] for column in VALUE_COLUMNS] == [20.5, 21.0, 20.1, 20.8, 1500000.0, 20.8, 20.8]
+    # adjusted for the split, adjusted for dividends too, and as it traded
+    assert (oldest["close"], oldest["closeadj"], oldest["closeunadj"]) == (19.5, 19.4, 39.0)
 
 
 def test_a_price_row_is_told_apart_by_its_ticker_and_its_day():
@@ -428,6 +431,21 @@ def test_reading_several_tickers_at_once_says_whose_each_row_is(tmp_path, vendor
     ]
 
 
+def test_a_dividend_stores_every_earlier_day_again_and_as_of_reads_what_was_held_before(store, vendor, clock):
+    # a dividend restates closeadj on every earlier day and nothing else; no new day
+    newest, *earlier = INVENTED  # the answer comes newest day first
+    vendor.rows[("stocks", "XTEST")] = [newest, *({**row, "closeadj": row["closeadj"] * 0.99} for row in earlier)]
+    clock["now"] = LATER
+    report = store.sync()
+    assert (report.sources[0].new, report.sources[0].revised) == (0, len(INVENTED) - 1)
+    after = store.table("sharadar_prices", "XTEST")
+    assert list(after["close"]) == [19.5, 20.0, 20.4, 20.8]
+    assert list(after["closeunadj"]) == [39.0, 40.0, 20.4, 20.8]
+    assert list(after["closeadj"]) == pytest.approx([19.4 * 0.99, 19.9 * 0.99, 20.4 * 0.99, 20.8])
+    before = store.table("sharadar_prices", "XTEST", as_of=NOW)
+    assert list(before["closeadj"]) == [19.4, 19.9, 20.4, 20.8]
+
+
 def test_a_split_stores_every_earlier_day_again_and_as_of_reads_what_was_held_before(store, vendor, clock, tmp_path):
     vendor.rows[("stocks", "XTEST")] = split_three_for_one()
     clock["now"] = LATER
@@ -485,4 +503,5 @@ def test_show_prints_the_citation_and_the_newest_rows(store, tmp_path, monkeypat
     lines = result.output.splitlines()
     assert lines[0] == "[Sharadar: XTEST, 2026-03-04, fetched 2026-06-06]"
     assert lines[1] == "Daily prices of XTEST (Sharadar stocks) | 4 rows"
-    assert lines[2].split("  ")[:8] == ["ticker", "period", "open", "high", "low", "close", "volume", "closeunadj"]
+    header = ["ticker", "period", "open", "high", "low", "close", "volume", "closeadj", "closeunadj"]
+    assert lines[2].split("  ")[:9] == header

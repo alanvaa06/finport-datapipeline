@@ -21,7 +21,7 @@ First version.
 - Tables: UN Comtrade goods trade and SEC XBRL company facts, each version dated with its filing day.
 - Tables: daily prices and corporate actions of US stocks and ETFs from Sharadar (`sharadar_prices`,
   `sharadar_actions`), read with the user's own subscription. An action Sharadar no longer sends is
-  marked as withdrawn, not deleted. `SHARADAR_API_KEY` joins `data-pipeline setup`. The repository
+  marked as withdrawn, not deleted. Prices keep Sharadar's `closeadj`, restated at each dividend. `SHARADAR_API_KEY` joins `data-pipeline setup`. The repository
   holds no Sharadar data: the fixtures are invented.
 - Documents: SEC filings (10-K, 10-Q, 8-K, 20-F, 40-F) with their exhibits.
 - A bundled `macro` catalog of 1,293 series across 44 economies.
