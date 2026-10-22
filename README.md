@@ -221,7 +221,8 @@ is: after a later split the days before `start` keep the basis they had, while t
 are restated.
 
 A price row holds its `ticker` and its day (`period`), then `open`, `high`, `low`, `close` and
-`volume` adjusted for splits, as Sharadar sends them, and `closeunadj`, the close as it traded.
+`volume` adjusted for splits, as Sharadar sends them, `closeadj` (see below) and `closeunadj`,
+the close as it traded.
 When a ticker splits, Sharadar restates the adjusted columns of every earlier day: the next sync
 stores those days again and keeps the rows it had, so `as_of` still reads what the store held
 before. `closeunadj` never changes. Sharadar does not say when it restated a row, so prices read
@@ -249,27 +250,11 @@ Without an id, `table` reads every ticker stored, and `ticker` says whose each r
 `store.table("sharadar_prices", period="2026-03-04")` is that day of all of them. It opens
 every ticker's file to do so.
 
-The store keeps no close adjusted for dividends: Sharadar restates it over the whole history on
-every dividend. Work it out from `close` and the dividends. The recipe takes both to be in
-today's shares, a later split restating the `close` of the earlier days and the `value` of the
-earlier dividends alike. It has not been checked against Sharadar's own adjusted close yet:
-check it on a ticker you know before you rely on it.
-
-```python
-import pandas as pd
-
-close = store.table("sharadar_prices", "AAPL").set_index("date")["close"]
-dividends = store.table("sharadar_actions", "AAPL", withdrawn=0, action="dividend")
-factor = pd.Series(1.0, index=close.index)
-for day, value in dividends[["date", "value"]].itertuples(index=False):
-    before = close.index < day
-    if pd.isna(value) or not before.any():
-        continue
-    factor[before] *= 1 - value / close[before].iloc[-1]  # paid to whoever held the day before
-adjusted = close * factor
-```
-
-The recipe leaves spin-offs out.
+`closeadj` is Sharadar's close adjusted for splits, dividends and spin-offs, as Sharadar
+computes it. Sharadar restates it over the whole history of a ticker on every dividend, so each
+dividend stores every earlier day of that ticker again: the table of a ticker that pays every
+quarter grows by its whole history four times a year. The rows before stay readable with
+`as_of`.
 
 A ticker that is no longer listed never gets a new day: give its entry a large
 `stale_after_days`, or `status` calls it stale.

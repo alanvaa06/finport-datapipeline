@@ -1867,3 +1867,6 @@ Asked for by the reviewers:
   for a ticker that does not exist.
 - The README recipe works from `close` and the dividends, which Sharadar states in today's
   shares; it reads them with `withdrawn=0`, skips a missing value and leaves spin-offs out.
+
+After the acceptance run (2026-10-22): criteria 2, 3, 4 and 6 passed. The owner chose to
+store `closeadj`, and the README recipe was dropped.
