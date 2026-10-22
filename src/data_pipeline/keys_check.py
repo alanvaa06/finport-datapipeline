@@ -22,6 +22,10 @@ from data_pipeline.store.sources.sec import TICKERS_URL, AnswerError, Edgar
 
 PROBE_DAYS = 400  # a probe asks for about a year, so every source answers with a few points
 CHECK_TIMEOUT = 15.0  # seconds: someone is waiting for the verdict, unlike a sync
+# Sharadar answers a wrong key as its free tier, so its probe asks for a ticker that tier does
+# not cover (verified 2026-10-12): an answer with rows means a paid key. If this ticker ever
+# joins the free tier, a wrong key passes the check.
+SHARADAR_PROBE = "GOOGL"
 
 
 class Verdict(enum.StrEnum):
@@ -61,6 +65,10 @@ def _probes(today: datetime.date) -> Mapping[str, tuple[str, CatalogEntry]]:
         keys.COMTRADE: (
             "comtrade",
             CatalogEntry("comtrade", "MEX", params={"annual_from": today.year - 2, "months": 0}),
+        ),
+        keys.SHARADAR: (
+            "sharadar_prices",
+            CatalogEntry("sharadar_prices", SHARADAR_PROBE, start=today - datetime.timedelta(days=PROBE_DAYS)),
         ),
     }
 

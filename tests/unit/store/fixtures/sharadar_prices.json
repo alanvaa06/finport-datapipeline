@@ -1,0 +1,9 @@
+{
+  "count": 4,
+  "data": [
+    {"ticker": "XTEST", "date": "2026-03-04", "open": 20.5, "high": 21.0, "low": 20.1, "close": 20.8, "volume": 1500000, "closeadj": 20.8, "closeunadj": 20.8, "lastupdated": "2026-03-04"},
+    {"ticker": "XTEST", "date": "2026-03-03", "open": 20.0, "high": 20.6, "low": 19.9, "close": 20.4, "volume": 1200000, "closeadj": 20.4, "closeunadj": 20.4, "lastupdated": "2026-03-04"},
+    {"ticker": "XTEST", "date": "2026-03-02", "open": 19.5, "high": 20.2, "low": 19.4, "close": 20.0, "volume": 2000000, "closeadj": 19.9, "closeunadj": 40.0, "lastupdated": "2026-03-04"},
+    {"ticker": "XTEST", "date": "2026-02-27", "open": 19.0, "high": 19.6, "low": 18.9, "close": 19.5, "volume": 1800000, "closeadj": 19.4, "closeunadj": 39.0, "lastupdated": "2026-03-04"}
+  ]
+}

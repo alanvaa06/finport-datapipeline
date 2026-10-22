@@ -300,13 +300,13 @@ def test_setup_refuses_numbers_outside_the_list(tmp_path):
     with runner.isolated_filesystem(temp_dir=tmp_path):
         result = runner.invoke(cli, ["setup"], input="12\n")
     assert result.exit_code == 2
-    assert "1 to 6" in result.output
+    assert "1 to 7" in result.output
 
 
 def test_setup_enter_picks_every_missing_key_and_enter_skips_each_one(tmp_path):
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
-        result = runner.invoke(cli, ["setup"], input="\n" * 7)
+        result = runner.invoke(cli, ["setup"], input="\n" * 8)  # the choice, then one Enter per key
         written = pathlib.Path(".env").exists()
         ignored = pathlib.Path(".gitignore").exists()
     assert result.exit_code == 0, result.output

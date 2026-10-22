@@ -117,7 +117,7 @@ class SourceReport:
 
     def lines(self) -> list[str]:
         """ASCII lines for the console."""
-        label = f"{self.source:<12}"
+        label = f"{self.source:<11} "
         counts = f"{self.new} new, {self.revised} revised, {self.calls} calls"
         if not self.failed and not self.quota_exhausted:
             return [f"[ok]  {label}{self.ok} series, {counts}"]

@@ -116,6 +116,18 @@ def test_a_table_survives_a_round_trip_and_remembers_its_columns(tmp_path):
     assert (tmp_path / "tables" / "comtrade" / "MEX.parquet").exists()
 
 
+def test_a_table_named_like_a_windows_device_survives_a_round_trip(tmp_path):
+    # CON and PRN are tickers. Windows 11 writes and reads `CON.parquet` (build 26200); an older
+    # Windows keeps the name for a device, and this test is how one finds out.
+    storage = Storage(tmp_path)
+    storage.prepare()
+    built = frame([row()])
+    for name in ("CON", "PRN"):
+        storage.write_table("sharadar_prices", name, built, SCHEMA)
+        pd.testing.assert_frame_equal(storage.read_table("sharadar_prices", name), built)
+    assert storage.table_names("sharadar_prices") == ["CON", "PRN"]
+
+
 def test_the_schema_of_a_source_without_tables_is_an_error(tmp_path):
     with pytest.raises(StoreError, match="no table is stored for source 'comtrade'"):
         Storage(tmp_path).table_schema("comtrade")

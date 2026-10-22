@@ -19,6 +19,10 @@ First version.
 - Sources: FRED, BLS, Banxico SIE, INEGI, the World Bank, the BIS, the ECB, Eurostat, the OECD,
   the IMF and DBnomics.
 - Tables: UN Comtrade goods trade and SEC XBRL company facts, each version dated with its filing day.
+- Tables: daily prices and corporate actions of US stocks and ETFs from Sharadar (`sharadar_prices`,
+  `sharadar_actions`), read with the user's own subscription. An action Sharadar no longer sends is
+  marked as withdrawn, not deleted. `SHARADAR_API_KEY` joins `data-pipeline setup`. The repository
+  holds no Sharadar data: the fixtures are invented.
 - Documents: SEC filings (10-K, 10-Q, 8-K, 20-F, 40-F) with their exhibits.
 - A bundled `macro` catalog of 1,293 series across 44 economies.
   279 series that DBnomics only mirrored from retired datasets (IMF IFS and DOT, OECD MEI) now
@@ -43,6 +47,7 @@ Store core:
   when the run is interrupted, so the daily budget is not spent twice.
 - Every file is flushed to disk before it replaces the old one. A file that cannot be read is an
   error that names it (exit 2 for the index or `runs.json`), not a traceback.
+- A source whose name has twelve characters or more no longer runs into the text of its `sync` line.
 - Each downloaded batch is stamped with the time it arrived, not the start of the run, so a run that
   crosses midnight UTC does not make `as_of` see values early.
 - Error excerpts are scrubbed of keys before they are cut to length, so no prefix of a key reaches
