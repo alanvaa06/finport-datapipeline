@@ -1,10 +1,11 @@
-"""Five real calls to Sharadar. Off by default; run with:  pytest -m live tests/live
+"""Eight real calls to Sharadar. Off by default; run with:  pytest -m live tests/live
 
-Needs SHARADAR_API_KEY in the environment or in ./.env, a plan with prices and actions, and
-network access. It exists to notice when Sharadar changes the shape of its answers, and it
-settles what the free tier does not show: the `funds` table, a split among the actions, the
-actions of an ETF, the whole history of the actions, and what a ticker Sharadar does not have is
-answered with.
+Needs SHARADAR_API_KEY in the environment or in ./.env, a plan with prices, actions,
+fundamentals, tickers and daily metrics, and network access. It exists to notice when Sharadar
+changes the shape of its answers, and it settles what the free tier does not show: the `funds`
+table, a split among the actions, the actions of an ETF, the whole history of the actions, of
+the fundamentals and of the daily metrics, that the `datekey` of every as-reported row comes
+after its period, and what a ticker Sharadar does not have is answered with.
 
 It checks shapes only, never a value: Sharadar's license forbids publishing its data. Whether a
 dividend's value is the amount as paid is not a shape: the acceptance run settles it.
@@ -12,10 +13,14 @@ dividend's value is the amount as paid is not a shape: the acceptance run settle
 
 import datetime
 
+import httpx
 import pytest
 
 from data_pipeline import credentials as keys
 from data_pipeline.store.api import Store
+from data_pipeline.store.sources import sharadar_daily as daily
+from data_pipeline.store.sources import sharadar_fundamentals as fundamentals
+from data_pipeline.store.sources import sharadar_tickers as tickers
 from data_pipeline.store.sources.sharadar_prices import VALUE_COLUMNS
 
 DEFAULT_WINDOW_YEARS = 5  # what a call without a first day is answered with
@@ -63,3 +68,63 @@ def test_a_ticker_sharadar_does_not_have_is_not_found(tmp_path):
     ((key, reason),) = source.failed
     assert key == f"sharadar_prices:{NO_SUCH_TICKER}"
     assert reason.startswith("not_found")
+
+
+class Recording(httpx.BaseTransport):
+    """A transport that keeps in memory, by Sharadar table, the rows of the last answer it
+    passed on. Nothing it keeps is written anywhere: the test reads their shape, never a value."""
+
+    def __init__(self, inner=None):
+        self._inner = inner or httpx.HTTPTransport()
+        self.rows = {}
+
+    def handle_request(self, request):
+        response = self._inner.handle_request(request)
+        response.read()
+        if response.status_code == httpx.codes.OK:
+            self.rows[request.url.path.rsplit("/", 1)[-1]] = response.json().get("data") or []
+        return response
+
+    def close(self):
+        self._inner.close()
+
+
+@pytest.mark.live
+def test_the_fundamentals_tickers_and_daily_metrics_still_answer_in_the_expected_shape(tmp_path):
+    if keys.resolve().get(keys.SHARADAR) is None:
+        pytest.skip("SHARADAR_API_KEY is not set")
+    recording = Recording()
+    store = Store(tmp_path / "store", transport=recording)
+    for source in ("sharadar_fundamentals", "sharadar_tickers", "sharadar_daily"):
+        store.add(source, ["AAPL"])
+    report = store.sync()
+    assert report.exit_code == 0
+    assert {source.source: source.calls for source in report.sources} == {
+        "sharadar_daily": 1,
+        "sharadar_fundamentals": 1,
+        "sharadar_tickers": 1,
+    }
+    # every column a source reads is in every row Sharadar sends, and the fundamentals have no column
+    # the source does not know: a renamed indicator would otherwise be stored as missing without notice
+    described = {"ticker", "dimension", "calendardate", "date", "reportperiod", "fiscalperiod", "lastupdated"}
+    for row in recording.rows["fundamentals"]:
+        assert set(row) == {*described, *fundamentals.INDICATORS}
+    for row in recording.rows["tickers"]:
+        assert {"ticker", "table", *tickers.VALUE_COLUMNS, *tickers.ATTRIBUTE_COLUMNS} <= set(row)
+    for row in recording.rows["daily"]:
+        assert {"ticker", "date", *daily.VALUE_COLUMNS} <= set(row)
+
+    today = datetime.datetime.now(datetime.UTC).date()
+    whole_history = today - datetime.timedelta(days=366 * (DEFAULT_WINDOW_YEARS + 1))
+    panel = store.table("sharadar_fundamentals", "AAPL")
+    assert set(panel["dimension"]) == set(fundamentals.DIMENSIONS)
+    assert panel["date"].min().date() < whole_history  # not the recent window of the free tier
+    as_reported = panel[panel["dimension"].isin(fundamentals.AS_REPORTED)]
+    # the day an as-reported row is known from comes after the end of the period it reports
+    assert (as_reported["datekey"] > as_reported["reportperiod"]).all()
+    record = store.table("sharadar_tickers", "AAPL")
+    assert not record.empty
+    assert record["permaticker"].notna().all()
+    metrics = store.table("sharadar_daily", "AAPL")
+    assert metrics["period"].str.fullmatch(r"\d{4}-\d{2}-\d{2}").all()
+    assert metrics["date"].min().date() < whole_history
