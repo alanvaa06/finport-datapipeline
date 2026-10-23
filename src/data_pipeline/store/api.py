@@ -294,7 +294,7 @@ class Store:
         if unknown:
             msg = f"unknown column(s) for a {source} table: {', '.join(unknown)} (columns: {', '.join(columns)})"
             raise StoreError(msg)
-        order = [*(column for column in key if column != "period"), "date"]
+        order = schema.row_order
         # Every version of a key shares its key columns, so a filter on them drops whole keys and
         # can go first, before the work of choosing versions. Any other filter goes after the
         # version is chosen: never revive a replaced one.

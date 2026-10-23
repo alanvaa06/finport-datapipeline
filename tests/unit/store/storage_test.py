@@ -17,6 +17,7 @@ from data_pipeline.store.storage import (
     OBS_COLUMNS,
     OBS_DTYPES,
     Storage,
+    TableSchema,
     append_changes,
     as_of,
     empty_index,
@@ -356,3 +357,8 @@ def test_a_time_makes_it_that_instant(moment, expected):
 def test_text_that_is_not_an_iso_date_is_refused(text):
     with pytest.raises(StoreError, match="is not a date: write it as 2026-06-15"):
         to_moment(text)
+
+
+def test_a_reader_sorts_table_rows_by_the_key_columns_but_period_then_by_date():
+    schema = TableSchema(("ticker", "period", "item"), ("value",))
+    assert schema.row_order == ["ticker", "item", "date"]

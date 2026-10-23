@@ -181,6 +181,56 @@ store.add("fred", ["UNRATE"])
 report = store.sync()
 ```
 
+## Fetching without a store
+
+`fetch` downloads from any source and gives you the data at once, without writing a store:
+
+```python
+import data_pipeline as dp
+
+dp.fetch("fred", ["UNRATE", "DGS10"])                        # a pandas DataFrame
+dp.fetch("sharadar_prices", "AAPL", to="aapl.parquet")       # also written to a file
+dp.fetch("sharadar_prices", ["SPY"], table="funds", start="2020-01-01")  # the catalog's fields
+```
+
+```bash
+data-pipeline fetch fred UNRATE DGS10                        # a summary and the first 10 rows
+data-pipeline fetch sharadar_prices AAPL MSFT --out prices.parquet
+data-pipeline fetch comtrade MEX --param annual_from=2020 --param "partners=[USA, CAN]"
+```
+
+What comes back is one frame for all the ids, long rather than wide:
+
+| Source | Columns |
+|---|---|
+| A series source (FRED, BLS, Banxico, INEGI, World Bank, SDMX, DBnomics) | `id`, `date`, `period`, `value` |
+| A table source (Sharadar, Comtrade, SEC XBRL) | `id`, then the columns `Store.table` gives for that source |
+
+A series gives the latest version of each period, without periods that have no value and
+without projections, as `store.series` reads it. A table gives the latest version of each row, as
+`store.table` reads it. `id` is the id you asked for (`UNRATE`, not `fred:UNRATE`). Documents
+(`sec_filings`) are not fetched: keep them in a store.
+
+`to=` (`--out`) writes the same frame to a `.parquet` or `.csv` file, replacing a file of that
+name. Prefer Parquet: it keeps each column's type, and a CSV does not. Text that looks like a
+number (an INEGI id `0123`, a Comtrade product `01`) reads back from a CSV as 123 and 1 unless you
+read it as text: `pd.read_csv(path, dtype={"id": str, "product": str})`. The fields of a catalog entry (`start`, `frequency` and each source's own, such as
+`table` or `partners`) are keyword arguments, or `--start`, `--frequency` and `--param NAME=VALUE`
+(the value read as YAML, as in a catalog). Keys come from where `sync` takes them.
+
+When an id fails, `fetch` raises `dp.FetchError` once everything was asked: `error.data` holds
+what arrived, `error.failures` one failure per id, `error.quota_exhausted` whether the quota
+stopped it, `error.written` the file written (None when none was). With `to=`, what arrived is
+written first; a fetch that failed and brought nothing (a missing key, say) leaves the file as it
+was. A file that cannot be written (open in Excel, say) also raises `FetchError`, with the rows in
+`error.data` and the reason in `error.write_error`, so the download is not lost. The command
+prints one `[x]` line per failed id and exits with 1 (3 when only the quota stopped it, 2 for a
+configuration error such as an unknown source or a field the source does not take).
+
+What `fetch` does not do: it keeps no versions and has no `as_of`, and every call downloads the
+whole history (or from `start`) and spends the source's quota again, Sharadar's included. For
+data you read more than once, keep a store and `sync` it.
+
 ## The macro catalog
 
 `data-pipeline catalog` lists it. Each entry's name ends with the unit of its values, such as
