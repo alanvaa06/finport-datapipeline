@@ -105,9 +105,14 @@ Sharadar's `tickers` table has one row per ticker and per Sharadar table it appe
 | `name`, `exchange`, `isdelisted`, `category`, `cusips`, `siccode`, `sicsector`, `sicindustry`, `figi`, `famaindustry`, `sector`, `industry`, `scalemarketcap`, `scalerevenue`, `relatedtickers`, `currency`, `location`, `lastupdated`, `firstadded`, `firstpricedate`, `lastpricedate`, `firstquarter`, `lastquarter`, `secfilings`, `companysite` | attribute | As sent, as text; `N/A` and `null` are empty |
 
 The table is versioned, every row known from the end of the day of its `lastupdated`. Attributes
-are never compared, so a change of sector or of the delisted flag is stored because Sharadar
+are never compared, so a change of sector or of the delisted flag is stored only because Sharadar
 stamps the row with a new `lastupdated`: the store keeps a new version, and `as_of` reads the
-record as it was. The table has no staleness threshold.
+record as it was. A change without a new `lastupdated` is not stored if the field had a value,
+and fills the stored version in place if it was empty (the core's `fill_attributes`), so `as_of`
+an earlier day reads it; both are pinned by tests. Whether Sharadar ever changes a field without
+a new `lastupdated` is not known. A row for a Sharadar table the ticker leaves stays as it was.
+The source ignores `start`: a record has no history to cut. The table has no staleness
+threshold.
 
 ### Daily metrics: `tables/sharadar_daily/<TICKER>.parquet`
 

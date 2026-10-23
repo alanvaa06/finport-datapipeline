@@ -71,7 +71,7 @@ you to run `git rm --cached .env`.
 | `INEGI_TOKEN` | INEGI | Mexico CPI and jobs |
 | `COMTRADE_API_KEY` | UN Comtrade | Goods trade |
 | `SEC_EDGAR_UA` | SEC EDGAR | Filings and XBRL facts; not a key, a contact: `Your Name you@domain.com` |
-| `SHARADAR_API_KEY` | Sharadar | US stock and ETF prices, corporate actions and fundamentals; a paid subscription |
+| `SHARADAR_API_KEY` | Sharadar | US stock and ETF prices, corporate actions, fundamentals, ticker records and daily metrics; a paid subscription |
 
 The World Bank, the BIS, the ECB, Eurostat, the OECD, the IMF and DBnomics need no key.
 
@@ -291,8 +291,8 @@ Sharadar's for the tickers a catalog lists, with the same key and the same licen
   attrs: {commercial_ok: "no"}
 ```
 
-Each run asks for the whole history of each ticker, one call per ticker and table, and stores
-what changed. A ticker listed in all five Sharadar sources costs five calls a run: `sync --source
+Each run asks for the whole history of each ticker (from its `start`, if the entry has one;
+a ticker record ignores `start`), one call per ticker and table, and stores what changed. A ticker listed in all five Sharadar sources costs five calls a run: `sync --source
 sharadar_tickers`, say, runs one of them alone, at a rhythm of its own.
 
 - **Fundamentals:** one row per `ticker`, `dimension` and `calendardate`, the calendar quarter
@@ -304,7 +304,8 @@ sharadar_tickers`, say, runs one of them alone, at a rhythm of its own.
 - **Ticker records:** one row per `ticker` and Sharadar `table` the ticker is in (`stocks`,
   `funds`, `fundamentals`, ...), with `permaticker`, Sharadar's permanent id, and what Sharadar
   says of the ticker (`name`, `exchange`, `sector`, `industry`, `isdelisted`, ...) as text. A
-  record has no period, so `status` never calls it stale.
+  record has no period, so `status` never calls it stale. A row for a Sharadar table the ticker
+  is no longer in stays as it was: nothing marks it.
 - **Daily metrics:** one row per `ticker` and day (`period`) with `ev`, `evebit`, `evebitda`,
   `marketcap`, `pb`, `pe` and `ps`. As with prices, a day Sharadar restates is stored again, and
   they read as of a date from your first sync on.
@@ -330,6 +331,10 @@ ticker that changed sector reads with the old one. Two costs come with this:
 - If Sharadar corrects an as-reported row without changing its `datekey`, the correction counts
   as known from the day of the original, so `as_of` a day between the two reads the correction.
   Without `as_of`, a read gives the version downloaded last.
+- The text of a ticker record is not compared: only a new `lastupdated` stores a new version.
+  If Sharadar changes a field without one, a field that had a value keeps the old one (a
+  delisting would not show), and a field that was empty takes the new value in the stored
+  version, so `as_of` an earlier day already reads it.
 
 ## Data terms
 
