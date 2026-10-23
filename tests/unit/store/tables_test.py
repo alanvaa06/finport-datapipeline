@@ -1,14 +1,17 @@
 import datetime
 import math
+import warnings
 
 import pandas as pd
 import pytest
+from pandas.errors import PerformanceWarning
 
 from data_pipeline.store.errors import StoreError
 from data_pipeline.store.storage import (
     INDEX_DTYPES,
     INDEX_FILE,
     KIND_SERIES,
+    UTC,
     Storage,
     TableSchema,
     append_rows,
@@ -53,6 +56,32 @@ def test_table_frame_types_the_columns_and_stamps_the_rows():
     assert list(built["fetched_at"]) == [pd.Timestamp(NOW)] * 2
     assert built["published_at"].isna().all()
     assert frame([]).empty
+
+
+def test_a_table_with_many_value_columns_is_built_without_fragmenting():
+    values = tuple(f"v{i:03d}" for i in range(150))
+    schema = TableSchema(("ticker",), values, ("unit",), versioned=True)
+    published = datetime.datetime(2024, 2, 1, tzinfo=datetime.UTC)
+    days = [datetime.date(2023, 12, 31), datetime.date(2024, 3, 31)]
+    rows = [
+        {"ticker": "AAA", "date": days[0], "unit": "USD", "published_at": published}
+        | {name: float(i) for i, name in enumerate(values)},
+        {"ticker": "BBB", "date": days[1], "unit": "EUR", "published_at": published}
+        | {name: (math.nan if i % 2 else -float(i)) for i, name in enumerate(values)},
+    ]
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PerformanceWarning)
+        built = table_frame(rows, schema, NOW)
+    expected = pd.DataFrame(
+        {"ticker": pd.Series(["AAA", "BBB"], dtype="object"), "date": pd.to_datetime(days).as_unit("ns")}
+        | {name: [float(i), math.nan if i % 2 else -float(i)] for i, name in enumerate(values)}
+        | {
+            "unit": pd.Series(["USD", "EUR"], dtype="object"),
+            "fetched_at": pd.Series([NOW] * 2, dtype=UTC),
+            "published_at": pd.Series([published] * 2, dtype=UTC),
+        }
+    )
+    pd.testing.assert_frame_equal(built, expected)
 
 
 def test_new_keys_are_appended_and_counted_as_added():

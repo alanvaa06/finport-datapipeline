@@ -43,6 +43,9 @@ Store core:
   its last state, so `data-pipeline status --catalog` exited with 1 because of it. Its data is
   kept and readable by key; `status` ends with a line counting the stored entries it left out,
   `Store.undeclared()` names them, and `status` without `--catalog` still lists everything.
+- A table with more than about a hundred value columns is built without pandas warning that the
+  frame is "highly fragmented": a wide table synced over many tickers printed two warnings per
+  ticker on stderr. The stored data was already right and does not change.
 
 - A sync that died without cleaning up (a killed process, a crash) no longer blocks the next one:
   `sync.lock` is held with the operating system's lock, released when the process ends, and a file
