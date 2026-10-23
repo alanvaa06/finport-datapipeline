@@ -13,6 +13,9 @@ The table is versioned: a row is known from the end of the day of its `lastupdat
 that day. A record that changes, a new sector or the delisted flag, comes with a new `lastupdated`:
 the store keeps it as a new version, and `as_of` reads the record as it was. The same record sent
 again stores nothing. A ticker's record has no period to grow old by, so it is never stale.
+
+An entry's `start` is accepted but not sent: a record has no history to cut, and `date.gte` could
+hide a record already stored.
 """
 
 import datetime
@@ -99,10 +102,9 @@ class SharadarTickers:
         yield from per_ticker(requests, lambda request: self._ticker(api, request.entry))
 
     def _ticker(self, api: Sharadar, entry: CatalogEntry) -> FetchBatch:
-        rows = read_rows(api.rows(TABLE, entry.source_id, entry.start), entry.source_id)
+        rows = read_rows(api.rows(TABLE, entry.source_id, None), entry.source_id)
         if not rows:
-            since = f" from {entry.start.isoformat()} on" if entry.start else ""
-            reason = f"Sharadar has no ticker record for {entry.source_id!r}{since}"
+            reason = f"Sharadar has no ticker record for {entry.source_id!r}"
             return FetchBatch(failures=(Failure(entry, Outcome.NOT_FOUND, reason),))
         data = TableData(
             entry=entry,

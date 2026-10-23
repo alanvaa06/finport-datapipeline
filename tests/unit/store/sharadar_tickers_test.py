@@ -150,7 +150,21 @@ def test_a_call_asks_the_record_of_one_ticker_from_the_first_day():
         "format": "json",
         "api_key": KEY_VALUE,
     }
-    assert (second.url.params["ticker"], second.url.params["date.gte"]) == ("XOTHER", "2020-01-01")
+    assert (second.url.params["ticker"], second.url.params["date.gte"]) == ("XOTHER", "1900-01-01")
+
+
+def test_a_start_is_accepted_but_a_record_has_no_history_to_cut_so_it_is_not_sent():
+    seen = []
+
+    def handler(request):
+        seen.append(request)
+        return answer(INVENTED)
+
+    entry_with_start = ticker(start=datetime.date(2026, 1, 1))
+    SharadarTickers(client(), CREDENTIALS).validate(entry_with_start)
+    fetch(handler, [Request(entry_with_start)])
+    (sent,) = seen
+    assert sent.url.params["date.gte"] == "1900-01-01"
 
 
 def test_an_answer_is_one_versioned_table_of_the_ticker_that_never_grows_stale():
@@ -183,7 +197,7 @@ def test_a_ticker_sharadar_has_no_record_of_is_not_found():
     gone, late = fetch(lambda _request: answer([]), requests)
     assert gone.failures[0].outcome is Outcome.NOT_FOUND
     assert gone.failures[0].reason == "Sharadar has no ticker record for 'XGONE'"
-    assert late.failures[0].reason == "Sharadar has no ticker record for 'XLATE' from 2020-01-01 on"
+    assert late.failures[0].reason == "Sharadar has no ticker record for 'XLATE'"  # a start does not cut a record
 
 
 # -- through the store -------------------------------------------------------------------------
@@ -256,13 +270,27 @@ def test_a_new_sector_with_a_new_lastupdated_is_a_version_and_as_of_reads_the_ol
     assert store.table("sharadar_tickers", "XTEST", as_of="2026-02-05").empty
 
 
-def test_a_change_sharadar_does_not_stamp_with_a_new_lastupdated_stores_nothing(store, vendor, clock):
+def test_a_changed_attribute_that_already_had_a_value_and_the_same_lastupdated_is_not_stored(store, vendor, clock):
     # attributes are never compared: only a new lastupdated makes a new version
     vendor.rows = [{**STOCKS, "sector": "Retesting"}, FUNDAMENTALS]
     clock["now"] = LATER
     report = store.sync()
     assert (report.sources[0].new, report.sources[0].revised) == (0, 0)
     assert store.table("sharadar_tickers", "XTEST", table="stocks")["sector"].iloc[0] == "Testing"
+
+
+def test_an_attribute_that_was_empty_is_filled_in_place_with_the_same_lastupdated(store, vendor, clock, tmp_path):
+    assert store.table("sharadar_tickers", "XTEST", table="stocks")["relatedtickers"].iloc[0] == ""
+    vendor.rows = [{**STOCKS, "relatedtickers": "XOTHER"}, FUNDAMENTALS]
+    clock["now"] = LATER
+    report = store.sync()
+    assert (report.sources[0].new, report.sources[0].revised) == (0, 0)  # no version is added
+    assert len(pd.read_parquet(tmp_path / "store" / "tables" / "sharadar_tickers" / "XTEST.parquet")) == 2
+    assert store.table("sharadar_tickers", "XTEST", table="stocks")["relatedtickers"].iloc[0] == "XOTHER"
+    # The look-ahead the spec accepts, documented in the README: the version is filled in place, so
+    # an as_of between the first sync and the second already reads the value that came with the second.
+    between = store.table("sharadar_tickers", "XTEST", table="stocks", as_of="2026-03-01")
+    assert between["relatedtickers"].iloc[0] == "XOTHER"
 
 
 def test_the_index_row_of_a_ticker_and_its_record_never_grows_stale(store, clock):
