@@ -242,6 +242,8 @@ def table_frame(
     for column in schema.value_columns:
         frame[column] = frame[column].astype("float64")
     frame["date"] = pd.to_datetime(frame["date"]).dt.as_unit("ns")
+    # One block per converted column until copied: a wide table would warn of fragmentation.
+    frame = frame.copy()
     frame["fetched_at"] = pd.Series([fetched_at] * len(frame), dtype=UTC)
     frame["published_at"] = pd.Series(published, dtype=UTC)
     return frame
