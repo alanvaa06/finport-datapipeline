@@ -4,11 +4,13 @@ import math
 import re
 
 import httpx
+import pandas as pd
 import pytest
 
 from data_pipeline import credentials as keys
 from data_pipeline.credentials import Credentials
 from data_pipeline.store import sources
+from data_pipeline.store.api import Store
 from data_pipeline.store.errors import CatalogError
 from data_pipeline.store.model import Kind, Outcome, Request
 from data_pipeline.store.sources.sharadar_fundamentals import (
@@ -20,7 +22,7 @@ from data_pipeline.store.sources.sharadar_fundamentals import (
     read_rows,
 )
 
-from .helpers import client, entry, fixture
+from .helpers import NOW, client, entry, fixture
 
 # Every ticker, name and number here is invented: Sharadar's license forbids sharing its data.
 KEY_VALUE = "sharadar-key-of-the-tests"
@@ -233,3 +235,175 @@ def test_a_failed_ticker_fails_alone():
     assert failed.failures[0].outcome is Outcome.SOURCE_ERROR
     assert "not JSON" in failed.failures[0].reason
     assert found.tables[0].key == "sharadar_fundamentals:XTEST"
+
+
+# -- through the store -------------------------------------------------------------------------
+
+LATER = NOW + datetime.timedelta(days=30)
+
+
+def filed(row, calendardate, datekey, lastupdated, **values):
+    """`row` for another period, filed on `datekey`, as sent after the update of `lastupdated`."""
+    return {**row, "calendardate": calendardate, "date": datekey, "lastupdated": lastupdated, **values}
+
+
+def updated(row, lastupdated, **values):
+    """`row` as Sharadar sends it after a later update of the ticker."""
+    return {**row, "lastupdated": lastupdated, **values}
+
+
+NEXT_QUARTER = [
+    filed(AS_REPORTED, "2026-03-31", "2026-05-01", "2026-05-02", revenue=1_300_000_000),
+    filed(MOST_RECENT, "2026-03-31", "2026-03-28", "2026-05-02", revenue=1_300_000_000),
+    updated(AS_REPORTED, "2026-05-02"),
+    updated(MOST_RECENT, "2026-05-02"),
+]
+
+
+class Vendor:
+    """A fake Sharadar whose answer the test can change between syncs."""
+
+    def __init__(self):
+        self.rows = INVENTED
+        self.calls = 0
+
+    def __call__(self, request):
+        self.calls += 1
+        assert request.url.path == "/v1.0/data/fundamentals"
+        return answer(self.rows if request.url.params["ticker"] == "XTEST" else [])
+
+
+@pytest.fixture
+def vendor():
+    return Vendor()
+
+
+@pytest.fixture
+def clock():
+    return {"now": NOW}
+
+
+@pytest.fixture
+def store(tmp_path, vendor, clock):
+    (tmp_path / "catalog.yaml").write_text("- source: sharadar_fundamentals\n  ids: [XTEST]\n", encoding="utf-8")
+    (tmp_path / ".env").write_text(f"SHARADAR_API_KEY={KEY_VALUE}\n", encoding="utf-8")
+    built = Store(
+        tmp_path / "store",
+        tmp_path / "catalog.yaml",
+        env_file=tmp_path / ".env",
+        clock=lambda: clock["now"],
+        transport=httpx.MockTransport(vendor),
+        sleep=lambda _seconds: None,
+    )
+    built.report = built.sync()
+    return built
+
+
+def stored(tmp_path):
+    """Every version the store holds of XTEST."""
+    return pd.read_parquet(tmp_path / "store" / "tables" / "sharadar_fundamentals" / "XTEST.parquet")
+
+
+def revenue(table):
+    """{(dimension, calendardate): revenue} of a read."""
+    return {(row.dimension, row.calendardate): row.revenue for row in table.itertuples()}
+
+
+def test_a_first_sync_stores_both_rows_and_a_second_with_the_same_answer_adds_nothing(store, vendor, clock):
+    assert store.report.exit_code == 0
+    assert (store.report.sources[0].new, store.report.sources[0].revised) == (2, 0)
+    table = store.table("sharadar_fundamentals", "XTEST")
+    assert list(table.columns) == [*KEY_COLUMNS, "date", *VALUE_COLUMNS, *ATTRIBUTE_COLUMNS]
+    assert revenue(table) == {("ARQ", "2025-12-31"): 1_200_000_000.0, ("MRQ", "2025-12-31"): 1_200_000_000.0}
+    # every fixture row has a null prefdivis: a missing value received again is the same version
+    assert table["prefdivis"].isna().all()
+    clock["now"] = LATER
+    report = store.sync()
+    assert (report.sources[0].new, report.sources[0].revised) == (0, 0)
+    assert vendor.calls == 2  # one call per ticker per run, the whole history each time
+
+
+def test_each_row_is_stored_with_the_moment_it_was_known(store, tmp_path):
+    known = dict(zip(stored(tmp_path)["dimension"], stored(tmp_path)["published_at"], strict=True))
+    assert known == {"ARQ": pd.Timestamp(end_of("2026-02-05")), "MRQ": pd.Timestamp(end_of("2026-02-06"))}
+
+
+def test_a_new_filing_adds_its_rows_and_another_version_of_every_most_recent_row(store, vendor, clock, tmp_path):
+    vendor.rows = NEXT_QUARTER
+    clock["now"] = LATER
+    report = store.sync()
+    # the two rows of the new quarter, and the old MRQ row once more: same numbers, a later lastupdated
+    assert (report.sources[0].new, report.sources[0].revised) == (2, 1)
+    versions = stored(tmp_path)
+    assert len(versions) == 5
+    old_quarter = versions[versions["calendardate"] == "2025-12-31"]
+    assert sorted(old_quarter["published_at"]) == [
+        pd.Timestamp(end_of("2026-02-05")),  # the ARQ row, dated by its filing whatever lastupdated says
+        pd.Timestamp(end_of("2026-02-06")),
+        pd.Timestamp(end_of("2026-05-02")),
+    ]
+    assert revenue(store.table("sharadar_fundamentals", "XTEST", dimension="ARQ")) == {
+        ("ARQ", "2025-12-31"): 1_200_000_000.0,
+        ("ARQ", "2026-03-31"): 1_300_000_000.0,
+    }
+
+
+def test_as_of_a_day_before_a_filing_does_not_see_it(store, vendor, clock):
+    vendor.rows = NEXT_QUARTER
+    clock["now"] = LATER
+    store.sync()
+    # the as-reported panel as it stood that day, with no look-ahead
+    before = store.table("sharadar_fundamentals", "XTEST", dimension="ARQ", as_of="2026-04-30")
+    assert list(before["calendardate"]) == ["2025-12-31"]
+    on_the_day = store.table("sharadar_fundamentals", "XTEST", dimension="ARQ", as_of="2026-05-01")
+    assert list(on_the_day["calendardate"]) == ["2025-12-31", "2026-03-31"]
+    # the most-recent rows of the new quarter are known only from the day of Sharadar's update
+    most_recent = store.table("sharadar_fundamentals", "XTEST", dimension="MRQ", as_of="2026-05-01")
+    assert list(most_recent["calendardate"]) == ["2025-12-31"]
+    assert store.table("sharadar_fundamentals", "XTEST", as_of="2026-02-04").empty
+
+
+def test_a_restated_most_recent_value_is_a_new_version_and_as_of_reads_the_one_before(store, vendor, clock):
+    vendor.rows = [AS_REPORTED, updated(MOST_RECENT, "2026-03-15", revenue=1_150_000_000, fiscalperiod="2026-Q1R")]
+    clock["now"] = LATER
+    report = store.sync()
+    assert (report.sources[0].new, report.sources[0].revised) == (0, 1)
+    now = store.table("sharadar_fundamentals", "XTEST", dimension="MRQ")
+    assert (now["revenue"].iloc[0], now["fiscalperiod"].iloc[0]) == (1_150_000_000.0, "2026-Q1R")
+    before = store.table("sharadar_fundamentals", "XTEST", dimension="MRQ", as_of="2026-03-14")
+    assert (before["revenue"].iloc[0], before["fiscalperiod"].iloc[0]) == (1_200_000_000.0, "2026-Q1")
+    # the as-reported row keeps what was filed
+    assert store.table("sharadar_fundamentals", "XTEST", dimension="ARQ")["revenue"].iloc[0] == 1_200_000_000.0
+
+
+def test_the_index_row_of_a_ticker(store):
+    info = store.info("sharadar_fundamentals:XTEST")
+    assert (info.kind, info.name) == ("table", "Fundamentals of XTEST (Sharadar)")
+    assert (info.frequency, info.last_period) == ("", "2025-12-31")
+    assert info.label == "[Sharadar: XTEST, 2025-12-31, fetched 2026-06-06]"
+    row = store.index().iloc[0]
+    assert json.loads(row["attrs"]) == {}
+    assert row["stale_after_days"] == 200
+
+
+def test_status_uses_the_two_hundred_days(store, clock):
+    clock["now"] = datetime.datetime(2026, 7, 19, tzinfo=datetime.UTC)
+    assert store.status().iloc[0]["state"] == "ok"  # two hundred days after the last period
+    clock["now"] = datetime.datetime(2026, 7, 20, tzinfo=datetime.UTC)
+    assert store.status().iloc[0]["reason"] == "last data 2025-12-31 (201 days ago)"
+
+
+def test_a_ticker_sharadar_does_not_have_fails_in_the_index(tmp_path, vendor, clock):
+    (tmp_path / ".env").write_text(f"SHARADAR_API_KEY={KEY_VALUE}\n", encoding="utf-8")
+    store = Store(
+        tmp_path / "store",
+        env_file=tmp_path / ".env",
+        clock=lambda: clock["now"],
+        transport=httpx.MockTransport(vendor),
+        sleep=lambda _seconds: None,
+    )
+    store.add("sharadar_fundamentals", ["XGONE"])
+    report = store.sync()
+    assert report.sources[0].failed == (
+        ("sharadar_fundamentals:XGONE", "not_found: Sharadar has no fundamentals for 'XGONE'"),
+    )
