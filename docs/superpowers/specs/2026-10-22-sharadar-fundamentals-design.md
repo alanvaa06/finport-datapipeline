@@ -160,9 +160,12 @@ None expected. Versioned tables, their `published_at`, attribute columns and `as
   sources at different rhythms (`sync --source sharadar_tickers` weekly, say) is the user's lever.
   The user runs the syncs.
 - **Repeated `MR*` versions** and **corrections of as-reported rows**, as above.
-- **Not verified with a paid key:** that fundamentals and daily metrics come with their whole
-  history from `date.gte` on (the free tier answers about five years), and that `datekey` of the
-  as-reported rows is the filing day for every ticker, not only for the one probed.
+- **What the paid key showed (live test, 2026-10-23, one ticker):** fundamentals and daily
+  metrics came with history older than six years from `date.gte` on; the six dimensions were
+  present; a fundamentals row had exactly the 105 indicators and the descriptive fields; no
+  dimension and `calendardate` came twice; on every as-reported row `datekey` came after
+  `reportperiod`. Still not verified: that `datekey` is the filing day for every ticker, and how
+  often Sharadar moves `lastupdated`.
 
 ## Testing
 
