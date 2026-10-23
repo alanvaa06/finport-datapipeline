@@ -38,6 +38,12 @@ First version.
 
 Store core:
 
+- A store opened with a catalog reports in `status` only the entries of that catalog. An entry
+  removed from the catalog (a ticker renamed or dropped) used to stay in `status` forever with
+  its last state, so `data-pipeline status --catalog` exited with 1 because of it. Its data is
+  kept and readable by key; `status` ends with a line counting the stored entries it left out,
+  `Store.undeclared()` names them, and `status` without `--catalog` still lists everything.
+
 - A sync that died without cleaning up (a killed process, a crash) no longer blocks the next one:
   `sync.lock` is held with the operating system's lock, released when the process ends, and a file
   left behind is taken over. A live sync is still refused, and the message names its pid, host and

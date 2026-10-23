@@ -195,6 +195,22 @@ def test_status_reports_ok_stale_failed_and_missing(world):
     assert status.loc["fred:LATER", "state"] == "missing"
 
 
+def test_status_with_a_catalog_leaves_out_what_the_catalog_no_longer_declares(world, tmp_path):
+    store, server, clock = world
+    store.add("fred", ["NOPE"])
+    store.sync()
+    # the catalog drops DGS10 and never had NOPE (it was added for one session): both stay stored
+    (tmp_path / "catalog.yaml").write_text("- source: fred\n  ids: [UNRATE]\n", encoding="utf-8")
+    reopened = Store(tmp_path / "store", tmp_path / "catalog.yaml", clock=clock, transport=httpx.MockTransport(server))
+    assert list(reopened.status()["key"]) == ["fred:UNRATE"]
+    assert reopened.undeclared() == ("fred:DGS10", "fred:NOPE")
+    assert sorted(reopened.index()["key"]) == ["fred:DGS10", "fred:NOPE", "fred:UNRATE"]
+    assert list(reopened.series("fred:DGS10")["value"]) == [4.40, 4.45]
+    without_catalog = Store(tmp_path / "store", clock=clock)
+    assert sorted(without_catalog.status()["key"]) == ["fred:DGS10", "fred:NOPE", "fred:UNRATE"]
+    assert without_catalog.undeclared() == ()
+
+
 def test_index_returns_the_whole_index(world):
     store, _, _ = world
     store.sync()
