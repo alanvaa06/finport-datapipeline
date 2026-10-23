@@ -212,15 +212,20 @@ without projections, as `store.series` reads it. A table gives the latest versio
 (`sec_filings`) are not fetched: keep them in a store.
 
 `to=` (`--out`) writes the same frame to a `.parquet` or `.csv` file, replacing a file of that
-name. The fields of a catalog entry (`start`, `frequency` and each source's own, such as
+name. Prefer Parquet: it keeps each column's type, and a CSV does not. Text that looks like a
+number (an INEGI id `0123`, a Comtrade product `01`) reads back from a CSV as 123 and 1 unless you
+read it as text: `pd.read_csv(path, dtype={"id": str, "product": str})`. The fields of a catalog entry (`start`, `frequency` and each source's own, such as
 `table` or `partners`) are keyword arguments, or `--start`, `--frequency` and `--param NAME=VALUE`
 (the value read as YAML, as in a catalog). Keys come from where `sync` takes them.
 
 When an id fails, `fetch` raises `dp.FetchError` once everything was asked: `error.data` holds
 what arrived, `error.failures` one failure per id, `error.quota_exhausted` whether the quota
-stopped it. With `to=`, what arrived is written first. The command prints one `[x]` line per
-failed id and exits with 1 (3 when only the quota stopped it, 2 for a configuration error such
-as an unknown source or a field the source does not take).
+stopped it, `error.written` the file written (None when none was). With `to=`, what arrived is
+written first; a fetch that failed and brought nothing (a missing key, say) leaves the file as it
+was. A file that cannot be written (open in Excel, say) also raises `FetchError`, with the rows in
+`error.data` and the reason in `error.write_error`, so the download is not lost. The command
+prints one `[x]` line per failed id and exits with 1 (3 when only the quota stopped it, 2 for a
+configuration error such as an unknown source or a field the source does not take).
 
 What `fetch` does not do: it keeps no versions and has no `as_of`, and every call downloads the
 whole history (or from `start`) and spends the source's quota again, Sharadar's included. For

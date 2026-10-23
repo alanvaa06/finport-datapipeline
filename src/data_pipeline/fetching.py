@@ -14,8 +14,12 @@ with `id` first and then the columns `Store.table` returns, the latest version o
 Documents are not fetched.
 
 When an id fails, `FetchError` is raised once everything was asked; it carries what did arrive
-(`.data`) and one failure per id (`.failures`). With `to=`, what arrived is written first. The
-file is `.parquet` or `.csv`, by its extension, and replaces any file of that name at once.
+(`.data`) and one failure per id (`.failures`). With `to=`, what arrived is written first; a
+fetch that failed and brought nothing leaves the file as it was. The file is `.parquet` or
+`.csv`, by its extension, and replaces any file of that name at once. A file that cannot be
+written (open in another program, say) is a FetchError too, with the rows in `.data`. A CSV keeps
+no types: text that looks like a number (`0123`, a product code `01`) reads back as a number
+unless read as text; Parquet keeps them.
 """
 
 import dataclasses
@@ -75,25 +79,30 @@ class _File:
 
 
 class FetchError(StoreError):
-    """Some ids failed. `data` holds what arrived, shaped as a fetch that worked; `failures` one
-    failure per id; `quota_exhausted` whether the source's quota stopped the download."""
+    """The fetch did not fully work: some ids failed, or the file could not be written.
+
+    `data` holds what arrived, shaped as a fetch that worked; `failures` one failure per id;
+    `quota_exhausted` whether the source's quota stopped the download; `written` the file written,
+    None when none was; `write_error` why the file could not be written, "" when it could. Every
+    argument but the message has a default, so the error survives pickling.
+    """
 
     def __init__(
         self,
-        source: str,
-        data: pd.DataFrame,
-        failures: Sequence[Failure],
+        message: str,
         *,
-        asked: int,
-        quota_exhausted: bool,
+        data: pd.DataFrame | None = None,
+        failures: Sequence[Failure] = (),
+        quota_exhausted: bool = False,
+        written: pathlib.Path | None = None,
+        write_error: str = "",
     ) -> None:
-        self.data = data
+        super().__init__(message)
+        self.data = pd.DataFrame() if data is None else data
         self.failures = tuple(failures)
         self.quota_exhausted = quota_exhausted
-        arrived = f"the {len(data)} rows that arrived are in .data" if len(data) else "nothing arrived"
-        head = f"{source}: {len(self.failures)} of {asked} ids failed; {arrived}"
-        lines = [f"{failure.entry.key}  {failure.outcome.value}: {failure.reason}" for failure in self.failures]
-        super().__init__("\n".join([head, *lines]))
+        self.written = written
+        self.write_error = write_error
 
 
 @dataclasses.dataclass
@@ -130,7 +139,10 @@ def fetch(
     A series source gives the columns `id, date, period, value`; a table source `id` and then the
     columns `Store.table` gives. Raises CatalogError, before any request, for an unknown source, a
     field the source does not accept, a source of documents or a file it cannot write; raises
-    FetchError, after the download, when any id failed. Each call spends the source's quota.
+    FetchError, after the download, when any id failed or the file could not be written, with
+    the rows that arrived in `.data`. A failed fetch that brought nothing leaves the file as it
+    was. A CSV keeps no types (an id `0123` reads back as 123); Parquet does. Each call spends
+    the source's quota.
     """
     destination = _destination(to)
     entries = _entries(source, ids, start, frequency, params)
@@ -146,12 +158,53 @@ def fetch(
             chosen.validate(entry)
         received = _download(chosen, entries, client)
     data = _series_frame(entries, received) if chosen.kind is Kind.SERIES else _tables_frame(entries, received)
-    if destination is not None:
-        destination.write(data)
-    if received.failures:
-        failures = [received.failures[entry.key] for entry in entries if entry.key in received.failures]
-        raise FetchError(source, data, failures, asked=len(entries), quota_exhausted=received.quota_exhausted)
+    failures = [received.failures[entry.key] for entry in entries if entry.key in received.failures]
+    written: pathlib.Path | None = None
+    write_error = ""
+    cause: OSError | None = None
+    # A fetch that failed and brought nothing leaves the file as it was: a missing key must not
+    # replace yesterday's rows with none.
+    if destination is not None and (len(data) or not failures):
+        try:
+            destination.write(data)
+        except OSError as exc:  # the rows already downloaded travel with the error
+            write_error = f"{type(exc).__name__}: {exc}"
+            cause = exc
+        else:
+            written = destination.path
+    if failures or write_error:
+        message = _message(source, len(data), failures, len(entries), destination, written, write_error)
+        raise FetchError(
+            message,
+            data=data,
+            failures=failures,
+            quota_exhausted=received.quota_exhausted,
+            written=written,
+            write_error=write_error,
+        ) from cause
     return data
+
+
+def _message(
+    source: str,
+    rows: int,
+    failures: Sequence[Failure],
+    asked: int,
+    destination: _File | None,
+    written: pathlib.Path | None,
+    write_error: str,
+) -> str:
+    """What FetchError says: the ids that failed, one line each, then what became of the file."""
+    arrived = f"the {rows} rows that arrived are in .data" if rows else "nothing arrived"
+    lines = []
+    if failures:
+        lines.append(f"{source}: {len(failures)} of {asked} ids failed; {arrived}")
+        lines.extend(f"{failure.entry.key}  {failure.outcome.value}: {failure.reason}" for failure in failures)
+    if destination is not None and write_error:
+        lines.append(f"{source}: could not write {destination.path}: {write_error}; {arrived}")
+    elif destination is not None and written is None:
+        lines.append(f"nothing was written to {destination.path}")
+    return "\n".join(lines)
 
 
 def _destination(to: str | os.PathLike[str] | None) -> _File | None:

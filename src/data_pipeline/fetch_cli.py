@@ -48,13 +48,10 @@ def _cell(value: object) -> str:
 
 
 def show(source: str, data: pd.DataFrame, out: pathlib.Path | None) -> None:
-    """The summary line, then the path written or the first rows."""
+    """The summary line, then the first rows when there is no file to write them to."""
     ids = data["id"].nunique() if "id" in data else 0
     echo(f"{source}: {ids} ids, {len(data)} rows")
-    if out is not None:
-        echo(f"[ok]  written to {out}")
-        return
-    if data.empty:
+    if out is not None or data.empty:
         return
     echo("  ".join(data.columns))
     for values in data.head(SHOWN_ROWS).itertuples(index=False):
@@ -102,11 +99,19 @@ def fetch_command(
         data = fetch(source, list(ids), to=out, start=start, frequency=frequency, env_file=env_file, **fields)
     except FetchError as exc:
         show(source, exc.data, out)
+        if out is not None and exc.written is not None:
+            echo(f"[i]   what arrived is written to {out}")
+        elif out is not None and not exc.write_error:
+            echo(f"[i]   nothing was written to {out}")  # nothing arrived: the file is as it was
         for failure in exc.failures:
             echo(f"[x]   {failure.entry.key}  {failure.outcome.value}: {failure.reason}")
+        if exc.write_error:
+            echo(f"[x]   could not write {out}: {exc.write_error}")
         only_quota = all(failure.outcome is Outcome.QUOTA_EXHAUSTED for failure in exc.failures)
         raise SystemExit(EXIT_QUOTA if exc.quota_exhausted and only_quota else EXIT_FAILURES) from exc
     except StoreError as exc:
         raise fail(exc) from exc
     show(source, data, out)
+    if out is not None:
+        echo(f"[ok]  written to {out}")
     raise SystemExit(EXIT_OK)

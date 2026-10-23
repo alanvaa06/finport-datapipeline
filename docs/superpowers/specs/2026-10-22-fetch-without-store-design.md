@@ -36,7 +36,8 @@ fundamentals being designed in parallel) works with it as soon as it is in the r
 | Documents (`sec_filings`) | Out of scope: refused before any request |
 | Failures | Strict: any failed id raises `FetchError`, which carries what did arrive |
 | File output | One file for all ids, `.parquet` or `.csv` by extension, replaced atomically |
-| A failed fetch with `to=` | Writes what arrived, then raises |
+| A failed fetch with `to=` | Writes what arrived, then raises; when nothing arrived, leaves the file as it was |
+| A file that cannot be written | `FetchError` with the rows in `.data`: the download is not lost |
 | How it is built | Drives the source directly, as `keys_check.py` does; no store, no temporary store |
 | Console without `--out` | A summary and the first 10 rows, and a hint to use `--out` |
 
@@ -161,8 +162,13 @@ replacing the function.
 4. **Shape** the frame as described above.
 5. **Write**, when `to=` is given: the frame to bytes (Parquet with `index=False`; CSV with
    `index=False`, UTF-8), then `_files.write_atomic`, the atomic replacement the store and `.env`
-   already use. Also when there were failures.
-6. **Raise** `FetchError` when any id failed.
+   already use. Also when there were failures, if anything arrived: a fetch that failed and
+   brought nothing (a missing key, say) leaves the file as it was. A write that fails with an
+   `OSError` (on Windows, a file open in Excel) does not lose the download: it becomes a
+   `FetchError` with the rows. A CSV keeps no types, so text that looks like a number (an id
+   `0123`, a product `01`) reads back as a number unless read as text; the README says so and
+   recommends Parquet.
+6. **Raise** `FetchError` when any id failed or the file could not be written.
 
 ### Destinations
 
@@ -179,11 +185,19 @@ class FetchError(StoreError):
     data: pd.DataFrame                # what arrived, shaped as a successful fetch would be
     failures: tuple[Failure, ...]     # one per failed id: entry, outcome, reason
     quota_exhausted: bool
+    written: pathlib.Path | None      # the file written; None when none was
+    write_error: str                  # why the file could not be written; "" when it could
 ```
+
+Every argument but the message has a default, so the error survives pickling (a process pool
+sends it back to its parent that way).
 
 Its message starts with `sharadar_prices: 1 of 3 ids failed; the 5032 rows that arrived are in
 .data` (or `nothing arrived`), followed by one line per failure:
-`sharadar_prices:XYZ  not_found: ...`.
+`sharadar_prices:XYZ  not_found: ...`. Then, with `to=`, `nothing was written to <path>` when the
+file was left as it was, or `sharadar_prices: could not write <path>: <error>; ...` when the
+write failed. On the console, a failed fetch says `[i]   what arrived is written to <path>` or
+`[i]   nothing was written to <path>`, never `[ok]`.
 
 | Case | Raised | Before any request |
 |---|---|---|

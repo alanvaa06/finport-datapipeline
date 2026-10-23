@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import json
 import math
+import pickle
 
 import httpx
 import pandas as pd
@@ -9,6 +10,7 @@ import pytest
 
 import data_pipeline as dp
 from data_pipeline import credentials as keys
+from data_pipeline import fetching
 from data_pipeline.store import sources
 from data_pipeline.store.api import Store
 from data_pipeline.store.errors import CatalogError, QuotaExhaustedError
@@ -385,6 +387,58 @@ def test_a_failed_fetch_writes_what_arrived_then_raises(two_series, tmp_path):
     with pytest.raises(dp.FetchError) as caught:
         dp.fetch("fake", ["AAA", "MISSING"], to=path)
     pd.testing.assert_frame_equal(pd.read_parquet(path), caught.value.data)
+    assert caught.value.written == path
+
+
+def test_a_failed_fetch_that_brought_nothing_leaves_the_file_as_it_was(monkeypatch, tmp_path):
+    install(monkeypatch, FakeSource())
+    path = tmp_path / "out.parquet"
+    path.write_bytes(b"yesterday's rows")
+    with pytest.raises(dp.FetchError) as caught:
+        dp.fetch("fake", ["AAA"], to=path)
+    assert path.read_bytes() == b"yesterday's rows"
+    assert caught.value.written is None
+    assert f"nothing was written to {path}" in str(caught.value)
+
+
+def test_a_fetch_that_worked_and_brought_no_rows_writes_its_empty_frame(monkeypatch, tmp_path):
+    fake = FakeSource()
+    fake.answers = {"AAA": monthly(entry("AAA"), {"2026-01": math.nan})}
+    install(monkeypatch, fake)
+    path = tmp_path / "out.parquet"
+    path.write_bytes(b"yesterday's rows")
+    assert dp.fetch("fake", ["AAA"], to=path).empty
+    assert pd.read_parquet(path).empty
+
+
+def test_a_file_it_cannot_write_raises_with_the_rows_that_arrived(two_series, tmp_path, monkeypatch):
+    def refused(path, content):
+        msg = f"{path} is open in another program"
+        raise PermissionError(msg)
+
+    monkeypatch.setattr(fetching._files, "write_atomic", refused)
+    path = tmp_path / "out.csv"
+    with pytest.raises(dp.FetchError) as caught:
+        dp.fetch("fake", ["AAA", "BBB"], to=path)
+    error = caught.value
+    assert list(error.data["id"]) == ["AAA", "AAA", "BBB"]
+    assert error.failures == ()
+    assert error.written is None
+    assert isinstance(error.__cause__, PermissionError)
+    assert str(error).splitlines() == [
+        f"fake: could not write {path}: PermissionError: {path} is open in another program; "
+        "the 3 rows that arrived are in .data"
+    ]
+
+
+def test_a_fetch_error_survives_pickling(two_series, tmp_path):
+    with pytest.raises(dp.FetchError) as caught:
+        dp.fetch("fake", ["AAA", "MISSING"], to=tmp_path / "out.parquet")
+    copy = pickle.loads(pickle.dumps(caught.value))  # noqa: S301 - our own object, made a line above
+    assert str(copy) == str(caught.value)
+    pd.testing.assert_frame_equal(copy.data, caught.value.data)
+    assert copy.failures == caught.value.failures
+    assert (copy.quota_exhausted, copy.written) == (caught.value.quota_exhausted, caught.value.written)
 
 
 @pytest.mark.parametrize(

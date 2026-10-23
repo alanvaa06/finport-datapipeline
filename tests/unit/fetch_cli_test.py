@@ -50,6 +50,43 @@ def test_with_out_it_writes_every_row_and_prints_where(monkeypatch, tmp_path):
     assert len(pd.read_csv(path)) == 13
 
 
+def test_a_failed_fetch_with_out_says_what_it_wrote_without_ok(monkeypatch, tmp_path):
+    fake = install(monkeypatch, answered(AAA={"2025-01": 1.0}))
+    fake.answers["BAD"] = Failure(CatalogEntry("fake", "BAD"), Outcome.NOT_FOUND, "no such series")
+    path = tmp_path / "out.csv"
+    result = run("fake", "AAA", "BAD", "--out", str(path))
+    assert result.exit_code == 1
+    assert result.output.splitlines() == [
+        "fake: 1 ids, 1 rows",
+        f"[i]   what arrived is written to {path}",
+        "[x]   fake:BAD  not_found: no such series",
+    ]
+
+
+def test_a_failed_fetch_that_brought_nothing_says_the_file_was_left_alone(monkeypatch, tmp_path):
+    install(monkeypatch, FakeSource())
+    path = tmp_path / "out.csv"
+    path.write_text("yesterday\n", encoding="utf-8")
+    result = run("fake", "AAA", "--out", str(path))
+    assert result.exit_code == 1
+    assert f"[i]   nothing was written to {path}" in result.output.splitlines()
+    assert path.read_text(encoding="utf-8") == "yesterday\n"
+
+
+def test_a_file_it_cannot_write_exits_with_1(monkeypatch, tmp_path):
+    def refused(path, content):
+        msg = "open in another program"
+        raise PermissionError(msg)
+
+    install(monkeypatch, answered(AAA={"2025-01": 1.0}))
+    monkeypatch.setattr("data_pipeline.fetching._files.write_atomic", refused)
+    path = tmp_path / "out.csv"
+    result = run("fake", "AAA", "--out", str(path))
+    assert result.exit_code == 1
+    assert result.output.splitlines()[-1] == f"[x]   could not write {path}: PermissionError: open in another program"
+    assert "[ok]" not in result.output
+
+
 def test_a_param_is_read_as_yaml_and_start_as_a_date(monkeypatch):
     class Open(FakeSource):
         def validate(self, entry):
