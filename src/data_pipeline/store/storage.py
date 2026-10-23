@@ -148,6 +148,11 @@ class TableSchema:
         """The columns a reader gets, in order."""
         return [*self.key_columns, "date", *self.value_columns, *self.attribute_columns]
 
+    @property
+    def row_order(self) -> list[str]:
+        """The columns a reader's rows are sorted by: the key columns but `period`, then `date`."""
+        return [*(column for column in self.key_columns if column != "period"), "date"]
+
 
 def latest(
     observations: pd.DataFrame,
