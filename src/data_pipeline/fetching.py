@@ -37,16 +37,16 @@ from data_pipeline.credentials import resolve
 from data_pipeline.store import sources as source_registry
 from data_pipeline.store import storage as st
 from data_pipeline.store.catalog import build_entries
-from data_pipeline.store.errors import CatalogError, QuotaExhaustedError, StoreError
+from data_pipeline.store.answers import Answers
+from data_pipeline.store.errors import CatalogError, StoreError
 from data_pipeline.store.http import Client
-from data_pipeline.store.model import CatalogEntry, Failure, Kind, Outcome, Request, SeriesData, TableData
+from data_pipeline.store.model import CatalogEntry, Failure, Kind, Request, SeriesData, TableData
 from data_pipeline.store.sources.base import Source
 from data_pipeline.store.sync import observation_rows
 
 WHERE = "fetch()"
 SERIES_DTYPES: Mapping[str, str] = {"id": "object", "date": st.DAY, "period": "object", "value": "float64"}
 NEVER_RETURNED = "the source did not return this id"
-QUOTA_REACHED = "the source's quota ran out before this id was fetched"
 STOPPED = "the download stopped"
 DOCUMENTS = (
     "{source} is a source of documents: fetch returns data frames; "
@@ -242,36 +242,23 @@ def _entries(
 
 
 def _download(source: Source, entries: Sequence[CatalogEntry], client: Client) -> _Received:
-    """Ask for every entry and keep what comes back, by the rules of a sync: the first series or
-    failure of a key counts, every table of a key is kept, an id never returned is not found."""
+    """Ask for every entry and keep what comes back, by the rules a sync follows (see Answers)."""
     received = _Received(fetched_at=datetime.datetime.now(datetime.UTC))
-    stopped = ""
+    answers = Answers(client, stopped=STOPPED, not_returned=NEVER_RETURNED)
     try:
         for batch in source.fetch([Request(entry) for entry in entries]):
-            for series in batch.series:
-                if series.key not in received.failures:
-                    received.series.setdefault(series.key, series)
-            for table in batch.tables:
+            taken = answers.take(batch)
+            for series in taken.series:
+                received.series[series.key] = series
+            for table in taken.tables:
                 received.tables.setdefault(table.key, []).append(table)
-            for failure in batch.failures:
-                if failure.entry.key not in received.series:
-                    scrubbed = dataclasses.replace(failure, reason=client.scrub(failure.reason))
-                    received.failures.setdefault(failure.entry.key, scrubbed)
-    except QuotaExhaustedError as exc:
-        received.quota_exhausted = True
-        stopped = client.scrub(f"{QUOTA_REACHED}: {exc}")
+            for failure in taken.failures:
+                received.failures[failure.entry.key] = failure
     except Exception as exc:  # noqa: BLE001 - a broken source fails the ids it did not finish
-        stopped = client.scrub(f"{STOPPED}: {type(exc).__name__}: {exc}")
-    for entry in entries:
-        if entry.key in received.series or entry.key in received.tables or entry.key in received.failures:
-            continue
-        if received.quota_exhausted:
-            failure = Failure(entry, Outcome.QUOTA_EXHAUSTED, stopped)
-        elif stopped:
-            failure = Failure(entry, Outcome.SOURCE_ERROR, stopped)
-        else:
-            failure = Failure(entry, Outcome.NOT_FOUND, NEVER_RETURNED)
-        received.failures[entry.key] = failure
+        answers.stop(exc)
+    for failure in answers.unanswered(entries):
+        received.failures[failure.entry.key] = failure
+    received.quota_exhausted = answers.quota_exhausted
     return received
 
 
