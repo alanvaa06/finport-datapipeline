@@ -55,6 +55,7 @@ def fetch(
     credentials: Mapping[str, str] | None = None,
     env_file: str | os.PathLike[str] | None = None,
     transport: httpx.BaseTransport | None = None,
+    sleep: Callable[[float], None] = time.sleep,
     **params: object,
 ) -> pd.DataFrame
 ```
@@ -67,7 +68,8 @@ def fetch(
   and text it cannot read is a `CatalogError`.
 - `credentials` and `env_file` mean what they mean for `Store`: keys given in code come first,
   then the process environment, then the nearest `.env` (or the file given).
-- `transport` lets tests serve the answers, as `Store(transport=...)` does.
+- `transport` lets tests serve the answers and `sleep` replaces the wait between requests, as
+  `Store(transport=..., sleep=...)` do.
 - The frame is returned also when `to=` is given.
 
 ### What the frame holds
@@ -116,12 +118,15 @@ data-pipeline fetch SOURCE ID... [--out FILE] [--start YYYY-MM-DD] [--frequency 
 - `--param` is repeatable. The value is read as YAML, as the catalog is, so
   `--param annual_from=2020` gives a number and `--param partners=[USA,CAN]` a list.
 - Without `--out`: one summary line (`fred: 2 ids, 914 rows`), the first 10 rows (`SHOWN_ROWS`
-  of the store's `show`), and `use --out FILE for all rows`. With `--out`: the summary line and
-  the path written.
+  of the store's `show`), and, when rows were left out,
+  `[i]   the first 10 of 914 rows; use --out FILE for all of them`. With `--out`: the summary
+  line and `[ok]  written to <path>`.
+- `--param` cannot name one of `fetch`'s own arguments: `start`, `frequency`, `to` and
+  `env_file` have options of their own; `credentials`, `transport` and `sleep` are refused.
 - Failures: one line per failed id (`[x]   fred:XYZ  not_found: ...`).
 - Exit codes, those of `sync`: 0 every id arrived, 1 some id failed, 2 a configuration error
-  (unknown source, invalid field, documents source, unsupported extension, missing folder), 3
-  the quota ran out.
+  (unknown source, invalid field, documents source, unsupported extension, missing folder, a
+  `--param` it cannot read), 3 the quota ran out and nothing else failed.
 - Everything printed is ASCII. Data that is not ASCII reaches the file untouched; only what is
   printed is replaced.
 
@@ -176,8 +181,9 @@ class FetchError(StoreError):
     quota_exhausted: bool
 ```
 
-Its message starts with `sharadar_prices: 1 of 3 ids failed; the other 2 are in .data` (or
-`none arrived`), followed by one line per failure: `sharadar_prices:XYZ  not_found: ...`.
+Its message starts with `sharadar_prices: 1 of 3 ids failed; the 5032 rows that arrived are in
+.data` (or `nothing arrived`), followed by one line per failure:
+`sharadar_prices:XYZ  not_found: ...`.
 
 | Case | Raised | Before any request |
 |---|---|---|
