@@ -3,7 +3,10 @@ import datetime
 import json
 import math
 import pickle
+import subprocess
+import sys
 
+import duckdb
 import httpx
 import pandas as pd
 import pytest
@@ -65,8 +68,9 @@ class FakeTables:
     daily_budget = None
     held_by = ()
 
-    def __init__(self, versioned=False):
+    def __init__(self, versioned=False, values=("close",)):
         self.versioned = versioned
+        self.values = values
         self.answers: dict[str, list[FetchBatch]] = {}
 
     def validate(self, catalog_entry):
@@ -79,7 +83,7 @@ class FakeTables:
             name=f"Table of {source_id}",
             rows=tuple(rows),
             key_columns=("ticker", "period"),
-            value_columns=("close",),
+            value_columns=self.values,
             attribute_columns=("note",),
             versioned=self.versioned,
         )
@@ -444,7 +448,7 @@ def test_a_fetch_error_survives_pickling(two_series, tmp_path):
 @pytest.mark.parametrize(
     ("name", "message"),
     [
-        ("out.xlsx", "cannot write 'out.xlsx': the file must end in .parquet or .csv"),
+        ("out.xlsx", "cannot write 'out.xlsx': the file must end in .parquet, .csv or .duckdb"),
         ("nowhere/out.csv", "the folder .*nowhere.* does not exist"),
     ],
 )
@@ -453,6 +457,165 @@ def test_a_file_that_cannot_be_written_is_refused_before_any_request(monkeypatch
     with pytest.raises(CatalogError, match=message):
         dp.fetch("fake", ["AAA"], to=tmp_path / name)
     assert built == []
+
+
+# -- a DuckDB file -----------------------------------------------------------------------------
+
+
+def read_duckdb(path, table="fake"):
+    """Every row of `table`, in the order stored, read with times in UTC."""
+    with duckdb.connect(str(path), read_only=True, config={"TimeZone": "UTC"}) as connection:
+        return connection.table(table).df()
+
+
+def install_tables(monkeypatch, rows_by_id):
+    fake = FakeTables()
+    fake.answers = {name: [FetchBatch(tables=(fake.table(name, rows),))] for name, rows in rows_by_id.items()}
+    install(monkeypatch, fake)
+    return fake
+
+
+def test_to_duckdb_writes_the_frame_it_returns_to_a_table_named_after_the_source(two_series, tmp_path):
+    path = tmp_path / "out.duckdb"
+    frame = dp.fetch("fake", ["AAA", "BBB"], to=path)
+    pd.testing.assert_frame_equal(read_duckdb(path), frame)
+
+
+def test_a_second_fetch_keeps_the_rows_of_other_ids_and_replaces_the_rows_of_its_own(two_series, tmp_path):
+    path = tmp_path / "out.duckdb"
+    dp.fetch("fake", ["AAA", "BBB"], to=path)
+    two_series.answers["AAA"] = monthly(entry("AAA"), {"2026-03": 9.0})
+    dp.fetch("fake", ["AAA"], to=path)
+    stored = read_duckdb(path)
+    assert list(zip(stored["id"], stored["period"], stored["value"], strict=True)) == [
+        ("BBB", "2026-01", 3.0),
+        ("AAA", "2026-03", 9.0),
+    ]
+
+
+def test_a_new_column_is_added_and_a_column_the_frame_lacks_stays_empty(monkeypatch, tmp_path):
+    path = tmp_path / "out.duckdb"
+    plain = FakeTables()
+    plain.answers = {"XAAA": [FetchBatch(tables=(plain.table("XAAA", [day("XAAA", "2026-03-03", 1.0)]),))]}
+    wider = FakeTables(values=("close", "open"))
+    row = {**day("XBBB", "2026-03-03", 2.0), "open": 7.0}
+    wider.answers = {"XBBB": [FetchBatch(tables=(wider.table("XBBB", [row]),))]}
+    install(monkeypatch, plain)
+    dp.fetch("fake", ["XAAA"], to=path)
+    install(monkeypatch, wider)
+    dp.fetch("fake", ["XBBB"], to=path)
+    install(monkeypatch, plain)
+    dp.fetch("fake", ["XAAA"], to=path)  # the source no longer sends `open`
+    stored = read_duckdb(path)
+    assert list(stored.columns) == ["id", "ticker", "period", "date", "close", "note", "open"]
+    assert list(stored["id"]) == ["XBBB", "XAAA"]
+    assert stored["open"].isna().tolist() == [False, True]
+
+
+def test_text_missing_values_and_times_read_back_as_they_were_written(tmp_path):
+    frame = pd.DataFrame(
+        {
+            "id": ["XAAA", "XBBB"],
+            "date": pd.to_datetime(["2026-03-03", "2026-03-04"]).as_unit("ns"),
+            "value": [1.5, math.nan],
+            "note": ["café", None],
+            "empty": [None, None],
+            "fetched_at": pd.Series(pd.to_datetime(["2026-06-06T12:00:00.123456Z"] * 2)).dt.as_unit("ns"),
+        }
+    )
+    path = tmp_path / "out.duckdb"
+    fetching.destination(path).write(frame, table="rows", by_id=True)
+    stored = read_duckdb(path, "rows")
+    assert stored["value"].isna().tolist() == [False, True]
+    assert stored["note"].tolist() == ["café", None]
+    assert str(stored["fetched_at"].dt.tz) == "UTC"
+    pd.testing.assert_frame_equal(stored, frame, check_dtype=False)
+
+
+def test_a_column_that_came_without_any_value_takes_text_later(monkeypatch, tmp_path):
+    path = tmp_path / "out.duckdb"
+    fake = install_tables(monkeypatch, {"XAAA": [day("XAAA", "2026-03-03", 1.0, note=None)]})
+    dp.fetch("fake", ["XAAA"], to=path)
+    fake.answers["XBBB"] = [FetchBatch(tables=(fake.table("XBBB", [day("XBBB", "2026-03-03", 2.0, "late")]),))]
+    dp.fetch("fake", ["XBBB"], to=path)
+    dp.fetch("fake", ["XAAA"], to=path)  # without any value again
+    assert read_duckdb(path)["note"].tolist() == ["late", None]
+
+
+def test_a_table_named_in_other_case_is_the_same_table_and_keeps_its_rows(two_series, tmp_path):
+    path = tmp_path / "out.duckdb"
+    with duckdb.connect(str(path)) as connection:  # DuckDB does not tell FAKE from fake
+        connection.execute('CREATE TABLE FAKE ("ID" VARCHAR, "VALUE" DOUBLE)')
+        connection.execute("INSERT INTO FAKE VALUES ('BBB', 3.5)")
+    dp.fetch("fake", ["AAA"], to=path)
+    stored = read_duckdb(path)
+    assert list(stored.columns) == ["ID", "VALUE", "date", "period"]
+    assert list(zip(stored["ID"], stored["VALUE"], strict=True)) == [("BBB", 3.5), ("AAA", 1.0), ("AAA", 2.0)]
+
+
+def test_a_failed_fetch_writes_what_arrived_and_keeps_the_rows_of_the_ids_that_failed(two_series, tmp_path):
+    path = tmp_path / "out.duckdb"
+    dp.fetch("fake", ["AAA", "BBB"], to=path)
+    two_series.answers["AAA"] = monthly(entry("AAA"), {"2026-03": 9.0})
+    del two_series.answers["BBB"]
+    with pytest.raises(dp.FetchError) as caught:
+        dp.fetch("fake", ["AAA", "BBB"], to=path)
+    assert caught.value.written == path
+    stored = read_duckdb(path)
+    assert list(zip(stored["id"], stored["period"], strict=True)) == [("BBB", "2026-01"), ("AAA", "2026-03")]
+
+
+def test_a_fetch_that_brought_nothing_does_not_touch_the_duckdb_file(two_series, tmp_path):
+    path = tmp_path / "out.duckdb"
+    dp.fetch("fake", ["AAA"], to=path)
+    before = path.read_bytes()
+    two_series.answers.clear()
+    for target in (path, tmp_path / "new.duckdb"):
+        with pytest.raises(dp.FetchError):
+            dp.fetch("fake", ["AAA"], to=target)
+    assert path.read_bytes() == before
+    assert not (tmp_path / "new.duckdb").exists()
+
+
+def test_a_write_that_fails_halfway_leaves_the_file_as_it_was(two_series, tmp_path):
+    path = tmp_path / "out.duckdb"
+    with duckdb.connect(str(path)) as connection:  # a table of that name whose `value` holds days
+        connection.execute("CREATE TABLE fake (id VARCHAR, value DATE)")
+        connection.execute("INSERT INTO fake VALUES ('AAA', DATE '2020-01-01')")
+    before = path.read_bytes()
+    with pytest.raises(dp.FetchError) as caught:
+        dp.fetch("fake", ["AAA"], to=path)
+    assert caught.value.written is None
+    assert caught.value.write_error.startswith("ConversionException: ")
+    assert list(caught.value.data["id"]) == ["AAA", "AAA"]
+    assert path.read_bytes() == before
+    stored = read_duckdb(path)
+    assert list(stored.columns) == ["id", "value"]  # the columns added in the transaction are gone too
+    assert stored["id"].tolist() == ["AAA"]
+
+
+def test_a_duckdb_file_another_program_holds_is_a_fetch_error_with_the_rows(two_series, tmp_path):
+    path = tmp_path / "out.duckdb"
+    dp.fetch("fake", ["BBB"], to=path)
+    before = path.read_bytes()
+    hold = "import duckdb, sys; connection = duckdb.connect(sys.argv[1]); print('ready', flush=True); sys.stdin.read()"
+    holder = subprocess.Popen(  # another program with the file open
+        [sys.executable, "-c", hold, str(path)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True
+    )
+    try:
+        assert holder.stdout.readline().strip() == "ready"
+        with pytest.raises(dp.FetchError) as caught:
+            dp.fetch("fake", ["AAA", "BBB"], to=path)
+    finally:
+        holder.communicate()
+    error = caught.value
+    assert list(error.data["id"]) == ["AAA", "AAA", "BBB"]
+    assert error.written is None
+    assert isinstance(error.__cause__, duckdb.IOException)
+    assert error.write_error.startswith("IOException: ")
+    assert "\n" not in error.write_error
+    assert str(error).startswith(f"fake: could not write {path}: IOException: ")
+    assert path.read_bytes() == before
 
 
 # -- the same as the store ---------------------------------------------------------------------

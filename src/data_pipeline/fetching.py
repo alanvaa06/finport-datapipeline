@@ -15,11 +15,13 @@ Documents are not fetched.
 
 When an id fails, `FetchError` is raised once everything was asked; it carries what did arrive
 (`.data`) and one failure per id (`.failures`). With `to=`, what arrived is written first; a
-fetch that failed and brought nothing leaves the file as it was. The file is `.parquet` or
-`.csv`, by its extension, and replaces any file of that name at once. A file that cannot be
-written (open in another program, say) is a FetchError too, with the rows in `.data`. A CSV keeps
-no types: text that looks like a number (`0123`, a product code `01`) reads back as a number
-unless read as text; Parquet keeps them.
+fetch that failed and brought nothing leaves the file as it was. The file is `.parquet`, `.csv`
+or `.duckdb`, by its extension. A Parquet or CSV file replaces any file of that name at once. A
+DuckDB file keeps one table per source, named after it: in one transaction, the rows that arrived
+replace that table's rows of the same ids, and every other row and table stays. A file that
+cannot be written (open in another program, say) is a FetchError too, with the rows in `.data`.
+A CSV keeps no types: text that looks like a number (`0123`, a product code `01`) reads back as a
+number unless read as text; Parquet and DuckDB keep them.
 """
 
 import dataclasses
@@ -28,7 +30,9 @@ import os
 import pathlib
 import time
 from collections.abc import Callable, Mapping, Sequence
+from typing import Protocol
 
+import duckdb
 import httpx
 import pandas as pd
 
@@ -42,6 +46,7 @@ from data_pipeline.store.errors import CatalogError, StoreError
 from data_pipeline.store.http import Client
 from data_pipeline.store.model import CatalogEntry, Failure, Kind, Request, SeriesData, TableData
 from data_pipeline.store.sources.base import Source
+from data_pipeline.store.sql import quote
 from data_pipeline.store.sync import observation_rows
 
 WHERE = "fetch()"
@@ -53,29 +58,87 @@ DOCUMENTS = (
     "keep its documents in a store with Store.sync and read them with Store.documents"
 )
 
-Encode = Callable[[pd.DataFrame], bytes]
+ROWS = "data_pipeline_rows"  # the name a frame goes by inside a DuckDB connection
+TEXT = "VARCHAR"
 
 
-def _parquet(frame: pd.DataFrame) -> bytes:
-    return frame.to_parquet(index=False)
+class Writer(Protocol):
+    """Writes a frame to the file at `path`. In a file of tables (DuckDB) the frame goes to the
+    table `table`: with `by_id` its rows replace that table's rows of the same ids, without it they
+    replace the whole table. A file of one frame (Parquet, CSV) is replaced whole either way."""
+
+    def __call__(self, path: pathlib.Path, frame: pd.DataFrame, *, table: str, by_id: bool) -> None: ...
 
 
-def _csv(frame: pd.DataFrame) -> bytes:
-    return frame.to_csv(index=False, lineterminator="\n").encode("utf-8")
+def _parquet(path: pathlib.Path, frame: pd.DataFrame, *, table: str, by_id: bool) -> None:
+    _files.write_atomic(path, frame.to_parquet(index=False))
 
 
-# The kinds of file `to=` writes, by extension. A destination of another kind (a SQL file, say)
-# joins here without changing fetch's signature.
-ENCODERS: Mapping[str, Encode] = {".parquet": _parquet, ".csv": _csv}
+def _csv(path: pathlib.Path, frame: pd.DataFrame, *, table: str, by_id: bool) -> None:
+    _files.write_atomic(path, frame.to_csv(index=False, lineterminator="\n").encode("utf-8"))
+
+
+def _duckdb(path: pathlib.Path, frame: pd.DataFrame, *, table: str, by_id: bool) -> None:
+    """Write the frame into the table `table` of a DuckDB file, which is created when missing.
+
+    One transaction: the table is created from the frame's columns when it does not exist (and,
+    without `by_id`, replaced), takes every column of the frame it lacks, loses its rows whose
+    `id` is among the frame's, and gets the frame's rows by column name; a column of the table the
+    frame lacks stays empty in them. If any step fails, the transaction is rolled back and the
+    file is as it was. Types are DuckDB's reading of the frame. Names are compared as DuckDB
+    compares them, without regard to case.
+    """
+    name = quote(table)
+    with duckdb.connect(str(path)) as connection:
+        connection.register(ROWS, frame)
+        described = connection.execute(f"DESCRIBE SELECT * FROM {ROWS}").fetchall()  # noqa: S608 - quoted names
+        # A text column without any value has no type DuckDB can tell (it says "NULL", or INTEGER
+        # before 2.0); made text, it takes the text of a later fetch.
+        empty = {column for column in frame.columns if frame[column].dtype == object and frame[column].isna().all()}
+        columns = [(str(row[0]), TEXT if row[0] in empty else str(row[1])) for row in described]
+        connection.begin()
+        try:
+            existing = {
+                str(row[0]).lower()
+                for row in connection.execute(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema = 'main' AND lower(table_name) = lower(?)",
+                    [table],
+                ).fetchall()
+            }
+            definition = ", ".join(f"{quote(column)} {kind}" for column, kind in columns)
+            if not by_id:
+                connection.execute(f"CREATE OR REPLACE TABLE {name} ({definition})")
+            elif not existing:
+                connection.execute(f"CREATE TABLE {name} ({definition})")
+            else:
+                for column, kind in columns:
+                    if column.lower() not in existing:
+                        connection.execute(f"ALTER TABLE {name} ADD COLUMN {quote(column)} {kind}")
+                stale = f'DELETE FROM {name} WHERE "id" IN (SELECT "id" FROM {ROWS})'  # noqa: S608 - quoted names
+                connection.execute(stale)
+            connection.execute(f"INSERT INTO {name} BY NAME SELECT * FROM {ROWS}")  # noqa: S608 - quoted names
+            connection.commit()
+        except duckdb.Error:
+            connection.rollback()
+            raise
+
+
+# The kinds of file `to=` writes, by extension; a new kind joins here without changing fetch's
+# signature. WRITE_ERRORS is what a writer raises when its file cannot be written.
+WRITERS: Mapping[str, Writer] = {".parquet": _parquet, ".csv": _csv, ".duckdb": _duckdb}
+WRITE_ERRORS = (OSError, duckdb.Error)
 
 
 @dataclasses.dataclass(frozen=True)
-class _File:
-    path: pathlib.Path
-    encode: Encode
+class Destination:
+    """A file to write a frame to, of a kind WRITERS knows."""
 
-    def write(self, frame: pd.DataFrame) -> None:
-        _files.write_atomic(self.path, self.encode(frame))
+    path: pathlib.Path
+    writer: Writer
+
+    def write(self, frame: pd.DataFrame, *, table: str, by_id: bool) -> None:
+        self.writer(self.path, frame, table=table, by_id=by_id)
 
 
 class FetchError(StoreError):
@@ -133,7 +196,8 @@ def fetch(
 
     `ids` is one id or a list of them. `start`, `frequency` and `params` are the catalog's fields
     (`table="funds"` for a Sharadar ETF, `partners=["USA"]` for Comtrade). `to` also writes the
-    frame to a `.parquet` or `.csv` file, replacing one of that name. Keys come from
+    frame to a `.parquet` or `.csv` file, replacing one of that name, or to the table named after
+    the source in a `.duckdb` file, replacing its rows of the ids that arrived. Keys come from
     `credentials`, else the environment, else the nearest `.env` (or `env_file`).
 
     A series source gives the columns `id, date, period, value`; a table source `id` and then the
@@ -141,10 +205,10 @@ def fetch(
     field the source does not accept, a source of documents or a file it cannot write; raises
     FetchError, after the download, when any id failed or the file could not be written, with
     the rows that arrived in `.data`. A failed fetch that brought nothing leaves the file as it
-    was. A CSV keeps no types (an id `0123` reads back as 123); Parquet does. Each call spends
-    the source's quota.
+    was. A CSV keeps no types (an id `0123` reads back as 123); Parquet and DuckDB do. Each call
+    spends the source's quota.
     """
-    destination = _destination(to)
+    target = destination(to)
     entries = _entries(source, ids, start, frequency, params)
     try:
         resolved = resolve(credentials, env_file=None if env_file is None else pathlib.Path(env_file))
@@ -161,19 +225,19 @@ def fetch(
     failures = [received.failures[entry.key] for entry in entries if entry.key in received.failures]
     written: pathlib.Path | None = None
     write_error = ""
-    cause: OSError | None = None
+    cause: Exception | None = None
     # A fetch that failed and brought nothing leaves the file as it was: a missing key must not
     # replace yesterday's rows with none.
-    if destination is not None and (len(data) or not failures):
+    if target is not None and (len(data) or not failures):
         try:
-            destination.write(data)
-        except OSError as exc:  # the rows already downloaded travel with the error
-            write_error = f"{type(exc).__name__}: {exc}"
+            target.write(data, table=source, by_id=True)
+        except WRITE_ERRORS as exc:  # the rows already downloaded travel with the error
+            write_error = f"{type(exc).__name__}: {' '.join(str(exc).split())}"  # on one line
             cause = exc
         else:
-            written = destination.path
+            written = target.path
     if failures or write_error:
-        message = _message(source, len(data), failures, len(entries), destination, written, write_error)
+        message = _message(source, len(data), failures, len(entries), target, written, write_error)
         raise FetchError(
             message,
             data=data,
@@ -190,7 +254,7 @@ def _message(
     rows: int,
     failures: Sequence[Failure],
     asked: int,
-    destination: _File | None,
+    destination: Destination | None,
     written: pathlib.Path | None,
     write_error: str,
 ) -> str:
@@ -207,19 +271,21 @@ def _message(
     return "\n".join(lines)
 
 
-def _destination(to: str | os.PathLike[str] | None) -> _File | None:
-    """The file `to` names, checked before anything is downloaded."""
+def destination(to: str | os.PathLike[str] | None, where: str = WHERE) -> Destination | None:
+    """The file `to` names, checked before anything is downloaded (or queried): CatalogError for
+    an extension WRITERS does not know or a folder that does not exist."""
     if to is None:
         return None
     path = pathlib.Path(to)
-    encode = ENCODERS.get(path.suffix.lower())
-    if encode is None:
-        msg = f"{WHERE}: cannot write {path.name!r}: the file must end in {' or '.join(ENCODERS)}"
+    writer = WRITERS.get(path.suffix.lower())
+    if writer is None:
+        *others, last = WRITERS
+        msg = f"{where}: cannot write {path.name!r}: the file must end in {', '.join(others)} or {last}"
         raise CatalogError(msg)
     if not path.parent.is_dir():
-        msg = f"{WHERE}: the folder {str(path.parent)!r} does not exist"
+        msg = f"{where}: the folder {str(path.parent)!r} does not exist"
         raise CatalogError(msg)
-    return _File(path, encode)
+    return Destination(path, writer)
 
 
 def _entries(
