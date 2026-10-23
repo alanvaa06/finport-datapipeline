@@ -292,7 +292,8 @@ Sharadar's for the tickers a catalog lists, with the same key and the same licen
 ```
 
 Each run asks for the whole history of each ticker (from its `start`, if the entry has one;
-a ticker record ignores `start`), one call per ticker and table, and stores what changed. A ticker listed in all five Sharadar sources costs five calls a run: `sync --source
+a ticker record ignores `start`), one call per ticker and table, and stores what changed. A
+ticker listed in all five Sharadar sources costs five calls a run: `sync --source
 sharadar_tickers`, say, runs one of them alone, at a rhythm of its own.
 
 - **Fundamentals:** one row per `ticker`, `dimension` and `calendardate`, the calendar quarter
@@ -321,7 +322,7 @@ store.table("sharadar_fundamentals", "AAPL", dimension="ARQ", as_of="2024-03-01"
 A most-recent row carries in `datekey` the end of its period, not a day it was known: it counts
 as known from the end of the day of its `lastupdated`, the latest day Sharadar touched the
 ticker. A ticker record counts as known from its `lastupdated` too, so as of an earlier day a
-ticker that changed sector reads with the old one. Two costs come with this:
+ticker that changed sector reads with the old one. Three costs come with this:
 
 - Sharadar stamps every row of a ticker with a new `lastupdated` when it updates it. Each time,
   the store keeps another version of every most-recent row of that ticker, with the same numbers
@@ -330,8 +331,11 @@ ticker that changed sector reads with the old one. Two costs come with this:
   changed. They compress well on disk.
 - If Sharadar corrects an as-reported row without changing its `datekey`, the correction counts
   as known from the day of the original, so `as_of` a day between the two reads the correction.
-  Without `as_of`, a read gives the version downloaded last.
-- The text of a ticker record is not compared: only a new `lastupdated` stores a new version.
+  Without `as_of`, a read gives the version downloaded last. A correction that moves a
+  `datekey` earlier is stored, but a read without `as_of` keeps returning the version dated
+  later.
+- The text of a ticker record is not compared: only a new `lastupdated` stores a new version,
+  and a new `lastupdated` alone stores another version of every row of the record.
   If Sharadar changes a field without one, a field that had a value keeps the old one (a
   delisting would not show), and a field that was empty takes the new value in the stored
   version, so `as_of` an earlier day already reads it.

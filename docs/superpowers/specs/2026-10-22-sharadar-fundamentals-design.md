@@ -1,7 +1,7 @@
 # Design — Sharadar fundamentals, tickers and daily metrics
 
 Date: 2026-10-22
-Status: Draft, waiting for review
+Status: Approved; brought up to date with what was built
 Builds on: `2026-10-12-sharadar-prices-design.md` (the Sharadar call, the ticker rule, the data
 terms) and `2026-10-05-sec-xbrl-design.md` (versioned tables dated by their filing day). This is
 the second piece of "Equity into the store" (roadmap row 6).
@@ -44,7 +44,8 @@ find stays outside the repository.
 ```
 
 - An id follows the Sharadar ticker rule of `sharadar.py`. None of the three sources takes a
-  field of its own. The shared field `start` is the first day asked for, as for prices.
+  field of its own. The shared field `start` is the first day asked for, as for prices, except
+  for ticker records, which ignore it.
 - The credential is `SHARADAR_API_KEY`, already in the registry. Nothing changes in
   `credentials.py` or `keys_check.py`.
 
@@ -135,7 +136,7 @@ restates is stored again. No `frequency` column, for the reason given in the pri
 - All three: `kind = Kind.TABLE`, `requests_per_minute = 120`, `daily_budget = None`,
   `held_by = ()`. `REGISTRY` and `TITLES` gain the three names, titled `Sharadar`.
 - The call is the one of the prices spec: `GET https://api.sharadar.com/v1.0/data/<table>` with
-  `ticker`, `date.gte` (from `start` or 1900-01-01), `format=json` and `api_key`, for the tables
+  `ticker`, `date.gte` (from `start` or 1900-01-01; always 1900-01-01 for tickers), `format=json` and `api_key`, for the tables
   `fundamentals`, `tickers` and `daily`. A probe with the public test key on 2026-10-22 showed
   that all three accept `date.gte`.
 - Refusals, the row cap, an answer that is not JSON and a network failure are handled by
@@ -160,12 +161,9 @@ None expected. Versioned tables, their `published_at`, attribute columns and `as
   sources at different rhythms (`sync --source sharadar_tickers` weekly, say) is the user's lever.
   The user runs the syncs.
 - **Repeated `MR*` versions** and **corrections of as-reported rows**, as above.
-- **What the paid key showed (live test, 2026-10-23, one ticker):** fundamentals and daily
-  metrics came with history older than six years from `date.gte` on; the six dimensions were
-  present; a fundamentals row had exactly the 105 indicators and the descriptive fields; no
-  dimension and `calendardate` came twice; on every as-reported row `datekey` came after
-  `reportperiod`. Still not verified: that `datekey` is the filing day for every ticker, and how
-  often Sharadar moves `lastupdated`.
+- **Live test with the paid key:** passed on 2026-10-23. Still not verified: that `datekey` of
+  the as-reported rows is the filing day for every ticker, and how often Sharadar moves
+  `lastupdated`.
 
 ## Testing
 
@@ -182,7 +180,7 @@ Fixtures written by hand, with invented tickers and numbers.
 - The three sources: `date.gte` sent, missing key, refusals, no rows, `validate`, index rows;
   the registry test that builds every source without credentials.
 - One live test, off by default, shapes only: the three tables for AAPL, the six dimensions
-  present, the first `calendardate` older than five years, `datekey` after `reportperiod` on
+  present, the first `calendardate` older than six years, `datekey` after `reportperiod` on
   every as-reported row.
 
 ## Acceptance
