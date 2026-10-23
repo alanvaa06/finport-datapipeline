@@ -324,7 +324,9 @@ ticker that changed sector reads with the old one. Two costs come with this:
 
 - Sharadar stamps every row of a ticker with a new `lastupdated` when it updates it. Each time,
   the store keeps another version of every most-recent row of that ticker, with the same numbers
-  and a later date: a few dozen rows per ticker per filing.
+  and a later date: one row per most-recent period, about 225 rows for a ticker with 25 years of
+  history, each time Sharadar touches it. `sync` counts them as revised although no number
+  changed. They compress well on disk.
 - If Sharadar corrects an as-reported row without changing its `datekey`, the correction counts
   as known from the day of the original, so `as_of` a day between the two reads the correction.
   Without `as_of`, a read gives the version downloaded last.

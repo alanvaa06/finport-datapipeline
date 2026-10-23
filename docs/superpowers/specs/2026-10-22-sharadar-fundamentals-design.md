@@ -81,7 +81,12 @@ Two costs, accepted:
 
 - Sharadar stamps every row of a ticker with a new `lastupdated` when it updates it. Each time,
   the store keeps another version of every `MR*` row of that ticker, with the same numbers and a
-  later `published_at`: a few dozen rows per ticker per filing.
+  later `published_at`: one row per `MR*` period, about 225 rows for a ticker with 25 years of
+  history (100 `MRQ`, 100 `MRT`, 25 `MRY`), each time Sharadar touches the ticker. The sync
+  report counts them as revised although no number changed. How often Sharadar moves
+  `lastupdated` is not known; the stored files grow little, since the repeats compress well.
+  The core could skip a version equal to the one known at its `published_at`, as it already
+  does for series; that is a separate change.
 - If Sharadar ever corrects an as-reported row without changing its `datekey`, the corrected
   version carries the same `published_at` as the original, so `as_of` a day between the two reads
   the correction. The latest read takes the version fetched last.
