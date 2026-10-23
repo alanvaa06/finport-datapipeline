@@ -1,5 +1,6 @@
 import datetime
 import json
+import math
 
 import pandas as pd
 import pytest
@@ -225,3 +226,24 @@ def test_filters_on_key_columns_leave_the_other_keys_out_before_a_version_is_cho
     monkeypatch.setattr(storage_module, chooser, spy)
     Store(tmp_path).table("sec_xbrl", "ACME", as_of=moment, concept="Assets", form="10-K")
     assert seen == [["Assets"]]
+
+
+# -- what the Sharadar fundamentals and tickers ask of a versioned table ------------------------
+
+
+def test_the_same_values_published_later_are_another_version_and_keep_their_own_attributes():
+    old, _added, _revised = merge(pd.DataFrame(), [version(1.0, "2026-02-06", form="Q1")])
+    merged, added, revised = merge(old, [version(1.0, "2026-05-02", form="Q1R")], LATER)
+    assert (len(merged), added, revised) == (2, 0, 1)
+    assert list(latest(merged, KEY, ORDER, by_publication=True)["form"]) == ["Q1R"]
+    assert list(as_of(merged, pd.Timestamp("2026-05-01", tz="UTC"), KEY, ORDER)["form"]) == ["Q1"]
+
+
+def test_a_missing_value_stored_and_received_again_is_the_same_version(tmp_path):
+    storage = Storage(tmp_path)
+    storage.prepare()
+    first, _added, _revised = merge(pd.DataFrame(), [version(math.nan, "2026-02-06")])
+    storage.write_table("sharadar_fundamentals", "XTEST", first, SCHEMA)
+    read_back = storage.read_table("sharadar_fundamentals", "XTEST")
+    merged, added, revised = merge(read_back, [version(math.nan, "2026-02-06")], LATER)
+    assert (len(merged), added, revised) == (1, 0, 0)
