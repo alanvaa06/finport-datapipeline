@@ -1,0 +1,7 @@
+{
+  "count": 2,
+  "data": [
+    {"table": "stocks", "permaticker": 900001, "ticker": "XTEST", "name": "TEST CORP", "exchange": "TESTEX", "isdelisted": "N", "category": "Test Stock", "cusips": "000000001", "siccode": 9999, "sicsector": "Test Sector", "sicindustry": "Test Industry", "figi": "TESTFIGI0001", "famaindustry": "N/A", "sector": "Testing", "industry": "Test Equipment", "scalemarketcap": "3 - Test", "scalerevenue": "2 - Test", "relatedtickers": null, "currency": "USD", "location": "Testland", "lastupdated": "2026-02-06", "firstadded": "2014-01-02", "firstpricedate": "2001-03-01", "lastpricedate": "2026-02-06", "firstquarter": "2001-03-31", "lastquarter": "2025-12-31", "secfilings": "https://www.example.com/filings/XTEST", "companysite": "https://www.example.com"},
+    {"table": "fundamentals", "permaticker": 900001, "ticker": "XTEST", "name": "TEST CORP", "exchange": "TESTEX", "isdelisted": "N", "category": "Test Stock", "cusips": "000000001", "siccode": 9999, "sicsector": "Test Sector", "sicindustry": "Test Industry", "figi": "TESTFIGI0001", "famaindustry": "N/A", "sector": "Testing", "industry": "Test Equipment", "scalemarketcap": "3 - Test", "scalerevenue": "2 - Test", "relatedtickers": null, "currency": "USD", "location": "Testland", "lastupdated": "2026-02-06", "firstadded": "2014-01-02", "firstpricedate": "N/A", "lastpricedate": "N/A", "firstquarter": "2001-03-31", "lastquarter": "2025-12-31", "secfilings": "https://www.example.com/filings/XTEST", "companysite": "https://www.example.com"}
+  ]
+}

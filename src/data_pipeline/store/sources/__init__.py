@@ -16,7 +16,10 @@ from data_pipeline.store.sources.sdmx import PROVIDERS, Sdmx
 from data_pipeline.store.sources.sec_filings import SecFilings
 from data_pipeline.store.sources.sec_xbrl import SecXbrl
 from data_pipeline.store.sources.sharadar_actions import SharadarActions
+from data_pipeline.store.sources.sharadar_daily import SharadarDaily
+from data_pipeline.store.sources.sharadar_fundamentals import SharadarFundamentals
 from data_pipeline.store.sources.sharadar_prices import SharadarPrices
+from data_pipeline.store.sources.sharadar_tickers import SharadarTickers
 from data_pipeline.store.sources.worldbank import WorldBank
 
 Factory = Callable[[Client, Credentials], Source]
@@ -42,7 +45,10 @@ REGISTRY: Mapping[str, Factory] = {
     "sec_filings": SecFilings,
     "sec_xbrl": SecXbrl,
     "sharadar_actions": SharadarActions,
+    "sharadar_daily": SharadarDaily,
+    "sharadar_fundamentals": SharadarFundamentals,
     "sharadar_prices": SharadarPrices,
+    "sharadar_tickers": SharadarTickers,
     "worldbank": WorldBank,
     **{name: _sdmx(name) for name in PROVIDERS},
 }
@@ -61,7 +67,10 @@ TITLES: Mapping[str, str] = {
     "sec_filings": "SEC EDGAR",
     "sec_xbrl": "SEC EDGAR",
     "sharadar_actions": "Sharadar",
+    "sharadar_daily": "Sharadar",
+    "sharadar_fundamentals": "Sharadar",
     "sharadar_prices": "Sharadar",
+    "sharadar_tickers": "Sharadar",
     "worldbank": "World Bank",
 }
 

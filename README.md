@@ -18,6 +18,9 @@ to avoid look-ahead bias. How far back that works depends on the source: see
   Each version of a fact is dated with the day it was filed.
 - **Equity prices:** daily prices and corporate actions of US stocks and ETFs from Sharadar, with
   your own subscription. See [Equity prices](#equity-prices).
+- **Equity fundamentals:** Sharadar's fundamentals in its six dimensions, its record of each ticker
+  and its daily valuation metrics; the as-reported figures read as they stood on any past day.
+  See [Equity fundamentals](#equity-fundamentals).
 - **Documents:** SEC filings (10-K, 10-Q, 8-K with their exhibits, 20-F, 40-F), stored as the
   files the SEC publishes.
 - **On your disk:** the store is plain Parquet and JSON in a folder you choose. Reading needs no
@@ -68,7 +71,7 @@ you to run `git rm --cached .env`.
 | `INEGI_TOKEN` | INEGI | Mexico CPI and jobs |
 | `COMTRADE_API_KEY` | UN Comtrade | Goods trade |
 | `SEC_EDGAR_UA` | SEC EDGAR | Filings and XBRL facts; not a key, a contact: `Your Name you@domain.com` |
-| `SHARADAR_API_KEY` | Sharadar | US stock and ETF prices and corporate actions; a paid subscription |
+| `SHARADAR_API_KEY` | Sharadar | US stock and ETF prices, corporate actions, fundamentals, ticker records and daily metrics; a paid subscription |
 
 The World Bank, the BIS, the ECB, Eurostat, the OECD, the IMF and DBnomics need no key.
 
@@ -136,6 +139,7 @@ store.revisions("fred:UNRATE")                   # every stored version of every
 store.table("comtrade", "MEX", flow="X")         # one row per partner, product and period
 store.table("sec_xbrl", "AAPL", concept="Assets", as_of="2024-03-01")  # as filed by that day
 store.table("sharadar_prices", "AAPL")           # one row per day: open, high, low, close, volume
+store.table("sharadar_fundamentals", "AAPL", dimension="ARQ", as_of="2024-03-01")  # as filed by that day
 store.documents("sec_filings", "AAPL", form="10-K")  # the files on disk, with their path
 ```
 
@@ -160,6 +164,9 @@ refused with an error (exit 2 for `show --as-of`).
   (`CY2023Q4I`) comes from whichever filing carries it, often a later one that repeats the value.
   A version stored without it, by an older release, gets it on the next sync: the stored row is
   filled in, no version is added, and `as_of` reads the same rows. Nothing to re-download.
+- **Sharadar fundamentals and ticker records:** an as-reported row is dated with the day of its
+  filing, a most-recent row and a ticker record with the day Sharadar last updated the ticker,
+  each known from the end of that day. See [Equity fundamentals](#equity-fundamentals).
 - **Every other source,** and FRED series that ALFRED does not keep (such as `SP500`): the
   source does not say when a value was published, so the store dates it by its own fetch. On
   those, `as_of` sees nothing before your first sync, and point-in-time history starts that day.
@@ -316,6 +323,72 @@ quarter grows by its whole history four times a year. The rows before stay reada
 A ticker that is no longer listed never gets a new day: give its entry a large
 `stale_after_days`, or `status` calls it stale. Or remove it from the catalog: `status
 --catalog` then leaves it out, and its rows stay readable.
+
+## Equity fundamentals
+
+`sharadar_fundamentals`, `sharadar_tickers` and `sharadar_daily` store three more tables of
+Sharadar's for the tickers a catalog lists, with the same key and the same license:
+
+```yaml
+- source: sharadar_fundamentals
+  ids: [AAPL, MSFT, BRK.B]
+  attrs: {commercial_ok: "no"}
+- source: sharadar_tickers
+  ids: [AAPL, MSFT, BRK.B, SPY]
+  attrs: {commercial_ok: "no"}
+- source: sharadar_daily
+  ids: [AAPL, MSFT, BRK.B]
+  attrs: {commercial_ok: "no"}
+```
+
+Each run asks for the whole history of each ticker (from its `start`, if the entry has one;
+a ticker record ignores `start`), one call per ticker and table, and stores what changed. A
+ticker listed in all five Sharadar sources costs five calls a run: `sync --source
+sharadar_tickers`, say, runs one of them alone, at a rhythm of its own.
+
+- **Fundamentals:** one row per `ticker`, `dimension` and `calendardate`, the calendar quarter
+  or year the row is about. The dimensions are `ARQ`, `ARY` and `ART` (as reported, by quarter,
+  by year and over the trailing twelve months) and `MRQ`, `MRY` and `MRT` (the most recent
+  figures, restated). Each row holds Sharadar's 105 indicators (`revenue`, `netinc`, `assets`,
+  `ncfo`, `eps`, `pe`, ...) as numbers, in Sharadar's units, and `reportperiod`, `fiscalperiod`
+  and `datekey` as text.
+- **Ticker records:** one row per `ticker` and Sharadar `table` the ticker is in (`stocks`,
+  `funds`, `fundamentals`, ...), with `permaticker`, Sharadar's permanent id, and what Sharadar
+  says of the ticker (`name`, `exchange`, `sector`, `industry`, `isdelisted`, ...) as text. A
+  record has no period, so `status` never calls it stale. A row for a Sharadar table the ticker
+  is no longer in stays as it was: nothing marks it.
+- **Daily metrics:** one row per `ticker` and day (`period`) with `ev`, `evebit`, `evebitda`,
+  `marketcap`, `pb`, `pe` and `ps`. As with prices, a day Sharadar restates is stored again, and
+  they read as of a date from your first sync on.
+
+Fundamentals and ticker records are dated by Sharadar. An as-reported row counts as known from
+the end of the day of its `datekey`, the day of the filing, so the as-reported panel reads as it
+stood on any past day, with no look-ahead, back to the first filing:
+
+```python
+store.table("sharadar_fundamentals", "AAPL", dimension="ARQ", as_of="2024-03-01")
+```
+
+A most-recent row carries in `datekey` the end of its period, not a day it was known: it counts
+as known from the end of the day of its `lastupdated`, the latest day Sharadar touched the
+ticker. A ticker record counts as known from its `lastupdated` too, so as of an earlier day a
+ticker that changed sector reads with the old one. Three costs come with this:
+
+- Sharadar stamps every row of a ticker with a new `lastupdated` when it updates it. Each time,
+  the store keeps another version of every most-recent row of that ticker, with the same numbers
+  and a later date: one row per most-recent period, about 225 rows for a ticker with 25 years of
+  history, each time Sharadar touches it. `sync` counts them as revised although no number
+  changed. They compress well on disk.
+- If Sharadar corrects an as-reported row without changing its `datekey`, the correction counts
+  as known from the day of the original, so `as_of` a day between the two reads the correction.
+  Without `as_of`, a read gives the version downloaded last. A correction that moves a
+  `datekey` earlier is stored, but a read without `as_of` keeps returning the version dated
+  later.
+- The text of a ticker record is not compared: only a new `lastupdated` stores a new version,
+  and a new `lastupdated` alone stores another version of every row of the record.
+  If Sharadar changes a field without one, a field that had a value keeps the old one (a
+  delisting would not show), and a field that was empty takes the new value in the stored
+  version, so `as_of` an earlier day already reads it.
 
 ## Data terms
 
