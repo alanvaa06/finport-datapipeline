@@ -160,13 +160,18 @@ def test_a_dimension_sharadar_does_not_have_is_refused():
         (without(AS_REPORTED, "date"), "unexpected answer \\(KeyError: 'date'"),
         (without(MOST_RECENT, "lastupdated"), "unexpected answer \\(KeyError: 'lastupdated'"),
         ({**AS_REPORTED, "calendardate": "2025Q4"}, "unexpected answer \\(ValueError"),
-        ({**AS_REPORTED, "revenue": "lots"}, "unexpected answer \\(ValueError"),
     ],
 )
 def test_a_row_without_what_tells_it_apart_or_dates_it_fails_its_ticker(row, reason):
     (batch,) = fetch(lambda _request: answer([row]), [Request(ticker())])
     assert batch.failures[0].outcome is Outcome.SOURCE_ERROR
     assert re.search(reason, batch.failures[0].reason)
+
+
+def test_a_row_with_an_indicator_that_is_not_a_number_fails_its_ticker():
+    (batch,) = fetch(lambda _request: answer([{**AS_REPORTED, "revenue": "lots"}]), [Request(ticker())])
+    assert batch.failures[0].outcome is Outcome.SOURCE_ERROR
+    assert re.search("unexpected answer \\(ValueError", batch.failures[0].reason)
 
 
 # -- the call ----------------------------------------------------------------------------------

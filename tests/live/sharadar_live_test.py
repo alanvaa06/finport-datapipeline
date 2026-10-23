@@ -137,8 +137,10 @@ def test_the_fundamentals_tickers_and_daily_metrics_still_answer_in_the_expected
     datekey_follows_period = bool((as_reported["datekey"] > as_reported["reportperiod"]).all())
     assert datekey_follows_period, "an as-reported datekey is not after its period end"
     record = store.table("sharadar_tickers", "AAPL")
-    assert not record.empty, "the ticker record is empty"
-    assert bool(record["permaticker"].notna().all()), "a permaticker is missing"
+    record_has_rows = len(record) > 0
+    assert record_has_rows, "the ticker record is empty"
+    every_permaticker_is_there = bool(record["permaticker"].notna().all())
+    assert every_permaticker_is_there, "a permaticker is missing"
     metrics = store.table("sharadar_daily", "AAPL")
     every_metric_holds_numbers = bool(metrics[list(daily.VALUE_COLUMNS)].notna().any().all())
     assert every_metric_holds_numbers, "a daily metric column holds no number"

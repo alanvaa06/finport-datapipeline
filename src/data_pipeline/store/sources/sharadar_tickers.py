@@ -10,9 +10,11 @@ sector, the first and last days it has, ...) is stored as sent, as text, with `N
 empty, and never compared.
 
 The table is versioned: a row is known from the end of the day of its `lastupdated`, and `date` is
-that day. A record that changes, a new sector or the delisted flag, comes with a new `lastupdated`:
-the store keeps it as a new version, and `as_of` reads the record as it was. The same record sent
-again stores nothing. A ticker's record has no period to grow old by, so it is never stale.
+that day. When a record comes with a new `lastupdated`, the store keeps it as a new version, and
+`as_of` reads the record as it was. The same record sent again stores nothing. Whether Sharadar
+changes a record, a new sector or the delisted flag, without a new `lastupdated` is not known; the
+tests pin what the store then does: a field that had a value keeps it, and an empty one is filled
+in the stored version. A ticker's record has no period to grow old by, so it is never stale.
 
 An entry's `start` is accepted but not sent: a record has no history to cut, and `date.gte` could
 hide a record already stored.

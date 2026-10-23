@@ -134,15 +134,15 @@ def test_a_row_without_its_table_or_its_day_fails_its_ticker(row, reason):
 # -- the call ----------------------------------------------------------------------------------
 
 
-def test_a_call_asks_the_record_of_one_ticker_from_the_first_day():
+def test_a_call_asks_the_tickers_table_with_the_ticker_the_first_day_the_format_and_the_key():
     seen = []
 
     def handler(request):
         seen.append(request)
         return answer(INVENTED)
 
-    fetch(handler, [Request(ticker()), Request(ticker("XOTHER", start=datetime.date(2020, 1, 1)))])
-    first, second = seen
+    fetch(handler, [Request(ticker())])
+    (first,) = seen
     assert first.url.path == "/v1.0/data/tickers"
     assert dict(first.url.params) == {
         "ticker": "XTEST",
@@ -150,7 +150,6 @@ def test_a_call_asks_the_record_of_one_ticker_from_the_first_day():
         "format": "json",
         "api_key": KEY_VALUE,
     }
-    assert (second.url.params["ticker"], second.url.params["date.gte"]) == ("XOTHER", "1900-01-01")
 
 
 def test_a_start_is_accepted_but_a_record_has_no_history_to_cut_so_it_is_not_sent():
