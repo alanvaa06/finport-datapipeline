@@ -23,6 +23,10 @@ First version.
   `sharadar_actions`), read with the user's own subscription. An action Sharadar no longer sends is
   marked as withdrawn, not deleted. Prices keep Sharadar's `closeadj`, restated at each dividend. `SHARADAR_API_KEY` joins `data-pipeline setup`. The repository
   holds no Sharadar data: the fixtures are invented.
+- Tables: Sharadar fundamentals in its six dimensions, its record of each ticker and its daily
+  valuation metrics (`sharadar_fundamentals`, `sharadar_tickers`, `sharadar_daily`). Fundamentals
+  and ticker records are versioned: an as-reported row is known from the day of its filing, a
+  most-recent row and a ticker record from the day Sharadar last updated the ticker.
 - Documents: SEC filings (10-K, 10-Q, 8-K, 20-F, 40-F) with their exhibits.
 - A bundled `macro` catalog of 1,293 series across 44 economies.
   279 series that DBnomics only mirrored from retired datasets (IMF IFS and DOT, OECD MEI) now
