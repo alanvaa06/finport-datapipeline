@@ -77,8 +77,10 @@ def test_validate_rejects_what_the_source_does_not_accept(identifier, params, me
 # -- reading rows ------------------------------------------------------------------------------
 
 
-def test_the_indicators_are_the_105_numeric_columns_of_the_answer_in_its_order():
+def test_the_list_holds_105_distinct_indicators_and_the_fixture_row_has_exactly_those_and_the_descriptive_columns():
+    # only the live test can check the list against what Sharadar really sends
     assert len(INDICATORS) == 105
+    assert len(set(INDICATORS)) == 105
     in_the_answer = tuple(name for name in AS_REPORTED if name not in DESCRIBED)
     assert in_the_answer == INDICATORS
     assert VALUE_COLUMNS == INDICATORS
@@ -91,11 +93,15 @@ def test_a_row_keeps_every_indicator_as_a_number_and_describes_its_period_as_tex
     assert set(row) == {*KEY_COLUMNS, "date", *VALUE_COLUMNS, *ATTRIBUTE_COLUMNS, "published_at"}
     assert [row[column] for column in KEY_COLUMNS] == ["XTEST", "ARQ", "2025-12-31"]
     assert row["date"] == datetime.date(2025, 12, 31)
-    assert (row["reportperiod"], row["fiscalperiod"], row["datekey"]) == ("2025-12-27", "2026-Q1", "2026-02-05")
+    assert (row["reportperiod"], row["fiscalperiod"], row["datekey"]) == ("2025-12-31", "2025-Q4", "2026-02-05")
     assert row["assets"] == 4_500_000_000_000.0  # a large value comes as text
     assert row["revenue"] == 1_200_000_000.0  # and a smaller one as a JSON number
-    assert row["eps"] == 30.5
-    assert math.isnan(row["prefdivis"])  # null is missing, never zero
+    for column in INDICATORS:  # every one of the 105, against what the fixture holds for it
+        sent = AS_REPORTED[column]
+        if sent is None:
+            assert math.isnan(row[column]), column  # null is missing, never zero
+        else:
+            assert row[column] == float(sent), column
     assert "lastupdated" not in row
 
 
@@ -113,7 +119,7 @@ def test_an_as_reported_row_is_known_from_the_end_of_the_day_of_its_filing():
 
 def test_a_most_recent_row_is_known_from_the_end_of_the_day_sharadar_last_touched_the_ticker():
     _as_reported, most_recent = read_rows(INVENTED, "XTEST")
-    assert most_recent["datekey"] == "2025-12-27"  # the end of its period, not a day it was known
+    assert most_recent["datekey"] == "2025-12-31"  # the end of its period, not a day it was known
     assert most_recent["published_at"] == end_of("2026-02-06")  # its lastupdated
 
 
@@ -253,8 +259,24 @@ def updated(row, lastupdated, **values):
 
 
 NEXT_QUARTER = [
-    filed(AS_REPORTED, "2026-03-31", "2026-05-01", "2026-05-02", revenue=1_300_000_000),
-    filed(MOST_RECENT, "2026-03-31", "2026-03-28", "2026-05-02", revenue=1_300_000_000),
+    filed(
+        AS_REPORTED,
+        "2026-03-31",
+        "2026-05-01",
+        "2026-05-02",
+        reportperiod="2026-03-31",
+        fiscalperiod="2026-Q1",
+        revenue=1_300_000_000,
+    ),
+    filed(
+        MOST_RECENT,
+        "2026-03-31",
+        "2026-03-31",
+        "2026-05-02",
+        reportperiod="2026-03-31",
+        fiscalperiod="2026-Q1",
+        revenue=1_300_000_000,
+    ),
     updated(AS_REPORTED, "2026-05-02"),
     updated(MOST_RECENT, "2026-05-02"),
 ]
@@ -364,16 +386,34 @@ def test_as_of_a_day_before_a_filing_does_not_see_it(store, vendor, clock):
 
 
 def test_a_restated_most_recent_value_is_a_new_version_and_as_of_reads_the_one_before(store, vendor, clock):
-    vendor.rows = [AS_REPORTED, updated(MOST_RECENT, "2026-03-15", revenue=1_150_000_000, fiscalperiod="2026-Q1R")]
+    vendor.rows = [AS_REPORTED, updated(MOST_RECENT, "2026-03-15", revenue=1_150_000_000, fiscalperiod="2025-Q4R")]
     clock["now"] = LATER
     report = store.sync()
     assert (report.sources[0].new, report.sources[0].revised) == (0, 1)
     now = store.table("sharadar_fundamentals", "XTEST", dimension="MRQ")
-    assert (now["revenue"].iloc[0], now["fiscalperiod"].iloc[0]) == (1_150_000_000.0, "2026-Q1R")
+    assert (now["revenue"].iloc[0], now["fiscalperiod"].iloc[0]) == (1_150_000_000.0, "2025-Q4R")
     before = store.table("sharadar_fundamentals", "XTEST", dimension="MRQ", as_of="2026-03-14")
-    assert (before["revenue"].iloc[0], before["fiscalperiod"].iloc[0]) == (1_200_000_000.0, "2026-Q1")
+    assert (before["revenue"].iloc[0], before["fiscalperiod"].iloc[0]) == (1_200_000_000.0, "2025-Q4")
     # the as-reported row keeps what was filed
     assert store.table("sharadar_fundamentals", "XTEST", dimension="ARQ")["revenue"].iloc[0] == 1_200_000_000.0
+
+
+def test_an_as_reported_row_corrected_without_a_new_datekey_is_known_from_the_day_of_the_original(
+    store, vendor, clock, tmp_path
+):
+    vendor.rows = [{**AS_REPORTED, "revenue": 1_100_000_000}, MOST_RECENT]  # same datekey: Sharadar's `date`
+    clock["now"] = LATER
+    report = store.sync()
+    assert (report.sources[0].new, report.sources[0].revised) == (0, 1)
+    versions = stored(tmp_path)
+    arq = versions[versions["dimension"] == "ARQ"]
+    assert len(arq) == 2
+    assert set(arq["published_at"]) == {pd.Timestamp(end_of("2026-02-05"))}  # both versions, the same moment
+    assert store.table("sharadar_fundamentals", "XTEST", dimension="ARQ")["revenue"].iloc[0] == 1_100_000_000.0
+    # The look-ahead the spec accepts: the correction was downloaded long after this day, but it counts
+    # as known from the day of the original filing, so an as_of between the two reads it, not the original.
+    between = store.table("sharadar_fundamentals", "XTEST", dimension="ARQ", as_of="2026-03-01")
+    assert between["revenue"].iloc[0] == 1_100_000_000.0
 
 
 def test_the_index_row_of_a_ticker(store):
