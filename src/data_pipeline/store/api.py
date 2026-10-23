@@ -25,6 +25,7 @@ import pandas as pd
 from data_pipeline.credentials import NAMES as CREDENTIAL_NAMES
 from data_pipeline.credentials import resolve
 from data_pipeline.store import sources as source_registry
+from data_pipeline.store import sql as store_sql
 from data_pipeline.store import storage as st
 from data_pipeline.store.catalog import build_entries, load_catalog
 from data_pipeline.store.errors import StoreError, UnknownSeriesError
@@ -361,6 +362,19 @@ class Store:
             known_at = found["date"] + pd.Timedelta(days=1) - pd.Timedelta(microseconds=1)
             found = found[known_at <= st.to_moment(as_of).tz_localize(None)]
         return found.sort_values(["date", "id", "group", "role", "file"], kind="stable").reset_index(drop=True)
+
+    def sql(self, query: str, *, as_of: Moment | None = None) -> pd.DataFrame:
+        """Answer one SELECT over the store, read in place with DuckDB, as a data frame.
+
+        For every source with data a query reads `<source>`, the rows `series` or `table` returns
+        (each key's latest version, or the one in force at `as_of`), and `<source>_versions`,
+        every stored row; `store_index` is the index. A series source gives `key, date, period,
+        value`; a table source `id` and then the columns of `table`. `as_of` takes what `table`
+        takes. Anything but one SELECT (or WITH ... SELECT) is a StoreError before it runs, and
+        so is a query DuckDB refuses, with its message and the names a query can read.
+        """
+        moment = None if as_of is None else st.to_moment(as_of)
+        return store_sql.answer(self._storage, query, moment)
 
     def revisions(self, key: str) -> pd.DataFrame:
         """Every stored version of every period: within a period, oldest fetch first and, among
