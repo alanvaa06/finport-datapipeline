@@ -80,11 +80,18 @@ def sync_command(
 
 @cli.command("status")
 @root_option
-@click.option("--catalog", type=PATH, default=None, help="YAML catalog; needed to report 'missing' series.")
+@click.option(
+    "--catalog",
+    type=PATH,
+    default=None,
+    help="YAML catalog; reports only its entries, including 'missing' ones.",
+)
 def status_command(*, root: pathlib.Path, catalog: pathlib.Path | None) -> None:
-    """Freshness of every stored series."""
+    """Freshness of every stored series, or of the catalog's series."""
     try:
-        table = open_store(root, catalog, None).status()
+        store = open_store(root, catalog, None)
+        table = store.status()
+        left_out = len(store.undeclared())
     except StoreError as exc:
         raise fail(exc) from exc
     for row in table.to_dict(orient="records"):
@@ -93,6 +100,12 @@ def status_command(*, root: pathlib.Path, catalog: pathlib.Path | None) -> None:
             echo(f"[ok]  {row['key']}  {row['last_period']}  fetched {fetched}")
         else:
             echo(f"[x]   {row['key']}  {row['state']}  {row['reason']}")
+    if left_out:
+        entries, verb, pronoun = ("entry is", "was", "it") if left_out == 1 else ("entries are", "were", "them")
+        echo(
+            f"[i]   {left_out} stored {entries} not in the catalog and {verb} left out; "
+            f"status without --catalog lists {pronoun}"
+        )
     all_ok = bool((table["state"] == STATE_OK).all())
     raise SystemExit(EXIT_OK if all_ok else EXIT_FAILURES)
 

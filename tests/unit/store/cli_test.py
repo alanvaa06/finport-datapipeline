@@ -155,6 +155,22 @@ def test_status_with_a_catalog_reports_missing_series(workspace):
     assert result.output == "[x]   fred:UNRATE  missing  declared in the catalog, never downloaded\n"
 
 
+def test_status_with_a_catalog_leaves_out_and_counts_the_entries_it_no_longer_declares(workspace):
+    root, _ = workspace
+    (root / "catalog.yaml").write_text("- source: fred\n  ids: [UNRATE, NOPE]\n", encoding="utf-8")
+    invoke("sync", "--root", str(root / "store"))
+    (root / "catalog.yaml").write_text("- source: fred\n  ids: [UNRATE]\n", encoding="utf-8")
+    result = invoke("status", "--root", str(root / "store"), "--catalog", str(root / "catalog.yaml"))
+    assert result.exit_code == 0
+    assert result.output.splitlines() == [
+        "[ok]  fred:UNRATE  2026-05  fetched 2026-06-06",
+        "[i]   1 stored entry is not in the catalog and was left out; status without --catalog lists it",
+    ]
+    everything = invoke("status", "--root", str(root / "store"))
+    assert everything.exit_code == 1
+    assert "[x]   fred:NOPE  failed" in everything.output
+
+
 def test_show_prints_the_citation_and_the_last_rows_in_ascii(workspace):
     root, _ = workspace
     invoke("sync", "--root", str(root / "store"))

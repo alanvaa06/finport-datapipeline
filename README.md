@@ -116,6 +116,13 @@ a daily series, 28 for a weekly one, 124 monthly, 183 quarterly and 730 annual; 
 `stale_after_days` sets its own limit. `catalog` marks with `[stale]` the series whose entry says
 the publisher stopped updating them (`attrs.stale`).
 
+`status --catalog catalog.yaml` reports the entries of that catalog, including the ones never
+downloaded (`missing`), and only those. An entry you remove from the catalog (a ticker renamed or
+dropped, say) keeps its data, readable by its key, but is no longer refreshed, so it no longer
+counts: `status` ends with a line saying how many stored entries it left out, and its exit code
+does not depend on them. `status` without `--catalog` still lists everything the store holds.
+`Store.undeclared()` names those entries in Python. Nothing is deleted.
+
 ## Python
 
 ```python
@@ -257,7 +264,8 @@ quarter grows by its whole history four times a year. The rows before stay reada
 `as_of`.
 
 A ticker that is no longer listed never gets a new day: give its entry a large
-`stale_after_days`, or `status` calls it stale.
+`stale_after_days`, or `status` calls it stale. Or remove it from the catalog: `status
+--catalog` then leaves it out, and its rows stay readable.
 
 ## Data terms
 

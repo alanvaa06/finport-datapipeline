@@ -455,6 +455,9 @@ data-pipeline show fred:UNRATE --root D:/datos [--as-of 2026-06-15]
 
 `--root` is required unless `DATA_PIPELINE_ROOT` is set. There is no hidden default folder.
 Without `--catalog`, `status` reports only what the index knows and cannot report `missing`.
+With it, `status` reports only the catalog's entries: an entry removed from the catalog keeps its
+data and stops being refreshed, so it no longer counts toward the exit code. A closing line counts
+the stored entries left out, and `Store.undeclared()` names them.
 
 ## Testing
 

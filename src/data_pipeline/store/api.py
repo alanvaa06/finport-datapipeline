@@ -390,8 +390,15 @@ class Store:
         )
 
     def status(self) -> pd.DataFrame:
-        """Freshness per series or table: ok, stale, missing or failed."""
+        """Freshness per series or table: ok, stale, missing or failed.
+
+        A store with a catalog reports only what its catalog declares: an entry the catalog no
+        longer has keeps its data but is not refreshed, so its state is no longer news.
+        `undeclared()` names what was left out; without a catalog every stored entry is reported.
+        """
         index = self._storage.read_index()
+        if self._entries:
+            index = index[index["key"].isin({entry.key for entry in self._entries})]
         today = self._clock().date()
         rows = []
         for row in st.records(index):
@@ -422,6 +429,14 @@ class Store:
             if entry.key not in stored
         )
         return pd.DataFrame(rows, columns=STATUS_COLUMNS)
+
+    def undeclared(self) -> tuple[str, ...]:
+        """Stored keys this store's catalog does not declare, which `status` leaves out. Their data
+        stays readable by key. Empty for a store without a catalog."""
+        if not self._entries:
+            return ()
+        declared = {entry.key for entry in self._entries}
+        return tuple(sorted(str(key) for key in self._storage.read_index()["key"] if key not in declared))
 
 
 def _state(row: Mapping[str, Any], today: datetime.date) -> tuple[str, str]:
