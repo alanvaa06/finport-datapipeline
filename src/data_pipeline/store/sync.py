@@ -29,12 +29,14 @@ from typing import Any
 import pandas as pd
 
 from data_pipeline._files import try_lock, unlock
+from data_pipeline.store.answers import Answers, stopped_by
 from data_pipeline.store.catalog import check_catalog
-from data_pipeline.store.errors import LockHeldError, QuotaExhaustedError, StoreError
+from data_pipeline.store.errors import LockHeldError, StoreError
 from data_pipeline.store.http import Client
 from data_pipeline.store.model import (
     CatalogEntry,
     DocumentData,
+    Failure,
     Frequency,
     Kind,
     Outcome,
@@ -97,7 +99,17 @@ def window_start(last: datetime.date, frequency: Frequency) -> datetime.date:
 
 def _stopped(error: Exception, client: Client) -> str:
     """The reason recorded for every entry a broken source did not finish."""
-    return client.scrub(f"{Outcome.SOURCE_ERROR.value}: {STOPPED}: {type(error).__name__}: {error}")
+    return client.scrub(f"{Outcome.SOURCE_ERROR.value}: {stopped_by(error, STOPPED)}")
+
+
+def _answers(client: Client) -> Answers:
+    """What a source answers in a sync, by the rules fetch follows too."""
+    return Answers(client, stopped=STOPPED, not_returned=NOT_RETURNED)
+
+
+def _reason(failure: Failure) -> str:
+    """A failure as the index and the report record it: its outcome, then its reason."""
+    return f"{failure.outcome.value}: {failure.reason}"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -453,13 +465,14 @@ def _sync_tables(
     stored: set[str] = set()
     failed: dict[str, str] = {}
     added = revised = 0
-    stopped = ""
-    quota = remaining is not None and remaining <= 0
-    if not quota:
+    answers = _answers(client)
+    answers.quota_exhausted = remaining is not None and remaining <= 0
+    if not answers.quota_exhausted:
         try:
             for batch in source.fetch(requests):
                 received_at = clock()
-                for table in batch.tables:
+                taken = answers.take(batch)
+                for table in taken.tables:
                     existing = storage.read_table(name, table.entry.source_id)
                     schema = TableSchema(
                         table.key_columns, table.value_columns, table.attribute_columns, table.versioned
@@ -479,24 +492,23 @@ def _sync_tables(
                     stored.add(table.key)
                     if table.key not in failed:
                         index[table.key] = _table_row(table, index.get(table.key), merged, received_at)
-                for failure in batch.failures:
+                for failure in taken.failures:
                     key = failure.entry.key
-                    reason = client.scrub(f"{failure.outcome.value}: {failure.reason}")
-                    failed.setdefault(key, reason)
+                    failed[key] = _reason(failure)
                     index[key] = _failed_row(failure.entry, index.get(key), failed[key], KIND_TABLE)
                 storage.write_index(typed(list(index.values()), INDEX_DTYPES))
                 if remaining is not None and client.calls.get(name, 0) - calls_before >= remaining:
-                    quota = True
+                    answers.quota_exhausted = True
                     break
-        except QuotaExhaustedError:
-            quota = True
         except Exception as exc:  # noqa: BLE001 - a broken source fails its own entries, not the run
-            stopped = _stopped(exc, client)
-    untouched = [request.entry for request in requests if request.entry.key not in stored | set(failed)]
+            answers.stop(exc)
+    untouched = answers.unanswered(request.entry for request in requests)
+    quota = answers.quota_exhausted
     if not quota:
-        for entry in untouched:
-            failed[entry.key] = stopped or f"{Outcome.NOT_FOUND.value}: {NOT_RETURNED}"
-            index[entry.key] = _failed_row(entry, index.get(entry.key), failed[entry.key], KIND_TABLE)
+        for failure in untouched:
+            key = failure.entry.key
+            failed[key] = _reason(failure)
+            index[key] = _failed_row(failure.entry, index.get(key), failed[key], KIND_TABLE)
         if untouched:
             storage.write_index(typed(list(index.values()), INDEX_DTYPES))
     return SourceReport(
@@ -559,13 +571,14 @@ def _sync_documents(
     stored: set[str] = set()
     failed: dict[str, str] = {}
     added = 0
-    stopped = ""
-    quota = remaining is not None and remaining <= 0
-    if not quota:
+    answers = _answers(client)
+    answers.quota_exhausted = remaining is not None and remaining <= 0
+    if not answers.quota_exhausted:
         try:
             for batch in source.fetch(requests):
                 received_at = clock()
-                for data in batch.documents:
+                taken = answers.take(batch)
+                for data in taken.documents:
                     identifier = data.entry.source_id
                     listed = storage.read_documents(name, identifier)
                     for document in data.documents:
@@ -580,24 +593,23 @@ def _sync_documents(
                     stored.add(data.key)
                     if data.key not in failed:
                         index[data.key] = _document_row(data, index.get(data.key), listed, received_at)
-                for failure in batch.failures:
+                for failure in taken.failures:
                     key = failure.entry.key
-                    reason = client.scrub(f"{failure.outcome.value}: {failure.reason}")
-                    failed.setdefault(key, reason)
+                    failed[key] = _reason(failure)
                     index[key] = _failed_row(failure.entry, index.get(key), failed[key], KIND_DOCUMENT)
                 storage.write_index(typed(list(index.values()), INDEX_DTYPES))
                 if remaining is not None and client.calls.get(name, 0) - calls_before >= remaining:
-                    quota = True
+                    answers.quota_exhausted = True
                     break
-        except QuotaExhaustedError:
-            quota = True
         except Exception as exc:  # noqa: BLE001 - a broken source fails its own entries, not the run
-            stopped = _stopped(exc, client)
-    untouched = [request.entry for request in requests if request.entry.key not in stored | set(failed)]
+            answers.stop(exc)
+    untouched = answers.unanswered(request.entry for request in requests)
+    quota = answers.quota_exhausted
     if not quota:
-        for entry in untouched:
-            failed[entry.key] = stopped or f"{Outcome.NOT_FOUND.value}: {NOT_RETURNED}"
-            index[entry.key] = _failed_row(entry, index.get(entry.key), failed[entry.key], KIND_DOCUMENT)
+        for failure in untouched:
+            key = failure.entry.key
+            failed[key] = _reason(failure)
+            index[key] = _failed_row(failure.entry, index.get(key), failed[key], KIND_DOCUMENT)
         if untouched:
             storage.write_index(typed(list(index.values()), INDEX_DTYPES))
     return SourceReport(
@@ -704,53 +716,47 @@ def _sync_source(
     ]
     calls_before = client.calls.get(name, 0)
     remaining = None if source.daily_budget is None else source.daily_budget - spent_today
-    done: set[str] = set()
     failed: list[tuple[str, str]] = []
     ok = 0
     since = {request.entry.key: request.since for request in requests}
     checkpoints = _Checkpoints(storage, name, index, observations, clock, monotonic, since)
-    stopped = ""
-    quota = remaining is not None and remaining <= 0
-    if not quota:
+    answers = _answers(client)
+    answers.quota_exhausted = remaining is not None and remaining <= 0
+    if not answers.quota_exhausted:
         try:
             for batch in source.fetch(requests):
-                fresh = [series for series in batch.series if series.key not in done]
+                taken = answers.take(batch)
+                fresh = taken.series  # a key's first series only, and none after its failure
                 held = {series.key: _held_frequency(series, index.get(series.key)) for series in fresh}
                 moved = {key for key, frequency in held.items() if frequency}
                 # A full sync stores a series at its new frequency; any other refuses it.
                 refused = {} if full else {s.key: _frequency_change(s, held[s.key]) for s in fresh if s.key in moved}
                 checkpoints.keep([series for series in fresh if series.key not in refused], moved)
                 for series in fresh:
-                    done.add(series.key)
                     if series.key in refused:
                         failed.append((series.key, refused[series.key]))
                         checkpoints.failed(series.entry, refused[series.key])
                     else:
                         ok += 1
-                for failure in batch.failures:
-                    key = failure.entry.key
-                    if key in done:
-                        continue
-                    done.add(key)
-                    reason = client.scrub(f"{failure.outcome.value}: {failure.reason}")
-                    failed.append((key, reason))
+                for failure in taken.failures:
+                    reason = _reason(failure)
+                    failed.append((failure.entry.key, reason))
                     checkpoints.failed(failure.entry, reason)
                 checkpoints.tick()
                 if remaining is not None and client.calls.get(name, 0) - calls_before >= remaining:
-                    quota = True
+                    answers.quota_exhausted = True
                     break
-        except QuotaExhaustedError:
-            quota = True
         except Exception as exc:  # noqa: BLE001 - a broken source fails its own series, not the run
-            stopped = _stopped(exc, client)
+            answers.stop(exc)
         finally:
             checkpoints.flush()  # also when the run is interrupted: keep what was downloaded
-    missing = [request.entry for request in requests if request.entry.key not in done]
+    missing = answers.unanswered(request.entry for request in requests)
+    quota = answers.quota_exhausted
     if not quota:
-        for entry in missing:
-            reason = stopped or f"{Outcome.NOT_FOUND.value}: {NOT_RETURNED}"
-            failed.append((entry.key, reason))
-            index[entry.key] = _failed_row(entry, index.get(entry.key), reason)
+        for failure in missing:
+            reason = _reason(failure)
+            failed.append((failure.entry.key, reason))
+            index[failure.entry.key] = _failed_row(failure.entry, index.get(failure.entry.key), reason)
         if missing:
             storage.write_index(typed(list(index.values()), INDEX_DTYPES))
     return SourceReport(

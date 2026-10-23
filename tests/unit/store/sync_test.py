@@ -16,7 +16,7 @@ from data_pipeline._files import try_lock
 from data_pipeline.store import sync as sync_module
 from data_pipeline.store.api import Store
 from data_pipeline.store.errors import CatalogError, LockHeldError, StoreError
-from data_pipeline.store.model import Failure, Frequency, Observation, Outcome, SeriesData
+from data_pipeline.store.model import Failure, FetchBatch, Frequency, Observation, Outcome, SeriesData
 from data_pipeline.store.periods import read_period
 from data_pipeline.store.sources.base import utc_today
 from data_pipeline.store.storage import Storage, as_of, latest, to_moment
@@ -734,3 +734,16 @@ def test_a_lock_that_fails_for_another_reason_is_an_error_that_names_the_file(tm
     with pytest.raises(StoreError, match=r"sync\.lock: could not be locked \(OSError: .*No locks available") as raised:
         run(tmp_path, FakeSource())
     assert not isinstance(raised.value, LockHeldError)
+
+
+def test_a_second_series_of_a_key_in_the_same_batch_is_ignored(tmp_path):
+    """The first series of a key counts, as in fetch, also when the source sends two at once."""
+
+    class Twice(FakeSource):
+        def fetch(self, requests):
+            first, again = monthly(UNRATE, {"2026-05": 4.1}), monthly(UNRATE, {"2026-05": 9.9})
+            yield FetchBatch(series=(first, again))
+
+    report = run(tmp_path, Twice())
+    assert (report.sources[0].ok, report.sources[0].requested) == (1, 1)
+    assert stored_values(tmp_path) == {"2026-05": 4.1}
