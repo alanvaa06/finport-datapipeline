@@ -498,6 +498,11 @@ class Storage:
         for folder in (SERIES_DIR, TABLES_DIR, DOCUMENTS_DIR):
             sweep_temporary(self.root / folder)
 
+    def series_sources(self) -> list[str]:
+        """The sources that have a file of series."""
+        folder = self.root / SERIES_DIR
+        return sorted(path.stem for path in folder.glob("*.parquet")) if folder.exists() else []
+
     def read_observations(self, source: str) -> pd.DataFrame:
         return _read(self.series_path(source), OBS_DTYPES)
 
@@ -520,6 +525,13 @@ class Storage:
         """The tables stored for a source, by the id of their catalog entry."""
         folder = self.root / TABLES_DIR / source
         return sorted(path.stem for path in folder.glob("*.parquet")) if folder.exists() else []
+
+    def table_sources(self) -> list[str]:
+        """The sources that have at least one stored table."""
+        folder = self.root / TABLES_DIR
+        if not folder.exists():
+            return []
+        return sorted(path.name for path in folder.iterdir() if path.is_dir() and self.table_names(path.name))
 
     def read_table(self, source: str, name: str) -> pd.DataFrame:
         """One stored table with every version of every row; an empty frame when there is none."""

@@ -37,6 +37,11 @@ First version.
 - A sync stores a source's series at checkpoints (every minute, at the end, and when interrupted)
   instead of after every batch: 400 series sync about 50 times faster on the local side.
 - `data-pipeline setup` and `data-pipeline keys`: one `.env` per project, each key checked before it is saved.
+- SQL with DuckDB, a new dependency: `store.sql("SELECT ...")` and `data-pipeline sql` answer one
+  `SELECT` over the store's Parquet files, each source read as its latest rows, as of a day, or
+  with every stored version; anything else is refused before it runs. `fetch(..., to="x.duckdb")`
+  (`--out x.duckdb`) builds a DuckDB database, one table per source, the ids of each fetch
+  replacing their own rows.
 
 ### Fixed
 

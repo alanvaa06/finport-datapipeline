@@ -23,6 +23,7 @@ classifiers = [
 ]
 dependencies = [
     "click>=8.1.7",
+    "duckdb>=2.0,<3",
     "httpx>=0.27",
     "pandas>=2.2.3,<3",  # pandas 3 drops DataFrame.attrs on the parquet round trip the store relies on
     "pyarrow>=18.0",

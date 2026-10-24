@@ -197,12 +197,14 @@ import data_pipeline as dp
 
 dp.fetch("fred", ["UNRATE", "DGS10"])                        # a pandas DataFrame
 dp.fetch("sharadar_prices", "AAPL", to="aapl.parquet")       # also written to a file
+dp.fetch("sharadar_prices", ["AAPL", "MSFT"], to="research.duckdb")  # into the table sharadar_prices
 dp.fetch("sharadar_prices", ["SPY"], table="funds", start="2020-01-01")  # the catalog's fields
 ```
 
 ```bash
 data-pipeline fetch fred UNRATE DGS10                        # a summary and the first 10 rows
 data-pipeline fetch sharadar_prices AAPL MSFT --out prices.parquet
+data-pipeline fetch sharadar_prices NVDA --out research.duckdb  # adds NVDA to the same table
 data-pipeline fetch comtrade MEX --param annual_from=2020 --param "partners=[USA, CAN]"
 ```
 
@@ -219,11 +221,21 @@ without projections, as `store.series` reads it. A table gives the latest versio
 (`sec_filings`) are not fetched: keep them in a store.
 
 `to=` (`--out`) writes the same frame to a `.parquet` or `.csv` file, replacing a file of that
-name. Prefer Parquet: it keeps each column's type, and a CSV does not. Text that looks like a
+name, or into a `.duckdb` file (see below). Prefer Parquet: it keeps each column's type, and a CSV does not. Text that looks like a
 number (an INEGI id `0123`, a Comtrade product `01`) reads back from a CSV as 123 and 1 unless you
 read it as text: `pd.read_csv(path, dtype={"id": str, "product": str})`. The fields of a catalog entry (`start`, `frequency` and each source's own, such as
 `table` or `partners`) are keyword arguments, or `--start`, `--frequency` and `--param NAME=VALUE`
 (the value read as YAML, as in a catalog). Keys come from where `sync` takes them.
+
+A `.duckdb` file is a [DuckDB](https://duckdb.org) database that grows a fetch at a time: each
+source is a table named after it (`sharadar_prices`), and the rows of a fetch replace that table's
+rows of the same ids, in one transaction, while every other row and table stays. All of an id's
+rows are replaced, not only the days the fetch brought: fetching AAPL again with a later `start`
+leaves only the days from that `start` (fetch it without `start` to have them all back). A source that
+gained a column gets it, empty in the rows fetched before. Only one program can write a DuckDB
+file at a time: a file another program has open raises `FetchError` with the rows in
+`error.data`, and the file is as it was. The database keeps no versions: only a store answers
+`as_of`.
 
 When an id fails, `fetch` raises `dp.FetchError` once everything was asked: `error.data` holds
 what arrived, `error.failures` one failure per id, `error.quota_exhausted` whether the quota
@@ -237,6 +249,54 @@ configuration error such as an unknown source or a field the source does not tak
 What `fetch` does not do: it keeps no versions and has no `as_of`, and every call downloads the
 whole history (or from `start`) and spends the source's quota again, Sharadar's included. For
 data you read more than once, keep a store and `sync` it.
+
+## SQL
+
+The store answers SQL. [DuckDB](https://duckdb.org) reads its Parquet files in place, with no copy
+and no index to keep:
+
+```python
+store.sql("SELECT ticker, period, close FROM sharadar_prices WHERE period = '2026-10-22'")
+store.sql("SELECT * FROM sharadar_fundamentals WHERE dimension = 'ARQ'", as_of="2024-03-01")
+store.sql("SELECT * FROM sharadar_prices_versions WHERE ticker = 'AAPL'")  # every stored row
+```
+
+```bash
+data-pipeline sql --root D:/data "SELECT * FROM fred WHERE key = 'fred:UNRATE'"
+data-pipeline sql --root D:/data "SELECT * FROM sec_xbrl" --as-of 2024-03-01 --out facts.parquet
+```
+
+`store.sql` returns a pandas DataFrame. Each source with data in the store gives a query two
+names, and the index a third:
+
+| Name | Rows |
+|---|---|
+| `<source>` (`fred`, `sharadar_prices`, ...) | what `store.series` or `store.table` gives: the latest version of each key, or the one in force at `as_of` |
+| `<source>_versions` | every row stored, with `fetched_at` and `published_at` |
+| `store_index` | the index, as `store.index()` gives it |
+
+A series source has the columns `key` (`fred:UNRATE`), `date`, `period` and `value`, without
+missing values and projections, as `store.series` reads it. A table source has `id`, the id of
+its catalog entry (`AAPL`), and then the columns `store.table` gives. `as_of` (`--as-of`) takes
+what `store.table` takes, with the same meaning. Documents (`sec_filings`) have no name: read them
+with `store.documents`.
+
+`sql` runs one `SELECT` (or `WITH ... SELECT`) per call. Anything else (`CREATE`, `INSERT`,
+`COPY ... TO`, `ATTACH`, `INSTALL`, `SET`, or two statements) is refused before it runs, a
+`WITH` that writes (`WITH x AS (COPY ...)`) is refused by DuckDB, the functions that run SQL
+from text (`query()`, `json_execute_serialized_sql()`) are refused, and the connection's
+settings are locked, so a query does not write a file or change the store. These checks were
+made on DuckDB 2.0: a later version could bring a new way around them. A query DuckDB refuses, such as
+a name that does not exist, raises `StoreError` with DuckDB's message and the names a query can
+read; the command prints them and exits with 2. Every query reads every source's files, so a
+file DuckDB cannot read fails any query, with `StoreError` naming its source. A `SELECT` can still read other files on your computer (`SELECT *
+FROM read_csv('C:/notes.csv')`): it runs with your rights, like any program you run.
+
+Without `--out`, the command prints the first rows. `--out` takes the files `fetch` writes: a
+`.parquet` or `.csv` file is replaced, and in a `.duckdb` file the rows replace the table
+`result`, while the file's other tables stay. The command exits with 1 when the file cannot be
+written, and with 2, writing nothing, when `--out` is inside the store or `--root` does not
+exist.
 
 ## The macro catalog
 

@@ -1,6 +1,7 @@
 import datetime
 
 import click.testing
+import duckdb
 import pandas as pd
 import pytest
 
@@ -48,6 +49,16 @@ def test_with_out_it_writes_every_row_and_prints_where(monkeypatch, tmp_path):
     assert result.exit_code == 0
     assert result.output.splitlines() == ["fake: 2 ids, 13 rows", f"[ok]  written to {path}"]
     assert len(pd.read_csv(path)) == 13
+
+
+def test_with_out_a_duckdb_file_it_writes_the_rows_to_the_table_of_the_source(monkeypatch, tmp_path):
+    install(monkeypatch, answered(AAA=YEAR))
+    path = tmp_path / "data.duckdb"
+    result = run("fake", "AAA", "--out", str(path))
+    assert result.exit_code == 0
+    assert result.output.splitlines() == ["fake: 1 ids, 12 rows", f"[ok]  written to {path}"]
+    with duckdb.connect(str(path), read_only=True) as connection:
+        assert connection.execute("SELECT count(*), min(period) FROM fake").fetchone() == (12, "2025-01")
 
 
 def test_a_failed_fetch_with_out_says_what_it_wrote_without_ok(monkeypatch, tmp_path):
@@ -178,3 +189,11 @@ def test_what_it_prints_is_ascii(monkeypatch):
     assert result.exit_code == 0
     assert result.output.isascii()
     assert "XAAA  XAAA  2026-03-03  2026-03-03  caf?" in result.output
+
+
+def test_the_help_of_out_says_a_duckdb_file_loses_all_the_rows_of_the_ids_it_gets():
+    result = click.testing.CliRunner().invoke(cli, ["fetch", "--help"])
+    assert result.exit_code == 0
+    text = " ".join(result.output.split())
+    assert "replacing all its rows of these ids" in text
+    assert text.isascii()
