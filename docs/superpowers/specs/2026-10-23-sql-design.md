@@ -101,7 +101,10 @@ The query is parsed with DuckDB's own parser before it runs. Anything but a sing
 type `SELECT` (which includes `WITH ... SELECT`) is refused: `CREATE`, `INSERT`, `COPY ... TO`,
 `ATTACH`, `INSTALL`, `SET`, several statements. DuckDB 2.0 accepts a `COPY`, `INSERT`, `UPDATE`
 or `DELETE` inside a `WITH` and calls the whole statement a `SELECT`; so the statement runs as
-`SELECT * FROM (<statement>)`, where DuckDB refuses a `WITH` that writes. The connection turns
+`SELECT * FROM (<statement>)`, where DuckDB refuses a `WITH` that writes. A call to `query()` or
+`json_execute_serialized_sql()` is refused before it runs, found among the statement's tokens:
+both run SQL from text at the top level, where a `WITH` that writes is accepted, and `query()`
+goes too because its text can spell the other's name at run time. The connection turns
 off loading extensions on its own, sets its time zone, a temporary folder of its own and no
 reading of Python variables, then locks its settings, so `enable_logging` and the like cannot
 write files. So `sql` does not write a file or change the store. It is not a sandbox:
@@ -113,6 +116,7 @@ machine, with the user's rights; the README says so.
 | Case | Outcome |
 |---|---|
 | A query that is not a single `SELECT` | `StoreError` "only one SELECT is accepted", before it runs; exit 2 |
+| A call to `query()` or `json_execute_serialized_sql()` | `StoreError`, before it runs; exit 2 |
 | A query DuckDB refuses (syntax, unknown name, type) | `StoreError` with DuckDB's message and the names defined; exit 2 |
 | A source whose files DuckDB cannot read | `StoreError` naming the source, for any query; exit 2 |
 | `sql --root` a folder that does not exist, or `--out` inside the store | Refused, nothing written; exit 2 |
@@ -126,6 +130,9 @@ machine, with the user's rights; the README says so.
   whatever it reads: two sources of 900 files each took about 1 s a query. Fine for the store of
   2026-10-23 (234 MB, about 1,760 files); a store ten times larger is not measured.
 - DuckDB lets one program write a `.duckdb` file at a time.
+- The refusals were checked against DuckDB 2.0's functions; a later 2.x could add a function that
+  runs SQL from text, which the check would not know.
+- The statement runs as a subquery, so output columns of the same name are numbered (`a`, `a_1`).
 - A database built by `fetch` keeps no versions: only the store answers `as_of`.
 
 ## Testing
@@ -136,8 +143,9 @@ Temporary stores and invented data only (the Sharadar data terms apply).
   source with revisions, a table not versioned, a versioned table (as `sec_xbrl` and the Sharadar
   fundamentals), a table whose files differ in columns.
 - `<source>_versions` holds every stored row; `store_index` matches `Store.index()`.
-- Refusals: `CREATE`, `INSERT`, `COPY ... TO`, `ATTACH`, two statements; a refused query writes
-  nothing.
+- Refusals: `CREATE`, `INSERT`, `COPY ... TO`, `ATTACH`, two statements, a `WITH` that writes,
+  `enable_logging`, `query()` and `json_execute_serialized_sql()` in every spelling; a refused
+  query writes nothing.
 - `fetch` into `.duckdb`: a first fetch creates the table; a second with other ids keeps the first
   ones; a fetch of an id already there replaces its rows; a new column; a fetch that fails for some
   ids writes what arrived; a fetch that brings nothing leaves the file alone; a locked file.

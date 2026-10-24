@@ -283,8 +283,10 @@ with `store.documents`.
 
 `sql` runs one `SELECT` (or `WITH ... SELECT`) per call. Anything else (`CREATE`, `INSERT`,
 `COPY ... TO`, `ATTACH`, `INSTALL`, `SET`, or two statements) is refused before it runs, a
-`WITH` that writes (`WITH x AS (COPY ...)`) is refused by DuckDB, and the connection's settings
-are locked, so a query does not write a file or change the store. A query DuckDB refuses, such as
+`WITH` that writes (`WITH x AS (COPY ...)`) is refused by DuckDB, the functions that run SQL
+from text (`query()`, `json_execute_serialized_sql()`) are refused, and the connection's
+settings are locked, so a query does not write a file or change the store. These checks were
+made on DuckDB 2.0: a later version could bring a new way around them. A query DuckDB refuses, such as
 a name that does not exist, raises `StoreError` with DuckDB's message and the names a query can
 read; the command prints them and exits with 2. Every query reads every source's files, so a
 file DuckDB cannot read fails any query, with `StoreError` naming its source. A `SELECT` can still read other files on your computer (`SELECT *
