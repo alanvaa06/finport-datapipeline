@@ -241,8 +241,10 @@ When an id fails, `fetch` raises `dp.FetchError` once everything was asked: `err
 what arrived, `error.failures` one failure per id, `error.quota_exhausted` whether the quota
 stopped it, `error.written` the file written (None when none was). With `to=`, what arrived is
 written first; a fetch that failed and brought nothing (a missing key, say) leaves the file as it
-was. A file that cannot be written (open in Excel, say) also raises `FetchError`, with the rows in
-`error.data` and the reason in `error.write_error`, so the download is not lost. The command
+was. A file that cannot be written (open in Excel, say), or cannot hold the rows (a column Parquet
+cannot store, such as text mixed with numbers, or text that is not valid UTF-8), also raises
+`FetchError`, with the rows in `error.data` and the reason in `error.write_error`, so the download
+is not lost. The command
 prints one `[x]` line per failed id and exits with 1 (3 when only the quota stopped it, 2 for a
 configuration error such as an unknown source or a field the source does not take).
 

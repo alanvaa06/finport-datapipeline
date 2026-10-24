@@ -435,6 +435,30 @@ def test_a_file_it_cannot_write_raises_with_the_rows_that_arrived(two_series, tm
     ]
 
 
+@pytest.mark.parametrize(
+    ("notes", "name", "error"),
+    [
+        (["text", 7], "out.parquet", "ArrowTypeError: "),  # a column of text with a number in it
+        ([{"page": 1}, "text"], "out.parquet", "ArrowInvalid: "),  # a mapping, then text
+        (["text", "half \ud800 a character"], "out.parquet", "UnicodeEncodeError: "),  # JSON lets a lone surrogate in
+        (["text", "half \ud800 a character"], "out.csv", "UnicodeEncodeError: "),
+    ],
+)
+def test_rows_the_file_cannot_hold_raise_with_the_rows_that_arrived(monkeypatch, tmp_path, notes, name, error):
+    rows = [day("XAAA", f"2026-03-0{number}", 1.0, note) for number, note in enumerate(notes, start=3)]
+    install_tables(monkeypatch, {"XAAA": rows})
+    path = tmp_path / name
+    with pytest.raises(dp.FetchError) as caught:
+        dp.fetch("fake", ["XAAA"], to=path)
+    error_raised = caught.value
+    assert error_raised.data["note"].tolist() == notes
+    assert error_raised.written is None
+    assert error_raised.write_error.startswith(error)
+    assert "\n" not in error_raised.write_error
+    assert str(error_raised).startswith(f"fake: could not write {path}: {error}")
+    assert list(tmp_path.iterdir()) == []  # no file, and no temporary file either
+
+
 def test_a_fetch_error_survives_pickling(two_series, tmp_path):
     with pytest.raises(dp.FetchError) as caught:
         dp.fetch("fake", ["AAA", "MISSING"], to=tmp_path / "out.parquet")
