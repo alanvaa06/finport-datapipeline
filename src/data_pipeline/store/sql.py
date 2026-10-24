@@ -31,7 +31,12 @@ What a query may do, and what it may not:
   - One statement, and only one DuckDB's parser types as a SELECT (`WITH ... SELECT` too); any
     other kind is refused before anything runs. The parser also calls a `WITH` that holds a
     COPY, INSERT, UPDATE or DELETE a SELECT, so the statement runs as `SELECT * FROM (...)`, where
-    DuckDB refuses a data-modifying statement.
+    DuckDB refuses a data-modifying statement. Two table functions run SQL from a text, at the
+    top level, where that check does not reach: json_execute_serialized_sql() and query(). A call
+    to either is refused, found in the tokens of the statement (query() must go too, as a text
+    can build the other's name). The other functions of DuckDB 2.0 were read one by one and none
+    else runs a statement from text; `import_database` and `copy_database` are not callable from a
+    SELECT, and the settings and log functions are stopped by the locked configuration.
   - The database is in memory. Extensions are neither installed nor loaded by themselves (community
     ones are not allowed), time is read in UTC, spilled data goes to a folder of its own, and the
     configuration is locked before the query runs, so a function that changes a setting (a log
@@ -54,6 +59,9 @@ from data_pipeline.store.errors import StoreError
 INDEX = "store_index"
 VERSIONS = "_versions"
 ONLY_SELECT = "only one SELECT is accepted"
+# The table functions that run the SQL of a text as a statement of their own (DuckDB 2.0)
+TEXT_SQL_FUNCTIONS = frozenset({"json_execute_serialized_sql", "query"})
+TEXT_SQL_REFUSED = "query() and json_execute_serialized_sql() run SQL from text and are refused"
 # No extension is installed, loaded by itself or taken from the community; the rest is set once
 # connected, and then locked (see _settle)
 CONFIG: dict[str, str | bool | int | float | list[str]] = {
@@ -104,7 +112,9 @@ def answer(storage: st.Storage, query: str, moment: pd.Timestamp | None) -> pd.D
                     raise StoreError(msg) from exc
             connection.register(INDEX, storage.read_index())
             # Wrapped, DuckDB refuses what the parser calls a SELECT and is not one
-            return connection.execute(f"SELECT * FROM (\n{statement}\n)").df()  # noqa: S608 - the checked statement
+            # No newline before the statement, so DuckDB reports the line of a one-line query as 1;
+            # one before the closing parenthesis, so a `--` comment at the end cannot eat it
+            return connection.execute(f"SELECT * FROM ({statement}\n)").df()  # noqa: S608 - the checked statement
         except duckdb.Error as exc:
             raise _failed(exc, names) from exc
 
@@ -146,7 +156,27 @@ def _check(connection: duckdb.DuckDBPyConnection, query: str, names: Sequence[st
     if kind != duckdb.StatementType.SELECT:
         msg = f"{ONLY_SELECT}, not {kind.name}"
         raise StoreError(msg)
+    _refuse_text_sql(statements[0].query)
     return _without_tail(statements[0].query)
+
+
+def _refuse_text_sql(statement: str) -> None:
+    """StoreError for a call to a function that runs SQL from a text (TEXT_SQL_FUNCTIONS): a word
+    of the statement that is one of those names, quoted or not, in any case, after any `schema.`,
+    followed (past comments) by a parenthesis. The same word not followed by one, a column named
+    `query` say, is not a call; a word inside a string is not a word."""
+    tokens = duckdb.tokenize(statement)
+    ends = [start for start, _ in tokens[1:]] + [len(statement)]
+    words = [(kind, statement[start:end].strip()) for (start, kind), end in zip(tokens, ends, strict=True)]
+    for index, (kind, word) in enumerate(words):
+        if kind not in (duckdb.token_type.identifier, duckdb.token_type.keyword):
+            continue
+        name = word[1:-1].replace('""', '"') if len(word) > 1 and word[0] == word[-1] == '"' else word
+        if name.lower() not in TEXT_SQL_FUNCTIONS:
+            continue
+        after = next((text for kind_after, text in words[index + 1 :] if kind_after != duckdb.token_type.comment), "")
+        if after.startswith("("):
+            raise StoreError(TEXT_SQL_REFUSED)
 
 
 def _without_tail(statement: str) -> str:

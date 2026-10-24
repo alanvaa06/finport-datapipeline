@@ -1,6 +1,7 @@
 import datetime
 import math
 
+import duckdb
 import pandas as pd
 import pytest
 
@@ -433,3 +434,100 @@ def test_a_store_in_a_folder_with_a_quote_and_a_space_in_its_name_is_read(tmp_pa
     store = small_store(tmp_path / "it's a store", tables=("a",))
     assert store.sql("SELECT count(*) AS n FROM fake")["n"].tolist() == [1]
     assert store.sql("SELECT count(*) AS n FROM a_versions")["n"].tolist() == [1]
+
+
+# -- functions that run SQL from text --------------------------------------------------------------
+
+
+def serialized(sql):
+    """The JSON that json_serialize_sql gives for `sql`, as json_execute_serialized_sql takes it."""
+    with duckdb.connect() as raw:
+        return raw.execute("SELECT json_serialize_sql(?)", [sql]).fetchone()[0]
+
+
+def literal(text):
+    return "'" + text.replace("'", "''") + "'"
+
+
+TEXT_SQL = [
+    "direct",
+    "overwrites a file of the store",
+    "quoted in another case",
+    "schema-qualified",
+    "inline json_serialize_sql",
+    "via query()",
+    "built from strings",
+    "comment before the parenthesis",
+    "line comment before the parenthesis",
+    "query() alone",
+    "schema-qualified query()",
+]
+
+
+def call(name, argument, start="SELECT * FROM"):
+    return f"{start} {name}({argument})"
+
+
+def text_sql_query(kind, folder):
+    """A query that would write a file if a function ran the SQL in a text; all the files are in `folder`."""
+    other = (folder / "stolen.csv").as_posix()
+    store_file = (folder / "series" / "fake.parquet").as_posix()
+    copy = f"WITH x AS (COPY (SELECT 1 AS one) TO '{other}') SELECT 1 AS done"
+    over = f"WITH x AS (COPY (SELECT 'pwned' AS key) TO '{store_file}' (FORMAT parquet)) SELECT 1 AS done"
+    wicked = literal(serialized(copy))
+    run = "json_execute_serialized_sql"
+    inner = call(run, wicked)
+    head = "'SELECT * FROM json_exec' || 'ute_serialized_sql(' || "
+    built = head + literal(wicked) + " || ')'"
+    return {
+        "direct": call(run, wicked),
+        "overwrites a file of the store": call(run, literal(serialized(over))),
+        "quoted in another case": call('"JSON_EXECUTE_SERIALIZED_SQL"', wicked),
+        "schema-qualified": call("main." + run, wicked),
+        "inline json_serialize_sql": call(run, call("json_serialize_sql", literal(copy), start="")),
+        "via query()": call("query", literal(inner), start="FROM"),
+        "built from strings": call("query", built, start="FROM"),
+        "comment before the parenthesis": call("query /* c */ ", literal(inner), start="FROM"),
+        "line comment before the parenthesis": call("query -- c\n", literal(inner), start="FROM"),
+        "query() alone": call("query", "'SELECT 1'"),
+        "schema-qualified query()": call('"main"."Query" ', "'SELECT 1'"),
+    }[kind]
+
+
+@pytest.mark.parametrize("kind", TEXT_SQL)
+def test_a_function_that_runs_sql_from_text_is_refused_and_no_file_changes(store, tmp_path, kind):
+    query = text_sql_query(kind, tmp_path)
+    before = files_of(tmp_path)
+    message = r"^query\(\) and json_execute_serialized_sql\(\) run SQL from text and are refused$"
+    with pytest.raises(StoreError, match=message):
+        store.sql(query)
+    assert files_of(tmp_path) == before
+    assert not (tmp_path / "stolen.csv").exists()
+    assert len(store.series("fake:AAA")) == 4
+
+
+def test_a_column_named_query_and_the_word_in_a_string_are_not_refused(tmp_path):
+    schema = st.TableSchema(("ticker", "period"), ("query",), ())
+    row = {"ticker": "XAAA", "period": "2026-03-03", "date": "2026-03-03", "query": 5.0}
+    storage = st.Storage(tmp_path)
+    storage.prepare()
+    storage.write_table("asked", "XAAA", st.table_frame([row], schema, T1), schema)
+    storage.write_index(st.typed([], st.INDEX_DTYPES))
+    store = Store(tmp_path)
+    assert store.sql("SELECT query FROM asked WHERE query > 1")["query"].tolist() == [5.0]
+    assert store.sql('SELECT "query", max(query) AS most FROM asked GROUP BY "query"')["most"].tolist() == [5.0]
+    assert store.sql("SELECT 'query(' AS word")["word"].tolist() == ["query("]
+
+
+# -- how a query is reported ------------------------------------------------------------------------
+
+
+def test_duckdb_reports_the_line_of_a_one_line_query_as_line_1(store):
+    with pytest.raises(StoreError) as caught:
+        store.sql("SELECT * FROM prices")
+    assert "LINE 1:" in str(caught.value)
+    assert "LINE 2" not in str(caught.value)
+
+
+def test_duplicate_output_names_are_numbered(store):
+    assert store.sql("SELECT 1 AS a, 2 AS a").columns.tolist() == ["a", "a_1"]

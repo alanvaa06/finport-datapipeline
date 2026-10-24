@@ -373,8 +373,10 @@ class Store:
         takes. Anything but one SELECT (or WITH ... SELECT), and a WITH that holds a COPY, INSERT,
         UPDATE or DELETE, is a StoreError and nothing is written; so is a query DuckDB refuses,
         with its message and the names a query can read, and a source whose files DuckDB cannot
-        read, by its name. The query is not sandboxed from the machine: a SELECT can still read
-        other local files (`read_csv('...')`) with the rights of whoever runs it.
+        read, by its name. So is a call to `query()` or `json_execute_serialized_sql()`, which run
+        SQL from a text. The query is not sandboxed from the machine: a SELECT can still read other
+        local files (`read_csv('...')`) with the rights of whoever runs it. A column name that
+        comes out twice is numbered by DuckDB (`SELECT 1 AS a, 2 AS a` gives `a` and `a_1`).
         """
         moment = None if as_of is None else st.to_moment(as_of)
         return store_sql.answer(self._storage, query, moment)
