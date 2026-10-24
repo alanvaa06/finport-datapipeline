@@ -189,3 +189,11 @@ def test_what_it_prints_is_ascii(monkeypatch):
     assert result.exit_code == 0
     assert result.output.isascii()
     assert "XAAA  XAAA  2026-03-03  2026-03-03  caf?" in result.output
+
+
+def test_the_help_of_out_says_a_duckdb_file_loses_all_the_rows_of_the_ids_it_gets():
+    result = click.testing.CliRunner().invoke(cli, ["fetch", "--help"])
+    assert result.exit_code == 0
+    text = " ".join(result.output.split())
+    assert "replacing all its rows of these ids" in text
+    assert text.isascii()

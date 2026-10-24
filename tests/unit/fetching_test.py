@@ -529,6 +529,12 @@ def test_text_missing_values_and_times_read_back_as_they_were_written(tmp_path):
     assert stored["value"].isna().tolist() == [False, True]
     assert stored["note"].tolist() == ["café", None]
     assert str(stored["fetched_at"].dt.tz) == "UTC"
+    # check_dtype=False below lets DuckDB's unit (microseconds, or nanoseconds in older versions)
+    # differ from the frame's nanoseconds; the kind of the times, and the microseconds, are exact
+    assert stored["date"].dtype.kind == "M"
+    assert stored["date"].dt.unit in ("us", "ns")
+    assert stored["fetched_at"].dt.unit in ("us", "ns")
+    assert stored["fetched_at"].tolist() == [pd.Timestamp("2026-06-06T12:00:00.123456Z")] * 2
     pd.testing.assert_frame_equal(stored, frame, check_dtype=False)
 
 
@@ -699,3 +705,61 @@ def test_a_series_reads_as_store_series_reads_it(tmp_path):
     )
     pd.testing.assert_frame_equal(fetched[["date", "period", "value"]], store.series("fred:UNRATE"))
     assert list(fetched["id"].unique()) == ["UNRATE"]
+def test_a_fetch_of_an_id_replaces_all_its_rows_so_a_later_start_leaves_only_the_later_ones(two_series, tmp_path):
+    path = tmp_path / "out.duckdb"
+    dp.fetch("fake", ["AAA", "BBB"], to=path)  # the whole range: two months of AAA
+    two_series.answers["AAA"] = monthly(entry("AAA"), {"2026-02": 2.5})  # what the source gives from a later start
+    dp.fetch("fake", ["AAA"], start="2026-02-01", to=path)
+    stored = read_duckdb(path)
+    assert list(zip(stored["id"], stored["period"], stored["value"], strict=True)) == [
+        ("BBB", "2026-01", 3.0),
+        ("AAA", "2026-02", 2.5),
+    ]
+
+
+class RollbackFails:
+    """A DuckDB connection whose commit and rollback both fail, as a disk that went away would."""
+
+    def __init__(self, real):
+        self.real = real
+
+    def __enter__(self):
+        self.real.__enter__()
+        return self
+
+    def __exit__(self, *error):
+        return self.real.__exit__(*error)
+
+    def __getattr__(self, name):
+        return getattr(self.real, name)
+
+    def commit(self):
+        msg = "commit failed"
+        raise duckdb.Error(msg)
+
+    def rollback(self):
+        msg = "rollback failed"
+        raise duckdb.Error(msg)
+
+
+def test_a_rollback_that_fails_after_a_commit_that_failed_does_not_hide_the_commit(two_series, tmp_path, monkeypatch):
+    path = tmp_path / "out.duckdb"
+    real = duckdb.connect
+    with monkeypatch.context() as patch:
+        patch.setattr(duckdb, "connect", lambda *args, **kwargs: RollbackFails(real(*args, **kwargs)))
+        with pytest.raises(dp.FetchError) as caught:
+            dp.fetch("fake", ["AAA"], to=path)
+    assert caught.value.write_error == "Error: commit failed"
+    assert str(caught.value.__cause__) == "commit failed"
+    assert list(caught.value.data["id"]) == ["AAA", "AAA"]
+
+
+def test_a_text_column_that_starts_with_missing_values_is_text(tmp_path):
+    frame = pd.DataFrame({"id": ["XAAA"] * 4, "note": [None, None, "late", None], "other": [None, 1, 2, None]})
+    path = tmp_path / "out.duckdb"
+    fetching.destination(path).write(frame, table="rows", by_id=True)
+    with duckdb.connect(str(path), read_only=True) as connection:
+        kinds = dict(connection.execute("SELECT column_name, data_type FROM information_schema.columns").fetchall())
+    assert kinds["note"] == "VARCHAR"
+    assert kinds["other"] != "VARCHAR"
+    assert read_duckdb(path, "rows")["note"].tolist() == [None, None, "late", None]

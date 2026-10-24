@@ -72,7 +72,10 @@ def cli() -> None:
     "--out",
     type=PATH,
     default=None,
-    help="Write every row to this .parquet or .csv file, replacing it, or to the table SOURCE of a .duckdb file.",
+    help=(
+        "Write every row to this .parquet or .csv file, replacing it, or to the table SOURCE of a .duckdb file, "
+        "replacing all its rows of these ids (a later --start leaves only the rows from that date)."
+    ),
 )
 @click.option("--start", default=None, help="Ask from this date on (YYYY-MM-DD), where the source takes one.")
 @click.option("--frequency", default=None, help="D, W, M, Q or A, for a source that does not report one.")

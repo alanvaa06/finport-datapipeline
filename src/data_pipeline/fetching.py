@@ -18,7 +18,9 @@ When an id fails, `FetchError` is raised once everything was asked; it carries w
 fetch that failed and brought nothing leaves the file as it was. The file is `.parquet`, `.csv`
 or `.duckdb`, by its extension. A Parquet or CSV file replaces any file of that name at once. A
 DuckDB file keeps one table per source, named after it: in one transaction, the rows that arrived
-replace that table's rows of the same ids, and every other row and table stays. A file that
+replace that table's rows of the same ids, and every other row and table stays. All the rows of
+an id are replaced, not only those that arrived again: a fetch from a later `start` leaves the
+id with the rows from that start. A file that
 cannot be written (open in another program, say) is a FetchError too, with the rows in `.data`.
 A CSV keeps no types: text that looks like a number (`0123`, a product code `01`) reads back as a
 number unless read as text; Parquet and DuckDB keep them.
@@ -30,6 +32,7 @@ import os
 import pathlib
 import time
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import suppress
 from typing import Protocol
 
 import duckdb
@@ -92,10 +95,11 @@ def _duckdb(path: pathlib.Path, frame: pd.DataFrame, *, table: str, by_id: bool)
     with duckdb.connect(str(path)) as connection:
         connection.register(ROWS, frame)
         described = connection.execute(f"DESCRIBE SELECT * FROM {ROWS}").fetchall()  # noqa: S608 - quoted names
-        # A text column without any value has no type DuckDB can tell (it says "NULL", or INTEGER
-        # before 2.0); made text, it takes the text of a later fetch.
-        empty = {column for column in frame.columns if frame[column].dtype == object and frame[column].isna().all()}
-        columns = [(str(row[0]), TEXT if row[0] in empty else str(row[1])) for row in described]
+        # A text column that starts with missing values, or has nothing but them, has no type
+        # DuckDB can tell (it says "NULL", or INTEGER before 2.0); made text, it takes the text of
+        # a later fetch.
+        texts = {column for column in frame.columns if _only_text(frame[column])}
+        columns = [(str(row[0]), TEXT if row[0] in texts else str(row[1])) for row in described]
         connection.begin()
         try:
             existing = {
@@ -120,8 +124,14 @@ def _duckdb(path: pathlib.Path, frame: pd.DataFrame, *, table: str, by_id: bool)
             connection.execute(f"INSERT INTO {name} BY NAME SELECT * FROM {ROWS}")  # noqa: S608 - quoted names
             connection.commit()
         except duckdb.Error:
-            connection.rollback()
+            with suppress(duckdb.Error):  # a rollback that fails must not hide why the write did
+                connection.rollback()
             raise
+
+
+def _only_text(values: pd.Series) -> bool:
+    """Whether a column holds text and missing values and nothing else (or only missing values)."""
+    return bool(values.dtype == object and pd.api.types.infer_dtype(values, skipna=True) in ("string", "empty"))
 
 
 # The kinds of file `to=` writes, by extension; a new kind joins here without changing fetch's
@@ -197,8 +207,10 @@ def fetch(
     `ids` is one id or a list of them. `start`, `frequency` and `params` are the catalog's fields
     (`table="funds"` for a Sharadar ETF, `partners=["USA"]` for Comtrade). `to` also writes the
     frame to a `.parquet` or `.csv` file, replacing one of that name, or to the table named after
-    the source in a `.duckdb` file, replacing its rows of the ids that arrived. Keys come from
-    `credentials`, else the environment, else the nearest `.env` (or `env_file`).
+    the source in a `.duckdb` file, replacing its rows of the ids that arrived: a fetch of an id
+    replaces every row the file holds for that id, so a fetch from a later `start` leaves only the
+    rows from that start. Keys come from `credentials`, else the environment, else the nearest
+    `.env` (or `env_file`).
 
     A series source gives the columns `id, date, period, value`; a table source `id` and then the
     columns `Store.table` gives. Raises CatalogError, before any request, for an unknown source, a
