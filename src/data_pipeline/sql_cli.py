@@ -1,7 +1,7 @@
 """The `sql` command: one SELECT over the store, answered by DuckDB. Output is ASCII only.
 
-Exit codes: 0 done, 1 the rows could not be written to --out, 2 a query refused or failed, or a
-bad option.
+Exit codes: 0 done, 1 the rows could not be written to --out, 2 a query refused or failed, a
+bad option, a --root that does not exist, or an --out inside the store.
 """
 
 import pathlib
@@ -58,7 +58,9 @@ def sql_command(*, root: pathlib.Path, query: str, as_of: str | None, out: pathl
     """Answer QUERY, one SELECT over the store: the first rows, or every row to --out.
 
     Each source with data is two names: SOURCE, its latest rows (as of --as-of when given), and
-    SOURCE_versions, every row stored; store_index is the index. Nothing in the store changes.
+    SOURCE_versions, every row stored; store_index is the index. Anything but one SELECT is
+    refused, and so are query() and json_execute_serialized_sql(), which run SQL from a text.
+    A SELECT can still read other files on this computer. --out may not be inside the store.
     """
     try:
         target = destination(out, where=WHERE)
