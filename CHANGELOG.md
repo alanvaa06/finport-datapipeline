@@ -55,6 +55,11 @@ Store core:
 - A table with more than about a hundred value columns is built without pandas warning that the
   frame is "highly fragmented": a wide table synced over many tickers printed two warnings per
   ticker on stderr. The stored data was already right and does not change.
+- `fetch(..., to=)` and `data-pipeline fetch --out` keep the download when the rows cannot go in
+  the file: a column Parquet cannot store (text mixed with numbers) or text that is not valid
+  UTF-8 (a lone surrogate) raises `FetchError` with the rows in `error.data` and the reason in
+  `error.write_error`, and the command exits with 1. It used to end in a traceback, the rows (and
+  the quota spent on them) lost.
 
 - A sync that died without cleaning up (a killed process, a crash) no longer blocks the next one:
   `sync.lock` is held with the operating system's lock, released when the process ends, and a file

@@ -21,7 +21,8 @@ DuckDB file keeps one table per source, named after it: in one transaction, the 
 replace that table's rows of the same ids, and every other row and table stays. All the rows of
 an id are replaced, not only those that arrived again: a fetch from a later `start` leaves the
 id with the rows from that start. A file that
-cannot be written (open in another program, say) is a FetchError too, with the rows in `.data`.
+cannot be written (open in another program, say) or cannot hold the rows (a column Parquet cannot
+store, text that is not valid UTF-8) is a FetchError too, with the rows in `.data`.
 A CSV keeps no types: text that looks like a number (`0123`, a product code `01`) reads back as a
 number unless read as text; Parquet and DuckDB keep them.
 """
@@ -38,6 +39,7 @@ from typing import Protocol
 import duckdb
 import httpx
 import pandas as pd
+import pyarrow as pa
 
 from data_pipeline import _files
 from data_pipeline.credentials import resolve
@@ -135,9 +137,12 @@ def _only_text(values: pd.Series) -> bool:
 
 
 # The kinds of file `to=` writes, by extension; a new kind joins here without changing fetch's
-# signature. WRITE_ERRORS is what a writer raises when its file cannot be written.
+# signature. WRITE_ERRORS is what a writer raises when its file cannot be written or cannot hold
+# the rows: pyarrow's own errors for a column Parquet cannot store (text mixed with numbers, say),
+# and UnicodeEncodeError for text that is not valid UTF-8 (a lone surrogate, which JSON lets
+# through). Not ValueError or TypeError as such: those are mistakes in the code.
 WRITERS: Mapping[str, Writer] = {".parquet": _parquet, ".csv": _csv, ".duckdb": _duckdb}
-WRITE_ERRORS = (OSError, duckdb.Error)
+WRITE_ERRORS = (OSError, duckdb.Error, pa.ArrowException, UnicodeEncodeError)
 
 
 @dataclasses.dataclass(frozen=True)
