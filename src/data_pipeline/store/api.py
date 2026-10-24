@@ -370,8 +370,11 @@ class Store:
         (each key's latest version, or the one in force at `as_of`), and `<source>_versions`,
         every stored row; `store_index` is the index. A series source gives `key, date, period,
         value`; a table source `id` and then the columns of `table`. `as_of` takes what `table`
-        takes. Anything but one SELECT (or WITH ... SELECT) is a StoreError before it runs, and
-        so is a query DuckDB refuses, with its message and the names a query can read.
+        takes. Anything but one SELECT (or WITH ... SELECT), and a WITH that holds a COPY, INSERT,
+        UPDATE or DELETE, is a StoreError and nothing is written; so is a query DuckDB refuses,
+        with its message and the names a query can read, and a source whose files DuckDB cannot
+        read, by its name. The query is not sandboxed from the machine: a SELECT can still read
+        other local files (`read_csv('...')`) with the rights of whoever runs it.
         """
         moment = None if as_of is None else st.to_moment(as_of)
         return store_sql.answer(self._storage, query, moment)

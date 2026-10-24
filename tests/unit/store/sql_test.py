@@ -292,11 +292,19 @@ def test_as_of_takes_what_store_table_takes(store):
     )
 
 
-def test_a_query_reads_in_utc_and_installs_nothing(store):
+def test_a_query_reads_in_utc_installs_nothing_and_cannot_change_its_settings(store, tmp_path):
     settings = store.sql(
-        "SELECT current_setting('TimeZone') AS zone, current_setting('autoinstall_known_extensions') AS install"
+        "SELECT current_setting('TimeZone') AS zone, current_setting('autoinstall_known_extensions') AS install, "
+        "current_setting('autoload_known_extensions') AS load, "
+        "current_setting('allow_community_extensions') AS community, current_setting('lock_configuration') AS locked"
     )
-    assert settings.to_dict("records") == [{"zone": "UTC", "install": False}]
+    assert settings.to_dict("records") == [
+        {"zone": "UTC", "install": False, "load": False, "community": False, "locked": True}
+    ]
+    log = tmp_path / "log"  # a function that would start a log file in a folder of the query's choosing
+    with pytest.raises(StoreError, match="locked"):
+        store.sql(f"SELECT * FROM enable_logging(storage := 'file', storage_path := '{log.as_posix()}')")  # noqa: S608
+    assert not log.exists()
 
 
 def test_a_query_changes_no_file_of_the_store(store, tmp_path):
@@ -308,3 +316,120 @@ def test_a_query_changes_no_file_of_the_store(store, tmp_path):
     with pytest.raises(StoreError):
         store.sql("COPY plain TO 'plain.csv'")
     assert files() == before
+
+
+def files_of(folder):
+    return {path: path.read_bytes() for path in sorted(folder.rglob("*")) if path.is_file()}
+
+
+# -- a statement the parser calls a SELECT that is not one --------------------------------------
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "WITH x AS (COPY (SELECT * FROM fake_versions WHERE false) TO '{target}' (FORMAT parquet)) SELECT 1 AS done",
+        "WITH x AS (COPY (SELECT 1 AS one) TO '{other}') SELECT 1 AS done",
+        "WITH x AS (INSERT INTO plain_versions SELECT * FROM plain_versions RETURNING *) SELECT * FROM x",
+        "WITH x AS (DELETE FROM plain_versions RETURNING *) SELECT * FROM x",
+        "WITH x AS (UPDATE plain_versions SET close = 0 RETURNING *) SELECT * FROM x",
+        "SELECT * FROM (WITH x AS (COPY (SELECT 1 AS one) TO '{other}') SELECT 1 AS done)",
+        "SELECT (WITH x AS (COPY (SELECT 1 AS one) TO '{other}') SELECT 1)",
+    ],
+)
+def test_a_data_modifying_statement_inside_with_is_refused_and_no_file_changes(store, tmp_path, query):
+    target = (tmp_path / "series" / "fake.parquet").as_posix()  # a file of the store
+    other = (tmp_path / "stolen.csv").as_posix()
+    before = files_of(tmp_path)
+    with pytest.raises(StoreError):
+        store.sql(query.format(target=target, other=other))
+    assert files_of(tmp_path) == before
+    assert len(store.series("fake:AAA")) == 4  # the store still reads
+
+
+TAILS = [";", " ; ", "; -- done", "; /* done */", " -- done", "\n-- done\n", ";\n-- one\n/* two */"]
+
+
+@pytest.mark.parametrize("tail", TAILS)
+def test_a_query_ends_in_a_semicolon_and_comments_as_it_likes(store, tail):
+    plain = "SELECT count(*) AS rows FROM fake"
+    with_clause = "WITH latest AS (SELECT * FROM fake) SELECT count(*) AS rows FROM latest"
+    assert store.sql(plain + tail)["rows"].tolist() == [7]
+    assert store.sql(with_clause + tail)["rows"].tolist() == [7]
+
+
+@pytest.mark.parametrize(
+    ("query", "rows"),
+    [
+        ("SELECT key, value FROM fake ORDER BY value DESC", 7),
+        ("DESCRIBE fake", 4),
+        ("SUMMARIZE fake", 4),
+        ("VALUES (1), (2)", 2),
+        ("FROM fake WHERE value > 3", 6),
+        ("SELECT 1 AS n UNION ALL SELECT 2", 2),
+        ("PIVOT fake ON period IN ('2026-01', '2026-03') USING sum(value) GROUP BY key", 2),
+    ],
+)
+def test_the_shapes_of_a_select_still_work(store, query, rows):
+    assert len(store.sql(query)) == rows
+
+
+def test_a_pivot_without_the_values_in_its_list_says_to_list_them(store):
+    found = r"not MULTI .*list its values with IN \(\.\.\.\)\)"
+    with pytest.raises(StoreError, match=f"^only one SELECT is accepted, {found}$"):
+        store.sql("PIVOT fake ON period USING sum(value) GROUP BY key")
+
+
+# -- how the views are built ---------------------------------------------------------------------
+
+
+def small_store(root, tables=("a",)):
+    """A store with one series source and a plain table source `a` (and `b`, ... when asked)."""
+    storage = st.Storage(root)
+    storage.prepare()
+    storage.write_observations("fake", st.typed(SERIES[:2], st.OBS_DTYPES))
+    for source in tables:
+        storage.write_table(source, "XAAA", price("XAAA", "2026-03-03", 1.0, T1), PLAIN)
+    storage.write_index(st.typed([index_row("fake:AAA", "series")], st.INDEX_DTYPES))
+    return Store(root)
+
+
+def test_a_source_that_cannot_be_read_is_named_apart_from_a_failed_query(tmp_path):
+    store = small_store(tmp_path, tables=("a", "b"))
+    (tmp_path / "tables" / "b" / "XAAA.parquet").write_bytes(b"not parquet")
+    with pytest.raises(StoreError, match=r"^could not read source b: ") as caught:
+        store.sql("SELECT * FROM a")
+    assert "the query failed" not in str(caught.value)
+    assert "the names a query can read" not in str(caught.value)
+
+
+def test_a_column_the_schema_lists_and_no_file_has_reads_as_missing(tmp_path):
+    storage = st.Storage(tmp_path)
+    storage.prepare()
+    bare = price("XAAA", "2026-03-03", 1.0, T1).drop(columns="note")  # written before `note` existed
+    storage.write_table("bare", "XAAA", bare, PLAIN)
+    storage.write_index(st.typed([], st.INDEX_DTYPES))
+    store = Store(tmp_path)
+    same(store.sql("SELECT * EXCLUDE (id) FROM bare"), store.table("bare"))
+    assert store.sql("SELECT note FROM bare_versions")["note"].tolist() == [None]
+
+
+def test_a_source_column_with_the_name_of_a_working_column_of_the_views_is_read(tmp_path):
+    schema = st.TableSchema(("ticker", "period"), ("position", "chosen"), ("known_at",))
+    row = {"ticker": "XAAA", "period": "2026-03-03", "date": "2026-03-03"}
+    rows = [{**row, "position": 7.0, "chosen": 8.0, "known_at": "k"}]
+    storage = st.Storage(tmp_path)
+    storage.prepare()
+    storage.write_table("odd", "XAAA", st.table_frame(rows, schema, T1), schema)
+    storage.write_index(st.typed([], st.INDEX_DTYPES))
+    store = Store(tmp_path)
+    same(store.sql("SELECT * EXCLUDE (id) FROM odd"), store.table("odd"))
+    assert store.sql("SELECT id, position, chosen, known_at FROM odd").to_dict("records") == [
+        {"id": "XAAA", "position": 7.0, "chosen": 8.0, "known_at": "k"}
+    ]
+
+
+def test_a_store_in_a_folder_with_a_quote_and_a_space_in_its_name_is_read(tmp_path):
+    store = small_store(tmp_path / "it's a store", tables=("a",))
+    assert store.sql("SELECT count(*) AS n FROM fake")["n"].tolist() == [1]
+    assert store.sql("SELECT count(*) AS n FROM a_versions")["n"].tolist() == [1]

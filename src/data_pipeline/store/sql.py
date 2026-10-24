@@ -15,7 +15,8 @@ source with stored data:
 A series source gives `key` and then the columns of Store.series (`date`, `period`, `value`); a
 table source gives `id`, the catalog id whose table holds the row, and then the columns of
 Store.table. Its files are read together by column name, so a column a file was written without
-reads as missing.
+reads as missing, and so does a column of the schema that no file has. Both views of a source read
+a hidden view of its rows, `__rows_<source>`, whose working columns start with two underscores.
 
 The views choose versions with window functions, by the rules of `storage.latest` and
 `storage.as_of`, and sort their rows as those functions do (tests compare them row for row): per
@@ -25,14 +26,24 @@ known last, known from its publication or else its fetch, and among those the on
 Rows that tie on all of it: the later one in its file. A series leaves out missing values and
 projections, as Store.series does.
 
-Only one statement runs, and only a SELECT (`WITH ... SELECT` too): DuckDB's parser reads the
-query first, and anything else is refused before it runs. The database lives in memory and may
-not install extensions, and the store's files are only read, so a query changes no file. It can
-still read other files on the machine (`read_csv('...')`), with the rights of whoever runs it.
+What a query may do, and what it may not:
+
+  - One statement, and only one DuckDB's parser types as a SELECT (`WITH ... SELECT` too); any
+    other kind is refused before anything runs. The parser also calls a `WITH` that holds a
+    COPY, INSERT, UPDATE or DELETE a SELECT, so the statement runs as `SELECT * FROM (...)`, where
+    DuckDB refuses a data-modifying statement.
+  - The database is in memory. Extensions are neither installed nor loaded by themselves (community
+    ones are not allowed), time is read in UTC, spilled data goes to a folder of its own, and the
+    configuration is locked before the query runs, so a function that changes a setting (a log
+    file, say) is refused. The store's files are only read.
+  - A SELECT can still read other files on the machine (`read_csv('...')`, `glob(...)`), with the
+    rights of whoever runs it. Nothing here is a sandbox for a query you do not trust.
 """
 
 import pathlib
+import tempfile
 from collections.abc import Sequence
+from contextlib import suppress
 
 import duckdb
 import pandas as pd
@@ -43,12 +54,20 @@ from data_pipeline.store.errors import StoreError
 INDEX = "store_index"
 VERSIONS = "_versions"
 ONLY_SELECT = "only one SELECT is accepted"
-# Times in UTC, as the store writes them; no extension downloaded or written to disk by a query
-SETTINGS: dict[str, str | bool | int | float | list[str]] = {
-    "TimeZone": "UTC",
+# No extension is installed, loaded by itself or taken from the community; the rest is set once
+# connected, and then locked (see _settle)
+CONFIG: dict[str, str | bool | int | float | list[str]] = {
     "autoinstall_known_extensions": False,
+    "autoload_known_extensions": False,
+    "allow_community_extensions": False,
 }
 SERIES_COLUMNS = ["key", "period", "date", "value", "projection"]
+# The working columns of the views start with two underscores, as a source's columns never do
+ID = "__id"
+POSITION = "__position"
+KNOWN = "__known_at"
+CHOSEN = "__chosen"
+BASE = "__rows_"
 
 
 def quote(name: str) -> str:
@@ -64,31 +83,51 @@ def _text(value: str) -> str:
 def answer(storage: st.Storage, query: str, moment: pd.Timestamp | None) -> pd.DataFrame:
     """The rows of `query`, a single SELECT, over the views of `storage` (see the module),
     each source read as of `moment` when one is given. StoreError for anything but one SELECT,
-    before it runs, and for a query DuckDB refuses, with its message and the names defined."""
+    before it runs, for a source whose files DuckDB cannot read, and for a query DuckDB refuses,
+    with its message and the names defined."""
     series = storage.series_sources()
     tables = storage.table_sources()
     names = sorted([*series, *tables, *(source + VERSIONS for source in [*series, *tables]), INDEX])
-    _check(query, names)
-    with duckdb.connect(":memory:", config=SETTINGS) as connection:
+    builders = [(source, _series_views) for source in series] + [(source, _table_views) for source in tables]
+    with (
+        tempfile.TemporaryDirectory(prefix="data-pipeline-sql-") as spill,
+        duckdb.connect(":memory:", config=CONFIG) as connection,
+    ):
         try:
-            for source in series:
-                _series_views(connection, storage, source, moment)
-            for source in tables:
-                _table_views(connection, storage, source, moment)
+            statement = _check(connection, query, names)
+            _settle(connection, pathlib.Path(spill))
+            for source, build in builders:
+                try:
+                    build(connection, storage, source, moment)
+                except duckdb.Error as exc:
+                    msg = f"could not read source {source}: {exc}"
+                    raise StoreError(msg) from exc
             connection.register(INDEX, storage.read_index())
-            return connection.execute(query).df()
+            # Wrapped, DuckDB refuses what the parser calls a SELECT and is not one
+            return connection.execute(f"SELECT * FROM (\n{statement}\n)").df()  # noqa: S608 - the checked statement
         except duckdb.Error as exc:
             raise _failed(exc, names) from exc
+
+
+def _settle(connection: duckdb.DuckDBPyConnection, spill: pathlib.Path) -> None:
+    """Time in UTC, as the store writes it; anything spilled to disk in a folder of its own; no
+    replacement scan of the caller's variables; and the configuration locked, last."""
+    connection.execute("SET TimeZone = 'UTC'")
+    connection.execute(f"SET temp_directory = {_text(spill.as_posix())}")
+    with suppress(duckdb.Error):  # a DuckDB without the setting has no such scan to turn off
+        connection.execute("SET python_enable_replacements = false")
+    connection.execute("SET lock_configuration = true")
 
 
 def _failed(error: duckdb.Error, names: Sequence[str]) -> StoreError:
     return StoreError(f"the query failed: {error}\nthe names a query can read: {', '.join(names)}")
 
 
-def _check(query: str, names: Sequence[str]) -> None:
-    """Refuse, before anything runs, a query that is not exactly one SELECT."""
+def _check(connection: duckdb.DuckDBPyConnection, query: str, names: Sequence[str]) -> str:
+    """Refuse, before anything runs, a query that is not exactly one SELECT. Returns that
+    statement without the `;` and the comments that end it."""
     try:
-        statements = duckdb.extract_statements(query)
+        statements = connection.extract_statements(query)
     except duckdb.Error as exc:
         raise _failed(exc, names) from exc
     if not statements:
@@ -98,28 +137,64 @@ def _check(query: str, names: Sequence[str]) -> None:
         msg = f"{ONLY_SELECT}, not {len(statements)} statements"
         raise StoreError(msg)
     kind = statements[0].type
+    if kind == duckdb.StatementType.MULTI:
+        msg = (
+            f"{ONLY_SELECT}, not MULTI "
+            "(a PIVOT without an IN list is several statements: list its values with IN (...))"
+        )
+        raise StoreError(msg)
     if kind != duckdb.StatementType.SELECT:
         msg = f"{ONLY_SELECT}, not {kind.name}"
         raise StoreError(msg)
+    return _without_tail(statements[0].query)
 
 
-def _rows(paths: Sequence[pathlib.Path]) -> str:
-    """Every row of the Parquet files, read together by column name, with `id`, the name of its
-    file, and `position`, where it sits in that file. The stamps are cast to TIMESTAMPTZ: DuckDB
-    reads them as TIMESTAMPTZ_NS, which compares with no other time and reaches pandas without its
-    zone (the store's stamps are whole microseconds, so nothing is lost)."""
+def _without_tail(statement: str) -> str:
+    """The statement without the comments and the `;` after its last word."""
+    end = len(statement)
+    for start, kind in reversed(duckdb.tokenize(statement)):
+        if kind != duckdb.token_type.comment and statement[start:end].strip() != ";":
+            break
+        end = start
+    return statement[:end]
+
+
+def _base(
+    connection: duckdb.DuckDBPyConnection, source: str, paths: Sequence[pathlib.Path], expected: Sequence[str]
+) -> str:
+    """Create the hidden view of a source's rows, which both of its views read, and return its
+    name. Every row of the Parquet files, read together by column name, with `__id`, the name of
+    its file, and `__position`, where it sits in that file; a column of `expected` that no file
+    has is missing in every row. The stamps are cast to TIMESTAMPTZ: DuckDB reads them as
+    TIMESTAMPTZ_NS, which compares with no other time and reaches pandas without its zone (the
+    store's stamps are whole microseconds, so nothing is lost).
+
+    The view is made once for the files as they are (every file the store writes has the stamps),
+    and made again, with the missing columns, only when it lacks one: reading the files' columns
+    first would read every file's footer once more."""
     listed = ", ".join(_text(path.as_posix()) for path in paths)
-    return (
-        "(SELECT parse_filename(filename, true) AS id, "  # noqa: S608 - quoted names
-        "* EXCLUDE (filename, file_row_number) "
-        "REPLACE (fetched_at::TIMESTAMPTZ AS fetched_at, published_at::TIMESTAMPTZ AS published_at), "
-        "file_row_number AS position "
-        f"FROM read_parquet([{listed}], union_by_name = true, filename = true, file_row_number = true))"
-    )
+    read = f"read_parquet([{listed}], union_by_name = true, filename = true, file_row_number = true)"
+    casts = ", ".join(f"{quote(column)}::TIMESTAMPTZ AS {quote(column)}" for column in st.STAMP_COLUMNS)
+    name = quote(BASE + source)
+
+    def create(missing: str) -> None:
+        connection.execute(
+            f"CREATE OR REPLACE VIEW {name} AS SELECT parse_filename(filename, true) AS {quote(ID)}, "  # noqa: S608
+            f"* EXCLUDE (filename, file_row_number) REPLACE ({casts}), "
+            f"file_row_number AS {quote(POSITION)}{missing} FROM {read}"
+        )
+
+    create("")
+    found = connection.execute("SELECT column_name FROM duckdb_columns() WHERE table_name = ?", [BASE + source])
+    present = {row[0] for row in found.fetchall()}
+    absent = [column for column in expected if column not in present]
+    if absent:
+        create("".join(f", NULL AS {quote(column)}" for column in absent))
+    return name
 
 
 def _chosen(
-    rows: str,
+    base: str,
     columns: Sequence[str],
     key: Sequence[str],
     order: Sequence[str],
@@ -128,11 +203,14 @@ def _chosen(
     by_publication: bool,
     keep: str = "true",
 ) -> str:
-    """A SELECT of `columns` from `rows`: per `key` the row storage.latest chooses (or, given a
-    moment, storage.as_of), among those that `keep`, sorted by `order` as those functions sort.
+    """A SELECT of `columns` (SQL, as selected) from `base`: per `key` the row storage.latest
+    chooses (or, given a moment, storage.as_of), among those that `keep`, sorted by `order` as
+    those functions sort.
 
-    `rows` holds `position`: of rows that tie on every stamp, pandas keeps the later one.
+    `base` holds `__position`: of rows that tie on every stamp, pandas keeps the later one.
     """
+    known = quote(KNOWN)
+    position = quote(POSITION)
     if moment is None and not by_publication:
         # the row fetched last, then published last; a missing stamp is the earliest
         rank = "fetched_at DESC NULLS LAST, published_at DESC NULLS LAST"
@@ -140,32 +218,31 @@ def _chosen(
         visible = "true"
     else:
         # the row known last, then fetched last; a missing stamp is the latest
-        rank = "known_at DESC NULLS FIRST, fetched_at DESC NULLS FIRST"
-        stamps = "known_at NULLS LAST, fetched_at NULLS LAST"
-        visible = "true" if moment is None else f"known_at <= TIMESTAMPTZ {_text(moment.floor('us').isoformat())}"
+        rank = f"{known} DESC NULLS FIRST, fetched_at DESC NULLS FIRST"
+        stamps = f"{known} NULLS LAST, fetched_at NULLS LAST"
+        visible = "true" if moment is None else f"{known} <= TIMESTAMPTZ {_text(moment.floor('us').isoformat())}"
     partition = ", ".join(quote(column) for column in key)
     sort = ", ".join(f"{quote(column)} NULLS LAST" for column in order)
-    selected = ", ".join(quote(column) for column in columns)
     return (
-        f"SELECT {selected} FROM ("  # noqa: S608 - quoted names
-        f"SELECT *, row_number() OVER (PARTITION BY {partition} ORDER BY {rank}, position DESC) AS chosen "
-        f"FROM (SELECT *, coalesce(published_at, fetched_at) AS known_at FROM {rows}) WHERE {visible}"
-        f") WHERE chosen = 1 AND {keep} ORDER BY {sort}, {stamps}, position"
+        f"SELECT {', '.join(columns)} FROM ("  # noqa: S608 - quoted names
+        f"SELECT *, row_number() OVER (PARTITION BY {partition} ORDER BY {rank}, {position} DESC) AS {quote(CHOSEN)} "
+        f"FROM (SELECT *, coalesce(published_at, fetched_at) AS {known} FROM {base}) WHERE {visible}"
+        f") WHERE {quote(CHOSEN)} = 1 AND {keep} ORDER BY {sort}, {stamps}, {position}"
     )
 
 
 def _series_views(
     connection: duckdb.DuckDBPyConnection, storage: st.Storage, source: str, moment: pd.Timestamp | None
 ) -> None:
-    rows = _rows([storage.series_path(source)])
+    base = _base(connection, source, [storage.series_path(source)], SERIES_COLUMNS)
     every = ", ".join(quote(column) for column in [*SERIES_COLUMNS, *st.STAMP_COLUMNS])
     connection.execute(
-        f"CREATE VIEW {quote(source + VERSIONS)} AS SELECT {every} FROM {rows} "  # noqa: S608 - quoted names
-        'ORDER BY "key", "date", fetched_at NULLS FIRST, published_at NULLS FIRST, position'
+        f"CREATE VIEW {quote(source + VERSIONS)} AS SELECT {every} FROM {base} "  # noqa: S608 - quoted names
+        f'ORDER BY "key", "date", fetched_at NULLS FIRST, published_at NULLS FIRST, {quote(POSITION)}'
     )
     current = _chosen(
-        rows,
-        ["key", "date", "period", "value"],
+        base,
+        [quote(column) for column in ["key", "date", "period", "value"]],
         st.KEY,
         st.SERIES_ORDER,
         moment,
@@ -179,18 +256,21 @@ def _table_views(
     connection: duckdb.DuckDBPyConnection, storage: st.Storage, source: str, moment: pd.Timestamp | None
 ) -> None:
     schema = storage.table_schema(source)
-    rows = _rows([storage.table_path(source, name) for name in storage.table_names(source)])
-    every = ", ".join(quote(column) for column in ["id", *schema.columns, *st.STAMP_COLUMNS])
+    paths = [storage.table_path(source, name) for name in storage.table_names(source)]
+    base = _base(connection, source, paths, schema.columns)
+    public = f"{quote(ID)} AS id"  # the id of the catalog entry whose table holds the row
+    every = ", ".join([public, *(quote(column) for column in [*schema.columns, *st.STAMP_COLUMNS])])
     connection.execute(
         f"CREATE VIEW {quote(source + VERSIONS)} AS SELECT {every} "  # noqa: S608 - quoted names
-        f"FROM {rows} ORDER BY id, position"
+        f"FROM {base} ORDER BY {quote(ID)}, {quote(POSITION)}"
     )
     current = _chosen(
-        rows,
-        ["id", *schema.columns],
-        ["id", *schema.key_columns],
-        ["id", *schema.row_order],
+        base,
+        [public, *(quote(column) for column in schema.columns)],
+        [ID, *schema.key_columns],
+        [ID, *schema.row_order],
         moment,
         by_publication=schema.versioned,
     )
     connection.execute(f"CREATE VIEW {quote(source)} AS {current}")
+
