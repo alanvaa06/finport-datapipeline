@@ -1,4 +1,6 @@
 import datetime
+import subprocess
+import sys
 
 import click.testing
 import duckdb
@@ -132,3 +134,56 @@ def test_what_it_prints_is_ascii(root):
 def test_the_command_is_listed_beside_the_others():
     result = click.testing.CliRunner().invoke(cli, ["--help"])
     assert "  sql " in result.output
+
+
+def test_a_non_ascii_message_of_duckdb_is_printed_in_ascii(root):
+    result = run("--root", str(root), "SELECT * FROM café")
+    assert result.exit_code == 2
+    assert result.output.isascii()
+    assert "caf?" in result.output
+
+
+@pytest.mark.parametrize("name", ["rows.csv", "rows.duckdb", "series/rows.parquet"])
+def test_an_out_inside_the_store_is_refused_and_nothing_is_written(root, name):
+    path = root / name
+    result = run("--root", str(root), LAST, "--out", str(path))
+    assert result.exit_code == 2
+    assert result.output.splitlines() == [f"[x]   sql: cannot write {path.name!r} inside the store {str(root)!r}"]
+    assert not path.exists()
+
+
+def test_an_out_beside_the_store_is_not_inside_it(root, tmp_path):
+    (tmp_path / "store2").mkdir()
+    assert run("--root", str(root), LAST, "--out", str(tmp_path / "store2" / "rows.csv")).exit_code == 0
+    assert run("--root", str(root), LAST, "--out", str(tmp_path / "store.csv")).exit_code == 0
+
+
+def test_a_root_that_does_not_exist_is_refused(tmp_path):
+    missing = tmp_path / "nowhere"
+    result = run("--root", str(missing), "SELECT 1")
+    assert result.exit_code == 2
+    assert result.output.splitlines() == [f"[x]   sql: the store folder {str(missing)!r} does not exist"]
+    assert not missing.exists()
+
+
+def test_a_duckdb_file_another_program_holds_exits_with_1_and_says_nothing_was_written(root, tmp_path):
+    path = tmp_path / "rows.duckdb"
+    with duckdb.connect(str(path)) as connection:
+        connection.execute("CREATE TABLE notes AS SELECT 'kept' AS note")
+    before = path.read_bytes()
+    hold = "import duckdb, sys; connection = duckdb.connect(sys.argv[1]); print('ready', flush=True); sys.stdin.read()"
+    holder = subprocess.Popen(  # another program with the file open
+        [sys.executable, "-c", hold, str(path)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True
+    )
+    try:
+        assert holder.stdout.readline().strip() == "ready"
+        result = run("--root", str(root), LAST, "--out", str(path))
+    finally:
+        holder.communicate()
+    assert result.exit_code == 1
+    lines = result.output.splitlines()
+    assert lines[0] == "1 rows, 1 columns"
+    assert lines[1].startswith(f"[x]   could not write {path}: IOException: ")
+    assert len(lines) == 2
+    assert "[ok]" not in result.output
+    assert path.read_bytes() == before

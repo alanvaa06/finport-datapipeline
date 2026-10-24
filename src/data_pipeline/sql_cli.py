@@ -19,6 +19,17 @@ WHERE = "sql"
 RESULT = "result"  # the table of a .duckdb file the rows go to
 
 
+def check_places(root: pathlib.Path, out: pathlib.Path | None) -> None:
+    """StoreError for a store folder that does not exist, and for an `--out` inside the store:
+    a file there could replace a file of the store."""
+    if not root.is_dir():
+        msg = f"{WHERE}: the store folder {str(root)!r} does not exist"
+        raise StoreError(msg)
+    if out is not None and out.resolve().is_relative_to(root.resolve()):
+        msg = f"{WHERE}: cannot write {out.name!r} inside the store {str(root)!r}"
+        raise StoreError(msg)
+
+
 def cell(value: object) -> str:
     """A value as the console shows it: a day without its midnight, a moment in ISO form."""
     if isinstance(value, pd.Timestamp):
@@ -51,6 +62,7 @@ def sql_command(*, root: pathlib.Path, query: str, as_of: str | None, out: pathl
     """
     try:
         target = destination(out, where=WHERE)
+        check_places(root, out)
         data = Store(root).sql(query, as_of=as_of)
     except StoreError as exc:
         raise fail(exc) from exc
