@@ -229,7 +229,9 @@ read it as text: `pd.read_csv(path, dtype={"id": str, "product": str})`. The fie
 
 A `.duckdb` file is a [DuckDB](https://duckdb.org) database that grows a fetch at a time: each
 source is a table named after it (`sharadar_prices`), and the rows of a fetch replace that table's
-rows of the same ids, in one transaction, while every other row and table stays. A source that
+rows of the same ids, in one transaction, while every other row and table stays. All of an id's
+rows are replaced, not only the days the fetch brought: fetching AAPL again with a later `start`
+leaves only the days from that `start` (fetch it without `start` to have them all back). A source that
 gained a column gets it, empty in the rows fetched before. Only one program can write a DuckDB
 file at a time: a file another program has open raises `FetchError` with the rows in
 `error.data`, and the file is as it was. The database keeps no versions: only a store answers
@@ -280,16 +282,19 @@ what `store.table` takes, with the same meaning. Documents (`sec_filings`) have 
 with `store.documents`.
 
 `sql` runs one `SELECT` (or `WITH ... SELECT`) per call. Anything else (`CREATE`, `INSERT`,
-`COPY ... TO`, `ATTACH`, `INSTALL`, `SET`, or two statements) is refused before it runs, so a
-query never writes a file or changes the store. A query DuckDB refuses, such as a name that does
-not exist, raises `StoreError` with DuckDB's message and the names a query can read; the command
-prints them and exits with 2. A `SELECT` can still read other files on your computer (`SELECT *
+`COPY ... TO`, `ATTACH`, `INSTALL`, `SET`, or two statements) is refused before it runs, a
+`WITH` that writes (`WITH x AS (COPY ...)`) is refused by DuckDB, and the connection's settings
+are locked, so a query does not write a file or change the store. A query DuckDB refuses, such as
+a name that does not exist, raises `StoreError` with DuckDB's message and the names a query can
+read; the command prints them and exits with 2. Every query reads every source's files, so a
+file DuckDB cannot read fails any query, with `StoreError` naming its source. A `SELECT` can still read other files on your computer (`SELECT *
 FROM read_csv('C:/notes.csv')`): it runs with your rights, like any program you run.
 
 Without `--out`, the command prints the first rows. `--out` takes the files `fetch` writes: a
 `.parquet` or `.csv` file is replaced, and in a `.duckdb` file the rows replace the table
 `result`, while the file's other tables stay. The command exits with 1 when the file cannot be
-written.
+written, and with 2, writing nothing, when `--out` is inside the store or `--root` does not
+exist.
 
 ## The macro catalog
 

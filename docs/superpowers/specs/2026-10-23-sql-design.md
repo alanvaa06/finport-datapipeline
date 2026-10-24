@@ -1,7 +1,7 @@
 # Design — SQL: `fetch` into DuckDB, and SQL over the store
 
 Date: 2026-10-23
-Status: Draft, waiting for review
+Status: Approved; brought up to date with what was built
 Builds on: `2026-10-22-fetch-without-store-design.md` (its registry of destinations by suffix),
 the store's reading rules (`Store.table`, `Store.series`, `storage.latest`, `storage.as_of`) and
 the Sharadar specs (the data terms apply to anything this writes).
@@ -20,24 +20,27 @@ Two ways to use SQL with the library, both on DuckDB:
 
 | Decision | Choice |
 |---|---|
-| Engine | DuckDB, a regular dependency of the package (`duckdb>=1.1,<3`) |
+| Engine | DuckDB, a regular dependency of the package (`duckdb>=2.0,<3`, the version tested) |
 | `fetch` into SQL | `to="name.duckdb"` / `--out name.duckdb`, one more entry of the registry of destinations; no signature changes |
 | Table of a `fetch` | Named after the source; the columns of the frame `fetch` returns |
-| A second `fetch` into the same file | The rows of the ids fetched replace that source's rows of those ids; every other row stays |
+| A second `fetch` into the same file | The rows of the ids fetched replace that source's rows of those ids, all of them (a later `start` leaves only the later days); every other row stays |
 | SQL over the store | `Store.sql(query, *, as_of=None)` returns a DataFrame; `data-pipeline sql` with `--root`, `--as-of`, `--out` |
-| What a query sees | Per source with data: `<source>` (the latest row of each key, or the one in force at `as_of`) and `<source>_versions` (every stored row); `store_index` (the index) |
-| Writing through `sql` | Never: one `SELECT` (or `WITH ... SELECT`) per call, anything else refused before it runs |
+| What a query sees | Per source with data: `<source>` (the latest row of each key, or the one in force at `as_of`) and `<source>_versions` (every stored row); `store_index` (the index). A table source's views start with `id`, the id of its catalog entry |
+| Writing through `sql` | Never: one `SELECT` (or `WITH ... SELECT`) per call, anything else refused before it runs; the statement runs as a subquery and the connection's settings are locked |
+| `sql --out x.duckdb` | The table `result`, replaced whole; the file's other tables stay |
 | A `.duckdb` file of views for other tools | Out of scope |
 
 ## `fetch` into a DuckDB file
 
 - `fetching.py`'s registry gains `.duckdb`. Its writer opens (or creates) the file with
   `duckdb.connect(path)` and, in one transaction:
-  1. creates the table `<source>` from the frame when it does not exist;
+  1. creates the table `<source>` from the frame when it does not exist (a text column whose first
+     values are empty is created as text);
   2. adds to the table every column of the frame it lacks (a source that gained a column);
   3. deletes the table's rows whose `id` is among the ids of this fetch;
   4. inserts the frame's rows by column name; columns of the table the frame lacks stay empty.
-  If any step fails, the transaction rolls back and the file is as it was.
+  If any step fails, the transaction rolls back and the file is as it was; a rollback that fails
+  too never hides the first error.
 - The frame's columns are the ones `fetch` already returns: series `id, date, period, value`;
   tables `id`, then the key columns, `date`, values and attributes. Types follow the frame (text,
   floating point, dates and timestamps with their zone).
@@ -64,7 +67,8 @@ data-pipeline sql --root D:/data "SELECT ..." [--as-of 2024-03-01] [--out result
 - `as_of` takes what `Store.table(..., as_of=)` takes, with the same meaning.
 - `--out` takes the destinations of `fetch` (`.parquet`, `.csv`, `.duckdb`); without it, the
   console shows a summary and the first rows, as `fetch` does. Everything printed is ASCII.
-- Exit codes: 0 done, 2 a query refused or failed, or a bad option.
+- Exit codes: 0 done, 1 `--out` could not be written, 2 a query refused or failed, a bad option,
+  a `--root` that does not exist or an `--out` inside the store (nothing written).
 
 ### What a query sees
 
@@ -81,7 +85,10 @@ every source with stored data:
 - `store_index`: the index, as `Store.index()` returns it.
 
 A source without files has no names. A name that does not exist fails the query with DuckDB's
-message and the list of the names defined.
+message and the list of the names defined. Both views of a source read its files through one
+hidden view; a source whose files DuckDB cannot read fails the call with `StoreError` naming it.
+A column of the schema that no file has reads as empty. The library's working columns start
+with `__`, so a source column never clashes with them.
 
 How the latest row is chosen in SQL (window functions over the key columns of the source's
 `schema.json`, ordered as `storage.latest` and `storage.as_of` order) is checked against the
@@ -92,7 +99,12 @@ built from the store's functions instead.
 
 The query is parsed with DuckDB's own parser before it runs. Anything but a single statement of
 type `SELECT` (which includes `WITH ... SELECT`) is refused: `CREATE`, `INSERT`, `COPY ... TO`,
-`ATTACH`, `INSTALL`, `SET`, several statements. So `sql` never writes a file or changes the store.
+`ATTACH`, `INSTALL`, `SET`, several statements. DuckDB 2.0 accepts a `COPY`, `INSERT`, `UPDATE`
+or `DELETE` inside a `WITH` and calls the whole statement a `SELECT`; so the statement runs as
+`SELECT * FROM (<statement>)`, where DuckDB refuses a `WITH` that writes. The connection turns
+off loading extensions on its own, sets its time zone, a temporary folder of its own and no
+reading of Python variables, then locks its settings, so `enable_logging` and the like cannot
+write files. So `sql` does not write a file or change the store. It is not a sandbox:
 A `SELECT` can still read other local files (`read_csv('...')`): it runs on the user's own
 machine, with the user's rights; the README says so.
 
@@ -102,13 +114,17 @@ machine, with the user's rights; the README says so.
 |---|---|
 | A query that is not a single `SELECT` | `StoreError` "only one SELECT is accepted", before it runs; exit 2 |
 | A query DuckDB refuses (syntax, unknown name, type) | `StoreError` with DuckDB's message and the names defined; exit 2 |
+| A source whose files DuckDB cannot read | `StoreError` naming the source, for any query; exit 2 |
+| `sql --root` a folder that does not exist, or `--out` inside the store | Refused, nothing written; exit 2 |
+| `sql --out` a file that cannot be written | The message; exit 1 |
 | An empty store | Only `store_index` is defined |
 | `fetch` into a `.duckdb` another program holds | `FetchError` with the rows; the file is unchanged |
 
 ## Limits
 
-- Each query reads the files when it runs, with no index. Fine for the store of 2026-10-23
-  (234 MB); a store ten times larger is not measured.
+- Each query reads the files when it runs, with no index, and defines the views of every source
+  whatever it reads: two sources of 900 files each took about 1 s a query. Fine for the store of
+  2026-10-23 (234 MB, about 1,760 files); a store ten times larger is not measured.
 - DuckDB lets one program write a `.duckdb` file at a time.
 - A database built by `fetch` keeps no versions: only the store answers `as_of`.
 
