@@ -48,7 +48,7 @@ First version.
 - Values are returned as stored: nothing rescales them. In the `macro` catalog, 38 series carry
   `attrs.units_differ` because their unit differs from the rest of their indicator (millions of
   USD next to USD, for example), so arithmetic across them is off by that scale until
-  [#13](https://github.com/alanvaa06/finport-datapipeline/issues/13) applies a scale per series.
+  [#1](https://github.com/alanvaa06/finport-datapipeline/issues/1) applies a scale per series.
 - pandas 3 is not supported yet: the store's tests fail on it, so the dependency is `pandas<3`.
 
 ### Fixed during development
