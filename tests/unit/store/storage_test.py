@@ -1,0 +1,364 @@
+import datetime
+import errno
+import json
+import math
+import os
+import pathlib
+import sys
+import time
+
+import pandas as pd
+import pytest
+
+from data_pipeline import _files as files_module
+from data_pipeline.store.errors import StoreError
+from data_pipeline.store.storage import (
+    INDEX_COLUMNS,
+    OBS_COLUMNS,
+    OBS_DTYPES,
+    Storage,
+    TableSchema,
+    append_changes,
+    as_of,
+    empty_index,
+    empty_observations,
+    latest,
+    to_moment,
+    typed,
+)
+
+JUNE_6 = datetime.datetime(2026, 6, 6, 12, 0, tzinfo=datetime.UTC)
+JULY_4 = datetime.datetime(2026, 7, 4, 12, 0, tzinfo=datetime.UTC)
+AUGUST_8 = datetime.datetime(2026, 8, 8, 12, 0, tzinfo=datetime.UTC)
+DAYS = {"2026-03": "2026-03-31", "2026-04": "2026-04-30", "2026-05": "2026-05-31", "2026-06": "2026-06-30"}
+
+
+def rows(values, fetched_at, *, key="fred:UNRATE", projection=False, published_at=None):
+    """Observation frame from {"2026-05": 4.1, ...}."""
+    return typed(
+        [
+            {
+                "key": key,
+                "period": period,
+                "date": DAYS[period],
+                "value": value,
+                "projection": projection,
+                "fetched_at": fetched_at,
+                "published_at": published_at,
+            }
+            for period, value in values.items()
+        ],
+        OBS_DTYPES,
+    )
+
+
+def values_of(frame):
+    return dict(zip(frame["period"], frame["value"], strict=True))
+
+
+def test_empty_frames_have_the_declared_columns():
+    assert list(empty_observations().columns) == OBS_COLUMNS
+    assert list(empty_index().columns) == INDEX_COLUMNS
+    assert empty_observations().empty
+
+
+def test_first_rows_are_all_added():
+    merged, added, revised = append_changes(empty_observations(), rows({"2026-04": 4.0, "2026-05": 4.1}, JUNE_6))
+    assert (len(merged), added, revised) == (2, 2, 0)
+
+
+def test_the_same_data_again_adds_nothing():
+    stored, _, _ = append_changes(empty_observations(), rows({"2026-04": 4.0, "2026-05": math.nan}, JUNE_6))
+    merged, added, revised = append_changes(stored, rows({"2026-04": 4.0, "2026-05": math.nan}, JULY_4))
+    assert (len(merged), added, revised) == (2, 0, 0)
+    assert merged is stored
+
+
+def test_a_changed_value_adds_a_row_and_keeps_the_old_one():
+    stored, _, _ = append_changes(empty_observations(), rows({"2026-05": 4.1}, JUNE_6))
+    merged, added, revised = append_changes(stored, rows({"2026-05": 4.2}, JULY_4))
+    assert (len(merged), added, revised) == (2, 0, 1)
+    assert list(merged["value"]) == [4.1, 4.2]
+
+
+def test_float_noise_is_not_a_revision():
+    stored, _, _ = append_changes(empty_observations(), rows({"2026-05": 4.1}, JUNE_6))
+    merged, added, revised = append_changes(stored, rows({"2026-05": 4.1 * (1 + 1e-12)}, JULY_4))
+    assert (len(merged), added, revised) == (1, 0, 0)
+
+
+def test_a_missing_value_that_arrives_later_is_new_not_revised():
+    stored, added, _ = append_changes(empty_observations(), rows({"2026-05": math.nan}, JUNE_6))
+    assert added == 0
+    merged, added, revised = append_changes(stored, rows({"2026-05": 4.1}, JULY_4))
+    assert (len(merged), added, revised) == (2, 1, 0)
+
+
+def test_a_number_that_becomes_missing_is_a_revision():
+    stored, _, _ = append_changes(empty_observations(), rows({"2026-05": 4.1}, JUNE_6))
+    merged, added, revised = append_changes(stored, rows({"2026-05": math.nan}, JULY_4))
+    assert (len(merged), added, revised) == (2, 0, 1)
+
+
+def test_a_projection_that_becomes_actual_is_a_change_even_with_the_same_value():
+    stored, _, _ = append_changes(empty_observations(), rows({"2026-06": 4.3}, JUNE_6, projection=True))
+    merged, added, revised = append_changes(stored, rows({"2026-06": 4.3}, JULY_4, projection=False))
+    assert (len(merged), added, revised) == (2, 0, 1)
+
+
+def test_keys_do_not_interfere():
+    stored, _, _ = append_changes(empty_observations(), rows({"2026-05": 4.1}, JUNE_6, key="fred:A"))
+    merged, added, _ = append_changes(stored, rows({"2026-05": 9.9}, JUNE_6, key="fred:B"))
+    assert (len(merged), added) == (2, 1)
+
+
+def test_latest_returns_the_row_fetched_last():
+    stored, _, _ = append_changes(empty_observations(), rows({"2026-04": 4.0, "2026-05": 4.1}, JUNE_6))
+    stored, _, _ = append_changes(stored, rows({"2026-05": 4.2}, JULY_4))
+    assert values_of(latest(stored)) == {"2026-04": 4.0, "2026-05": 4.2}
+
+
+def test_as_of_returns_what_was_known_then():
+    stored, _, _ = append_changes(empty_observations(), rows({"2026-04": 4.0, "2026-05": 4.1}, JUNE_6))
+    stored, _, _ = append_changes(stored, rows({"2026-05": 4.2, "2026-06": 4.3}, JULY_4))
+    assert values_of(as_of(stored, to_moment("2026-06-15"))) == {"2026-04": 4.0, "2026-05": 4.1}
+    assert values_of(as_of(stored, to_moment("2026-07-04"))) == {"2026-04": 4.0, "2026-05": 4.2, "2026-06": 4.3}
+    assert as_of(stored, to_moment("2026-01-01")).empty
+
+
+def test_as_of_prefers_the_source_publication_date():
+    published = datetime.datetime(2026, 5, 2, tzinfo=datetime.UTC)
+    stored, _, _ = append_changes(empty_observations(), rows({"2026-03": 4.0}, AUGUST_8, published_at=published))
+    assert values_of(as_of(stored, to_moment("2026-05-02"))) == {"2026-03": 4.0}
+    assert as_of(stored, to_moment("2026-05-01")).empty
+
+
+def test_to_moment_reads_dates_as_end_of_day_utc():
+    end = pd.Timestamp("2026-06-15 23:59:59.999999", tz="UTC")
+    assert to_moment("2026-06-15") == end
+    assert to_moment(datetime.date(2026, 6, 15)) == end
+    assert to_moment(datetime.datetime(2026, 6, 15, 8, 0)) == pd.Timestamp("2026-06-15 08:00", tz="UTC")
+    assert to_moment("2026-06-15T08:00:00+02:00") == pd.Timestamp("2026-06-15 06:00", tz="UTC")
+
+
+def test_observations_survive_a_round_trip(tmp_path):
+    storage = Storage(tmp_path)
+    stored, _, _ = append_changes(empty_observations(), rows({"2026-04": 4.0, "2026-05": math.nan}, JUNE_6))
+    storage.write_observations("fred", stored)
+    again = storage.read_observations("fred")
+    assert list(again.columns) == OBS_COLUMNS
+    merged, added, revised = append_changes(again, rows({"2026-04": 4.0, "2026-05": math.nan}, JULY_4))
+    assert (len(merged), added, revised) == (2, 0, 0)
+    assert not list(tmp_path.rglob("*.tmp"))
+
+
+def test_missing_files_read_as_empty(tmp_path):
+    storage = Storage(tmp_path / "nowhere")
+    assert storage.read_observations("fred").empty
+    assert storage.read_index().empty
+    assert storage.read_runs() == {}
+
+
+def test_runs_round_trip(tmp_path):
+    storage = Storage(tmp_path)
+    storage.write_runs({"fred": {"ok": 3}})
+    assert storage.read_runs() == {"fred": {"ok": 3}}
+
+
+def test_prepare_writes_the_schema_marker_once(tmp_path):
+    storage = Storage(tmp_path / "store")
+    storage.prepare()
+    storage.prepare()
+    assert json.loads((tmp_path / "store" / "store.json").read_text(encoding="utf-8")) == {"schema_version": 1}
+
+
+def test_prepare_removes_what_writes_that_died_left_in_the_store_and_nothing_else(tmp_path):
+    # a process killed between creating a temporary file and the replacement leaves it behind
+    storage = Storage(tmp_path / "store")
+    storage.prepare()
+    moment = time.time() - 7200
+    left = [
+        tmp_path / "store" / "index.parquet.0123abcd.tmp",
+        tmp_path / "store" / "series" / "fred.parquet.89ef0123.tmp",
+        tmp_path / "store" / "tables" / "comtrade" / "MEX.parquet.4567cdef.tmp",
+        tmp_path / "store" / "documents" / "sec_filings" / "AAPL" / "0001" / "a.htm.0a1b2c3d.tmp",
+    ]
+    other = tmp_path / "store" / "notes" / "draft.docx.0123abcd.tmp"  # not a folder the store writes in
+    for path in [*left, other]:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"half")
+        os.utime(path, (moment, moment))
+    storage.prepare()
+    assert [path.exists() for path in left] == [False] * 4
+    assert other.exists()
+
+
+def test_prepare_refuses_another_schema(tmp_path):
+    (tmp_path / "store.json").write_text('{"schema_version": 99}', encoding="utf-8")
+    with pytest.raises(StoreError, match="schema_version 99"):
+        Storage(tmp_path).prepare()
+
+
+def test_a_file_held_open_by_a_reader_is_retried_and_then_written(tmp_path, monkeypatch):
+    storage = Storage(tmp_path)
+    stored, _, _ = append_changes(empty_observations(), rows({"2026-05": 4.1}, JUNE_6))
+    storage.write_observations("fred", stored)
+    real = type(tmp_path).replace
+    attempts = []
+
+    def busy_twice(self, target):
+        attempts.append(target)
+        if len(attempts) <= 2:
+            raise PermissionError(13, "the file is being used by another process")
+        return real(self, target)
+
+    waits = []
+    monkeypatch.setattr(type(tmp_path), "replace", busy_twice)
+    monkeypatch.setattr(files_module, "_sleep", waits.append)
+    more, _, _ = append_changes(stored, rows({"2026-06": 4.3}, JULY_4))
+    storage.write_observations("fred", more)
+    assert len(attempts) == 3
+    assert len(waits) == 2
+    assert len(storage.read_observations("fred")) == 2
+
+
+def test_a_file_that_stays_open_is_a_clear_error_and_the_old_data_survives(tmp_path, monkeypatch):
+    storage = Storage(tmp_path)
+    stored, _, _ = append_changes(empty_observations(), rows({"2026-05": 4.1}, JUNE_6))
+    storage.write_observations("fred", stored)
+
+    def always_busy(_self, _target):
+        raise PermissionError(13, "the file is being used by another process")
+
+    monkeypatch.setattr(type(tmp_path), "replace", always_busy)
+    monkeypatch.setattr(files_module, "_sleep", lambda _seconds: None)
+    more, _, _ = append_changes(stored, rows({"2026-06": 4.3}, JULY_4))
+    with pytest.raises(StoreError, match="another program has it open"):
+        storage.write_observations("fred", more)
+    monkeypatch.undo()
+    assert len(storage.read_observations("fred")) == 1
+
+
+def test_latest_prefers_the_newest_publication_among_rows_of_one_fetch():
+    may = datetime.datetime(2026, 5, 8, tzinfo=datetime.UTC)
+    june = datetime.datetime(2026, 6, 5, tzinfo=datetime.UTC)
+    newest_first = pd.concat(
+        [rows({"2026-04": 4.1}, JUNE_6, published_at=june), rows({"2026-04": 4.0}, JUNE_6, published_at=may)],
+        ignore_index=True,
+    )
+    assert values_of(latest(newest_first)) == {"2026-04": 4.1}
+
+
+EVERY_FILE = pytest.mark.parametrize(
+    ("name", "read"),
+    [
+        ("series/fred.parquet", lambda storage: storage.read_observations("fred")),
+        ("index.parquet", lambda storage: storage.read_index()),
+        ("runs.json", lambda storage: storage.read_runs()),
+        ("store.json", lambda storage: storage.prepare()),
+        ("tables/comtrade/MEX.parquet", lambda storage: storage.read_table("comtrade", "MEX")),
+        ("tables/comtrade/schema.json", lambda storage: storage.table_schema("comtrade")),
+        ("documents/sec_filings/AAPL.parquet", lambda storage: storage.read_documents("sec_filings", "AAPL")),
+    ],
+)
+
+
+@EVERY_FILE
+def test_a_damaged_file_is_a_store_error_that_names_it(tmp_path, name, read):
+    path = tmp_path / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"\x00" * 64)  # what a power cut can leave behind
+    with pytest.raises(StoreError, match=r"cannot be read .*restore it from a backup or move it aside") as raised:
+        read(Storage(tmp_path))
+    assert str(path) in str(raised.value)
+
+
+@EVERY_FILE
+def test_a_file_the_system_will_not_open_is_not_called_damaged(tmp_path, monkeypatch, name, read):
+    path = tmp_path / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"\x00" * 64)
+
+    def refused(*_args, **_options):
+        raise PermissionError(errno.EACCES, "Permission denied")  # OneDrive, an antivirus or Excel holds it
+
+    monkeypatch.setattr(pd, "read_parquet", refused)
+    monkeypatch.setattr(pathlib.Path, "read_text", refused)
+    with pytest.raises(StoreError, match=r"could not be opened \(PermissionError: .*Permission denied\)") as raised:
+        read(Storage(tmp_path))
+    assert str(path) in str(raised.value)
+    assert "damaged" not in str(raised.value)
+    assert "backup" not in str(raised.value)
+
+
+def test_a_corruption_that_pyarrow_reports_as_an_oserror_is_still_called_damaged(tmp_path, monkeypatch):
+    def corrupt(*_args, **_options):
+        msg = "Corrupt snappy compressed data."  # what pyarrow raises for a torn page, without an errno
+        raise OSError(msg)
+
+    (tmp_path / "index.parquet").write_bytes(b"\x00" * 64)
+    monkeypatch.setattr(pd, "read_parquet", corrupt)
+    with pytest.raises(StoreError, match=r"cannot be read .*restore it from a backup or move it aside"):
+        Storage(tmp_path).read_index()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="a file opened without sharing is a Windows thing")
+def test_a_file_another_program_holds_exclusively_could_not_be_opened(tmp_path):
+    import ctypes  # Windows only, like the test
+    from ctypes import wintypes
+
+    storage = Storage(tmp_path)
+    storage.write_index(empty_index())
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.CreateFileW.restype = wintypes.HANDLE
+    generic_read, no_sharing, open_existing, normal = 0x80000000, 0, 3, 0x80
+    path = str(tmp_path / "index.parquet")
+    handle = kernel.CreateFileW(path, generic_read, no_sharing, None, open_existing, normal, None)
+    try:  # as Excel holds a file it opened
+        with pytest.raises(StoreError, match=r"index\.parquet: could not be opened"):
+            storage.read_index()
+    finally:
+        kernel.CloseHandle(handle)
+
+
+def test_every_write_reaches_the_disk_before_it_replaces_the_file(tmp_path, monkeypatch):
+    events = []
+    real_fsync, real_replace = files_module.os.fsync, files_module._replace
+    monkeypatch.setattr(files_module.os, "fsync", lambda descriptor: events.append("fsync") or real_fsync(descriptor))
+    monkeypatch.setattr(
+        files_module, "_replace", lambda temporary, path: events.append("replace") or real_replace(temporary, path)
+    )
+    monkeypatch.setattr(files_module, "_sync_folder", lambda _folder: events.append("folder"))
+    storage = Storage(tmp_path)
+    storage.write_observations("fred", rows({"2026-05": 4.1}, JUNE_6))
+    storage.write_runs({"fred": {"ok": 1}})
+    storage.write_document("sec_filings", "AAPL", "0001", "a.htm", b"<html></html>")
+    assert events == ["fsync", "replace", "folder"] * 3
+
+
+@pytest.mark.parametrize("day", ["2026-06-15", "20260615", " 2026-06-15 ", datetime.date(2026, 6, 15)])
+def test_every_date_without_a_time_means_the_end_of_that_day(day):
+    assert to_moment(day) == pd.Timestamp("2026-06-15 23:59:59.999999", tz="UTC")
+
+
+@pytest.mark.parametrize(
+    ("moment", "expected"),
+    [
+        ("2026-06-15T08:00Z", "2026-06-15 08:00"),
+        ("2026-06-15 08:00", "2026-06-15 08:00"),
+        (pd.Timestamp("2026-06-15"), "2026-06-15 00:00"),  # a datetime is an instant, even at midnight
+    ],
+)
+def test_a_time_makes_it_that_instant(moment, expected):
+    assert to_moment(moment) == pd.Timestamp(expected, tz="UTC")
+
+
+@pytest.mark.parametrize("text", ["2026/06/15", "2026-6-15", "15-06-2026", "June 15", ""])
+def test_text_that_is_not_an_iso_date_is_refused(text):
+    with pytest.raises(StoreError, match="is not a date: write it as 2026-06-15"):
+        to_moment(text)
+
+
+def test_a_reader_sorts_table_rows_by_the_key_columns_but_period_then_by_date():
+    schema = TableSchema(("ticker", "period", "item"), ("value",))
+    assert schema.row_order == ["ticker", "item", "date"]

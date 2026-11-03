@@ -1,0 +1,24 @@
+{
+ "bmx": {
+  "series": [
+   {
+    "idSerie": "SF43718",
+    "titulo": "Tipo de cambio Pesos por dolar E.U.A., serie de prueba",
+    "datos": [
+     {
+      "fecha": "03/03/2026",
+      "dato": "17.0821"
+     },
+     {
+      "fecha": "04/03/2026",
+      "dato": "N/E"
+     },
+     {
+      "fecha": "05/03/2026",
+      "dato": "1,204.5630"
+     }
+    ]
+   }
+  ]
+ }
+}

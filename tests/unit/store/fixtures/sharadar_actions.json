@@ -1,0 +1,9 @@
+{
+  "count": 4,
+  "data": [
+    {"date": "2026-03-03", "action": "split", "ticker": "XTEST", "name": "TEST CORP", "value": 2, "contraticker": "N/A", "contraname": "N/A"},
+    {"date": "2026-02-10", "action": "dividend", "ticker": "XTEST", "name": "TEST CORP", "value": 0.5, "contraticker": "N/A", "contraname": "N/A"},
+    {"date": "2026-02-10", "action": "dividend", "ticker": "XTEST", "name": "TEST CORP", "value": 0.1, "contraticker": "N/A", "contraname": "N/A"},
+    {"date": "2025-06-30", "action": "spinoff", "ticker": "XTEST", "name": "TEST CORP", "value": "N/A", "contraticker": "XSPUN", "contraname": "SPUN CORP"}
+  ]
+}

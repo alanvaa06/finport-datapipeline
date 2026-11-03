@@ -1,0 +1,36 @@
+{
+ "count": 3,
+ "data": [
+  {
+   "freqCode": "A",
+   "period": "2024",
+   "reporterCode": 484,
+   "partnerCode": 0,
+   "flowCode": "M",
+   "cmdCode": "09",
+   "netWgt": 0.0,
+   "primaryValue": 41250300.0
+  },
+  {
+   "freqCode": "A",
+   "period": "2024",
+   "reporterCode": 484,
+   "partnerCode": 0,
+   "flowCode": "X",
+   "cmdCode": "27",
+   "netWgt": 1520.0,
+   "primaryValue": 7340000.0
+  },
+  {
+   "freqCode": "A",
+   "period": "2024",
+   "reporterCode": 484,
+   "partnerCode": 0,
+   "flowCode": "X",
+   "cmdCode": "84",
+   "netWgt": null,
+   "primaryValue": 615000.0
+  }
+ ],
+ "error": ""
+}

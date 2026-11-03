@@ -1,0 +1,606 @@
+"""The store on disk: parquet in long format plus two small JSON files.
+
+  store.json               {"schema_version": 1}
+  index.parquet            one row per series: provenance and last result
+  series/<source>.parquet  observations (key, period, date, value, projection, fetched_at, published_at)
+  runs.json                per source: last run and its counts
+
+Observations are append-only: a changed value adds a row, nothing is rewritten or deleted.
+Every write goes to a temporary file, is flushed to the disk, and then replaces the target, so a
+run that dies halfway (or a power cut) never leaves a half-written file; the temporary file of a
+process killed mid-write is removed by the next sync, once it is an hour old. Missing files read
+as empty frames; a file that cannot be read is a StoreError that names it and says whether the
+system would not open it (another program holds it) or its content is damaged.
+"""
+
+import dataclasses
+import datetime
+import hashlib
+import json
+import pathlib
+from collections.abc import Mapping, Sequence
+from typing import Any
+
+import numpy as np
+import pandas as pd
+
+from data_pipeline._files import ReplaceRefusedError, sweep_temporary, write_atomic
+from data_pipeline.store.errors import StoreError
+from data_pipeline.store.model import check_name
+
+SCHEMA_VERSION = 1
+STORE_FILE = "store.json"
+INDEX_FILE = "index.parquet"
+RUNS_FILE = "runs.json"
+SERIES_DIR = "series"
+TABLES_DIR = "tables"
+TABLE_SCHEMA_FILE = "schema.json"
+KIND_SERIES = "series"
+KIND_TABLE = "table"
+KIND_DOCUMENT = "document"
+DOCUMENTS_DIR = "documents"
+DOCUMENT_COLUMNS = ["group", "date", "file", "role", "url", "size", "sha256", "fetched_at"]
+KEY = ["key", "period"]
+SERIES_ORDER = ["key", "date"]
+STAMP_COLUMNS = ["fetched_at", "published_at"]
+TOLERANCE = 1e-9  # relative: a value re-sent with float noise is not a revision
+UTC = "datetime64[ns, UTC]"
+DAY = "datetime64[ns]"
+OBS_DTYPES: Mapping[str, str] = {
+    "key": "object",
+    "period": "object",
+    "date": DAY,
+    "value": "float64",
+    "projection": "bool",
+    "fetched_at": UTC,
+    "published_at": UTC,
+}
+INDEX_DTYPES: Mapping[str, str] = {
+    "key": "object",
+    "alias": "object",
+    "source": "object",
+    "source_id": "object",
+    "name": "object",
+    "country": "object",
+    "frequency": "object",
+    "units": "object",
+    "seasonal_adjustment": "object",
+    "stale_after_days": "Int64",
+    "attrs": "object",
+    "first_fetched_at": UTC,
+    "last_fetched_at": UTC,
+    "last_period": "object",
+    "last_date": DAY,
+    "status": "object",
+    "reason": "object",
+    "kind": "object",
+    "asked_from": DAY,  # the earliest date a download of the series asked for; empty: its whole history
+}
+OBS_COLUMNS = list(OBS_DTYPES)
+INDEX_COLUMNS = list(INDEX_DTYPES)
+
+
+def typed(rows: Sequence[Mapping[str, Any]], dtypes: Mapping[str, str]) -> pd.DataFrame:
+    """A frame with exactly the columns of `dtypes`, each in its dtype. No rows -> empty frame."""
+    frame = pd.DataFrame(list(rows), columns=list(dtypes))
+    for column, dtype in dtypes.items():
+        if dtype == UTC:
+            frame[column] = pd.to_datetime(frame[column], utc=True).dt.as_unit("ns")
+        elif dtype == DAY:
+            frame[column] = pd.to_datetime(frame[column]).dt.as_unit("ns")
+    plain = {column: dtype for column, dtype in dtypes.items() if dtype not in (UTC, DAY)}
+    return frame.astype(plain)
+
+
+def records(frame: pd.DataFrame) -> list[dict[str, Any]]:
+    """The rows of a frame as dictionaries keyed by column name."""
+    return [{str(name): value for name, value in row.items()} for row in frame.to_dict(orient="records")]
+
+
+def empty_observations() -> pd.DataFrame:
+    return typed([], OBS_DTYPES)
+
+
+def empty_index() -> pd.DataFrame:
+    return typed([], INDEX_DTYPES)
+
+
+def _end_of(day: datetime.date) -> pd.Timestamp:
+    return pd.Timestamp(datetime.datetime.combine(day, datetime.time.max, tzinfo=datetime.UTC))
+
+
+def to_moment(value: str | datetime.date | datetime.datetime) -> pd.Timestamp:
+    """An as-of argument as a UTC instant, by one rule.
+
+    A date without a time (a `datetime.date`, or ISO text such as "2026-06-15" or "20260615")
+    means the end of that day, UTC. A `datetime` (a pandas Timestamp too, even at midnight) or ISO
+    text with a time ("2026-06-15T08:00+02:00") is that instant, UTC when it has no zone. Any
+    other text ("2026/06/15", "2026-6-15") is a StoreError rather than a guess.
+    """
+    if isinstance(value, datetime.datetime):
+        moment = pd.Timestamp(value)
+    elif isinstance(value, datetime.date):
+        moment = _end_of(value)
+    else:
+        text = str(value).strip()
+        try:
+            moment = _end_of(datetime.date.fromisoformat(text))
+        except ValueError:
+            try:
+                moment = pd.Timestamp(datetime.datetime.fromisoformat(text))
+            except ValueError:
+                msg = f"as_of {value!r} is not a date: write it as 2026-06-15, or with a time as 2026-06-15T08:00Z"
+                raise StoreError(msg) from None
+    return moment.tz_localize("UTC") if moment.tzinfo is None else moment.tz_convert("UTC")
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class TableSchema:
+    """Which columns of a source's tables are key, value and attribute, and how versions arrive."""
+
+    key_columns: tuple[str, ...]
+    value_columns: tuple[str, ...]
+    attribute_columns: tuple[str, ...] = ()
+    versioned: bool = False
+
+    @property
+    def columns(self) -> list[str]:
+        """The columns a reader gets, in order."""
+        return [*self.key_columns, "date", *self.value_columns, *self.attribute_columns]
+
+    @property
+    def row_order(self) -> list[str]:
+        """The columns a reader's rows are sorted by: the key columns but `period`, then `date`."""
+        return [*(column for column in self.key_columns if column != "period"), "date"]
+
+
+def latest(
+    observations: pd.DataFrame,
+    key: Sequence[str] = KEY,
+    order: Sequence[str] = SERIES_ORDER,
+    *,
+    by_publication: bool = False,
+) -> pd.DataFrame:
+    """Per key (for a series: key and period), the row fetched last; among the rows of one
+    fetch, the one published last. Sorted by `order`.
+
+    With `by_publication`, the row published last: for tables whose source dates every version.
+    """
+    if observations.empty:
+        return observations
+    if by_publication:
+        known_at = observations["published_at"].fillna(observations["fetched_at"])
+        ordered = observations.assign(known_at=known_at).sort_values(["known_at", "fetched_at"], kind="stable")
+        ordered = ordered.drop(columns="known_at")
+    else:
+        ordered = observations.sort_values(STAMP_COLUMNS, kind="stable", na_position="first")
+    current = ordered.drop_duplicates(list(key), keep="last")
+    return current.sort_values(list(order), kind="stable").reset_index(drop=True)
+
+
+def as_of(
+    observations: pd.DataFrame,
+    moment: pd.Timestamp,
+    key: Sequence[str] = KEY,
+    order: Sequence[str] = SERIES_ORDER,
+) -> pd.DataFrame:
+    """Per key (for a series: key and period), the row that was known at `moment`.
+
+    A row is known from its `published_at` when the source gives one, otherwise from its
+    `fetched_at`. Rows known later than `moment` are invisible.
+    """
+    if observations.empty:
+        return observations
+    known_at = observations["published_at"].fillna(observations["fetched_at"])
+    visible = observations.assign(known_at=known_at)[(known_at <= moment).to_numpy()]
+    ordered = visible.sort_values(["known_at", "fetched_at"], kind="stable")
+    current = ordered.drop_duplicates(list(key), keep="last").drop(columns="known_at")
+    return current.sort_values(list(order), kind="stable").reset_index(drop=True)
+
+
+def append_changes(old: pd.DataFrame, new: pd.DataFrame) -> tuple[pd.DataFrame, int, int]:
+    """Append to `old` the rows of `new` that differ from what is stored. Never touches a stored row.
+
+    A received (key, period) is appended when it has no stored row, or when its value or its
+    projection flag differs from the latest stored row. Two values are the same when both are
+    NaN or both are numbers within TOLERANCE.
+
+    Returns (merged, added, revised):
+      added   = appended rows that carry a number where the store had none
+      revised = appended rows that replace a stored number (with another number or with NaN)
+    """
+    if new.empty:
+        return old, 0, 0
+    received = new.drop_duplicates(KEY, keep="last").reset_index(drop=True)
+    current = latest(old)[[*KEY, "value", "projection"]]
+    both = received.merge(current, on=KEY, how="left", suffixes=("", "_old"), indicator=True)
+    known = (both["_merge"] == "both").to_numpy()
+    before = both["value_old"].to_numpy(dtype=float)
+    after = both["value"].to_numpy(dtype=float)
+    same_value = (np.isnan(before) & np.isnan(after)) | np.isclose(before, after, rtol=TOLERANCE, atol=0.0)
+    flag_before = both["projection_old"].where(known, both["projection"]).astype(bool).to_numpy()
+    same_flag = flag_before == both["projection"].astype(bool).to_numpy()
+    unchanged = known & same_value & same_flag
+    had_number = known & ~np.isnan(before)
+    added = int((~unchanged & ~had_number & ~np.isnan(after)).sum())
+    revised = int((~unchanged & had_number).sum())
+    to_append = received[~unchanged]
+    if to_append.empty:
+        return old, 0, 0
+    merged = to_append if old.empty else pd.concat([old, to_append], ignore_index=True)
+    merged = merged.sort_values(["key", "date", "fetched_at"], kind="stable").reset_index(drop=True)
+    return merged, added, revised
+
+
+def table_frame(
+    rows: Sequence[Mapping[str, Any]],
+    schema: TableSchema,
+    fetched_at: datetime.datetime,
+) -> pd.DataFrame:
+    """The rows of a table as a frame: key and attribute columns as text, value columns as
+    numbers, `date` as a day, and the two stamps every stored row carries. A versioned table
+    brings its own `published_at`."""
+    published = [row["published_at"] for row in rows] if schema.versioned else [pd.NaT] * len(rows)
+    frame = pd.DataFrame(list(rows), columns=schema.columns)
+    for column in (*schema.key_columns, *schema.attribute_columns):
+        frame[column] = frame[column].astype("object")
+    for column in schema.value_columns:
+        frame[column] = frame[column].astype("float64")
+    frame["date"] = pd.to_datetime(frame["date"]).dt.as_unit("ns")
+    # One block per converted column until copied: a wide table would warn of fragmentation.
+    frame = frame.copy()
+    frame["fetched_at"] = pd.Series([fetched_at] * len(frame), dtype=UTC)
+    frame["published_at"] = pd.Series(published, dtype=UTC)
+    return frame
+
+
+def append_versions(
+    old: pd.DataFrame,
+    new: pd.DataFrame,
+    key: Sequence[str],
+    values: Sequence[str],
+) -> tuple[pd.DataFrame, int, int]:
+    """Append to `old` the versions of `new` that are not stored, for a versioned table.
+
+    A version is a key, the moment it was published and its values; the same version received
+    again adds nothing. Returns (merged, added, revised): `added` counts keys the store did not
+    have, `revised` counts the other versions appended. No stored row is touched.
+    """
+    if new.empty:
+        return old, 0, 0
+    columns = list(key)
+    identity = [*columns, "published_at", *values]
+    received = new.drop_duplicates(identity, keep="first")
+    if old.empty:
+        to_append = received
+        fresh_keys = len(received.drop_duplicates(columns))
+    else:
+        marked = received.merge(old[identity].drop_duplicates(), on=identity, how="left", indicator=True)
+        to_append = received[(marked["_merge"] == "left_only").to_numpy()]
+        if to_append.empty:
+            return old, 0, 0
+        stored_keys = old[columns].drop_duplicates()
+        known = to_append[columns].drop_duplicates().merge(stored_keys, on=columns, how="left", indicator=True)
+        fresh_keys = int((known["_merge"] == "left_only").sum())
+    merged = to_append if old.empty else pd.concat([old, to_append], ignore_index=True)
+    merged = merged.sort_values([*columns, "published_at"], kind="stable").reset_index(drop=True)
+    return merged, fresh_keys, len(to_append) - fresh_keys
+
+
+def _blank(column: pd.Series) -> np.ndarray:
+    """Where a text column says nothing: missing, or empty text."""
+    return (column.isna() | column.astype(object).eq("")).to_numpy(dtype=bool)
+
+
+def fill_attributes(
+    old: pd.DataFrame,
+    new: pd.DataFrame,
+    key: Sequence[str],
+    values: Sequence[str],
+    attributes: Sequence[str],
+) -> tuple[pd.DataFrame, int]:
+    """Fill the attributes a stored version of a versioned table lacks from the same version
+    received again: same key, `published_at` and values (see append_versions).
+
+    An attribute describes a version and is not part of it, so a version received again with an
+    attribute it was stored without (the `frame` of an SEC XBRL fact, which the SEC sets on a later
+    filing) is not appended: that attribute would stay empty forever. Here an attribute that is
+    missing or empty takes the received value; one that has a value is never changed, and no key,
+    value or stamp is touched, so as_of reads the same versions. Returns (table, rows filled);
+    when nothing is filled, `old` itself.
+    """
+    columns = [column for column in attributes if column in new.columns]
+    if old.empty or new.empty or not columns:
+        return old, 0
+    identity = [*key, "published_at", *values]
+    offered = new.drop_duplicates(identity, keep="first")[[*identity, *columns]]
+    found = old[identity].merge(offered, on=identity, how="left")  # one row per stored row, in order
+    filled = old
+    touched = np.zeros(len(old), dtype=bool)
+    for column in columns:
+        stored = old[column] if column in old.columns else pd.Series(None, index=old.index, dtype=object)
+        take = _blank(stored) & ~_blank(found[column])
+        if not take.any():
+            continue
+        if filled is old:
+            filled = old.copy()
+        merged = stored.to_numpy(dtype=object).copy()
+        merged[take] = found[column].to_numpy(dtype=object)[take]
+        filled[column] = merged
+        touched |= take
+    return filled, int(touched.sum())
+
+
+def drop_repeated_versions(old: pd.DataFrame, new: pd.DataFrame) -> pd.DataFrame:
+    """The dated series rows of `new` that say something the store did not already know then:
+    a row is dropped when the version of its period known at its `published_at` has the same
+    value and projection flag. A source that cuts a row at the start of the period asked for (FRED)
+    sends an old version again with a later date; that is not a revision."""
+    if old.empty or new.empty:
+        return new
+    known = old.assign(known_at=old["published_at"].fillna(old["fetched_at"]))
+    known = known.sort_values(["known_at", "fetched_at"], kind="stable")[[*KEY, "known_at", "value", "projection"]]
+    probe = new.reset_index(drop=True).assign(position=range(len(new))).sort_values("published_at", kind="stable")
+    joined = pd.merge_asof(probe, known, left_on="published_at", right_on="known_at", by=KEY, suffixes=("", "_known"))
+    before = joined["value_known"].to_numpy(dtype=float)
+    after = joined["value"].to_numpy(dtype=float)
+    same_value = (np.isnan(before) & np.isnan(after)) | np.isclose(before, after, rtol=TOLERANCE, atol=0.0)
+    flag = joined["projection_known"].astype("boolean").to_numpy(dtype=bool, na_value=False)
+    same = joined["known_at"].notna().to_numpy() & same_value & (flag == joined["projection"].astype(bool).to_numpy())
+    kept = sorted(joined.loc[~same, "position"])
+    return new.reset_index(drop=True).iloc[kept]
+
+
+def append_rows(
+    old: pd.DataFrame,
+    new: pd.DataFrame,
+    key: Sequence[str],
+    values: Sequence[str],
+) -> tuple[pd.DataFrame, int, int]:
+    """Append to `old` the rows of `new` that differ from what is stored, for any table.
+
+    A received key is appended when it is not stored, or when any value column differs from the
+    latest stored row. Two values are the same when both are NaN or both are numbers within
+    TOLERANCE. Returns (merged, added, revised): `added` counts keys the store did not have,
+    `revised` counts keys whose values changed. No stored row is touched.
+    """
+    if new.empty:
+        return old, 0, 0
+    columns = list(key)
+    received = new.drop_duplicates(columns, keep="last").reset_index(drop=True)
+    if old.empty:
+        fresh = received.sort_values([*columns, "fetched_at"], kind="stable").reset_index(drop=True)
+        return fresh, len(fresh), 0
+    current = latest(old, columns, columns)[[*columns, *values]]
+    both = received.merge(current, on=columns, how="left", suffixes=("", "_old"), indicator=True)
+    known = (both["_merge"] == "both").to_numpy()
+    unchanged = known.copy()
+    for column in values:
+        before = both[f"{column}_old"].to_numpy(dtype=float)
+        after = both[column].to_numpy(dtype=float)
+        unchanged &= (np.isnan(before) & np.isnan(after)) | np.isclose(before, after, rtol=TOLERANCE, atol=0.0)
+    to_append = received[~unchanged]
+    if to_append.empty:
+        return old, 0, 0
+    merged = pd.concat([old, to_append], ignore_index=True)
+    merged = merged.sort_values([*columns, "fetched_at"], kind="stable").reset_index(drop=True)
+    return merged, int((~known).sum()), int((known & ~unchanged).sum())
+
+
+def document_rows(
+    group: str,
+    date: datetime.date,
+    files: Sequence[tuple[str, str, str, bytes]],
+    attributes: Mapping[str, str],
+    fetched_at: datetime.datetime,
+) -> pd.DataFrame:
+    """The rows of one document for the list of its id. `files` are (name, role, url, content)."""
+    frame = pd.DataFrame(
+        [
+            {
+                "group": group,
+                "date": date,
+                "file": name,
+                "role": role,
+                "url": url,
+                "size": len(content),
+                "sha256": hashlib.sha256(content).hexdigest(),
+                **{str(column): str(value) for column, value in attributes.items()},
+            }
+            for name, role, url, content in files
+        ]
+    )
+    frame["date"] = pd.to_datetime(frame["date"]).dt.as_unit("ns")
+    frame["size"] = frame["size"].astype("int64")
+    frame["fetched_at"] = pd.Series([fetched_at] * len(frame), dtype=UTC)
+    return frame
+
+
+def _unreadable(path: pathlib.Path, error: Exception) -> StoreError:
+    """The error for a file that could not be read. An OSError with an errno is the operating
+    system refusing to open or read it (another program holds it, say): the file may be fine, so
+    it is not called damaged. Anything else is its content: ArrowInvalid (a ValueError), a JSON
+    or UTF-8 error, or an OSError without an errno, which pyarrow raises for corrupt pages."""
+    reason = f"{type(error).__name__}: {error}"
+    if isinstance(error, OSError) and error.errno is not None:
+        hint = ": another program may have it open, or this account may not read it"
+        return StoreError(f"{path}: could not be opened ({reason}){hint if isinstance(error, PermissionError) else ''}")
+    advice = "If the file is damaged, restore it from a backup or move it aside"
+    return StoreError(f"{path}: cannot be read ({reason}). {advice}")
+
+
+def _read_parquet(path: pathlib.Path) -> pd.DataFrame:
+    try:
+        return pd.read_parquet(path)
+    except (OSError, ValueError) as exc:
+        raise _unreadable(path, exc) from exc
+
+
+def _read_json(path: pathlib.Path) -> Any:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:  # ValueError: JSONDecodeError, UnicodeDecodeError
+        raise _unreadable(path, exc) from exc
+
+
+def _read(path: pathlib.Path, dtypes: Mapping[str, str]) -> pd.DataFrame:
+    if not path.exists():
+        return typed([], dtypes)
+    return _read_parquet(path)
+
+
+def _write_bytes(content: bytes, path: pathlib.Path) -> None:
+    """Put `content` in place of `path` through a temporary file flushed to the disk first (see
+    data_pipeline._files). On Windows the replacement is refused while another program has the
+    target open, which happens when something reads the store during a sync: the reader is given
+    a few seconds to finish; after that the write fails with a clear error and the target keeps
+    its old content."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        write_atomic(path, content)
+    except ReplaceRefusedError:
+        msg = f"{path}: could not be written because another program has it open; close it and sync again"
+        raise StoreError(msg) from None
+
+
+def _write(frame: pd.DataFrame, path: pathlib.Path) -> None:
+    _write_bytes(frame.to_parquet(index=False), path)
+
+
+def _write_json(data: Mapping[str, Any], path: pathlib.Path) -> None:
+    _write_bytes(json.dumps(data, ensure_ascii=True, indent=2).encode("utf-8"), path)
+
+
+@dataclasses.dataclass(frozen=True)
+class Storage:
+    root: pathlib.Path
+
+    def series_path(self, source: str) -> pathlib.Path:
+        return self.root / SERIES_DIR / f"{source}.parquet"
+
+    def prepare(self) -> None:
+        """Create the store marker on first use; refuse a store written by another schema; in a
+        store of this schema, remove the temporary files that writes which died left behind, an
+        hour old or more (data_pipeline._files.sweep_temporary). Sync calls it once a run, holding
+        the lock. Only the folders the store writes in are swept: the root itself, and `series`,
+        `tables` and `documents` with everything under them."""
+        path = self.root / STORE_FILE
+        if not path.exists():
+            _write_json({"schema_version": SCHEMA_VERSION}, path)
+            return
+        found = _read_json(path).get("schema_version")
+        if found != SCHEMA_VERSION:
+            msg = f"{path}: schema_version {found!r}, this library reads version {SCHEMA_VERSION}"
+            raise StoreError(msg)
+        sweep_temporary(self.root, recursive=False)
+        for folder in (SERIES_DIR, TABLES_DIR, DOCUMENTS_DIR):
+            sweep_temporary(self.root / folder)
+
+    def series_sources(self) -> list[str]:
+        """The sources that have a file of series."""
+        folder = self.root / SERIES_DIR
+        return sorted(path.stem for path in folder.glob("*.parquet")) if folder.exists() else []
+
+    def read_observations(self, source: str) -> pd.DataFrame:
+        return _read(self.series_path(source), OBS_DTYPES)
+
+    def write_observations(self, source: str, frame: pd.DataFrame) -> None:
+        _write(frame[OBS_COLUMNS], self.series_path(source))
+
+    def read_index(self) -> pd.DataFrame:
+        frame = _read(self.root / INDEX_FILE, INDEX_DTYPES)
+        if "kind" not in frame.columns:  # a store written before tables existed
+            frame["kind"] = KIND_SERIES
+        frame["kind"] = frame["kind"].fillna(KIND_SERIES)
+        if "asked_from" not in frame.columns:  # a store written before it was recorded: as if the whole history
+            frame["asked_from"] = pd.Series(pd.NaT, index=frame.index, dtype=DAY)
+        return frame
+
+    def table_path(self, source: str, name: str) -> pathlib.Path:
+        return self.root / TABLES_DIR / source / f"{name}.parquet"
+
+    def table_names(self, source: str) -> list[str]:
+        """The tables stored for a source, by the id of their catalog entry."""
+        folder = self.root / TABLES_DIR / source
+        return sorted(path.stem for path in folder.glob("*.parquet")) if folder.exists() else []
+
+    def table_sources(self) -> list[str]:
+        """The sources that have at least one stored table."""
+        folder = self.root / TABLES_DIR
+        if not folder.exists():
+            return []
+        return sorted(path.name for path in folder.iterdir() if path.is_dir() and self.table_names(path.name))
+
+    def read_table(self, source: str, name: str) -> pd.DataFrame:
+        """One stored table with every version of every row; an empty frame when there is none."""
+        path = self.table_path(source, name)
+        return _read_parquet(path) if path.exists() else pd.DataFrame()
+
+    def write_table(self, source: str, name: str, frame: pd.DataFrame, schema: TableSchema) -> None:
+        """Write one table and, beside it, the schema of the source's tables."""
+        described = {
+            "key_columns": list(schema.key_columns),
+            "value_columns": list(schema.value_columns),
+            "attribute_columns": list(schema.attribute_columns),
+            "versioned": schema.versioned,
+        }
+        path = self.root / TABLES_DIR / source / TABLE_SCHEMA_FILE
+        if not path.exists() or _read_json(path) != described:
+            _write_json(described, path)
+        _write(frame, self.table_path(source, name))
+
+    def table_schema(self, source: str) -> TableSchema:
+        """The schema of a source's tables."""
+        path = self.root / TABLES_DIR / source / TABLE_SCHEMA_FILE
+        if not path.exists():
+            msg = f"no table is stored for source {source!r}"
+            raise StoreError(msg)
+        described = _read_json(path)
+        return TableSchema(
+            key_columns=tuple(described["key_columns"]),
+            value_columns=tuple(described["value_columns"]),
+            attribute_columns=tuple(described.get("attribute_columns", ())),  # absent before versions existed
+            versioned=bool(described.get("versioned", False)),
+        )
+
+    def document_path(self, source: str, name: str, group: str, file: str) -> pathlib.Path:
+        """Where one file of a document lives. `group` and `file` come from a source's answer, so
+        each must be a plain name (model.check_name): no separator of either kind, no `..`, no
+        drive, no device name; ValueError otherwise. `source` and `name` are the store's own
+        source name and a catalog id its source has checked."""
+        for part in (group, file):
+            check_name(part)
+        return self.root / DOCUMENTS_DIR / source / name / group / file
+
+    def document_names(self, source: str) -> list[str]:
+        """The ids of a source that have a list of documents."""
+        folder = self.root / DOCUMENTS_DIR / source
+        return sorted(path.stem for path in folder.glob("*.parquet")) if folder.exists() else []
+
+    def write_document(self, source: str, name: str, group: str, file: str, content: bytes) -> None:
+        """Write one file of a document, once: a file that exists is never written again."""
+        path = self.document_path(source, name, group, file)
+        if path.exists():
+            return
+        _write_bytes(content, path)
+
+    def read_documents(self, source: str, name: str) -> pd.DataFrame:
+        """The list of an id's documents, one row per file; an empty frame when there is none."""
+        path = self.root / DOCUMENTS_DIR / source / f"{name}.parquet"
+        return _read_parquet(path) if path.exists() else pd.DataFrame(columns=DOCUMENT_COLUMNS)
+
+    def write_documents(self, source: str, name: str, frame: pd.DataFrame) -> None:
+        _write(frame, self.root / DOCUMENTS_DIR / source / f"{name}.parquet")
+
+    def write_index(self, frame: pd.DataFrame) -> None:
+        _write(frame[INDEX_COLUMNS], self.root / INDEX_FILE)
+
+    def read_runs(self) -> dict[str, Any]:
+        path = self.root / RUNS_FILE
+        if not path.exists():
+            return {}
+        data: dict[str, Any] = _read_json(path)
+        return data
+
+    def write_runs(self, data: Mapping[str, Any]) -> None:
+        _write_json(data, self.root / RUNS_FILE)

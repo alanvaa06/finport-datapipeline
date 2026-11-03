@@ -1,0 +1,6 @@
+{
+ "error": {
+  "mensaje": "Token rechazado",
+  "detalle": "Revise el valor enviado en el encabezado Bmx-Token."
+ }
+}

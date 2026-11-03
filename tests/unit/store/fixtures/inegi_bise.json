@@ -1,0 +1,30 @@
+{
+ "Header": {
+  "Name": "Fixture"
+ },
+ "Series": [
+  {
+   "INDICADOR": "6207136901",
+   "FREQ": "8",
+   "UNIT": "1077",
+   "LASTUPDATE": "21/04/2026 12:00:00 a. m.",
+   "OBSERVATIONS": [
+    {
+     "TIME_PERIOD": "2026/04",
+     "OBS_VALUE": "101.734512",
+     "OBS_STATUS": "1"
+    },
+    {
+     "TIME_PERIOD": "2026/03",
+     "OBS_VALUE": "98.5",
+     "OBS_STATUS": "2"
+    },
+    {
+     "TIME_PERIOD": "2026/02",
+     "OBS_VALUE": "",
+     "OBS_STATUS": "2"
+    }
+   ]
+  }
+ ]
+}

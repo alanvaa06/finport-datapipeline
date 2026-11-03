@@ -1,0 +1,249 @@
+import datetime
+import json
+import math
+
+import pandas as pd
+import pytest
+
+from data_pipeline.store import storage as storage_module
+from data_pipeline.store.api import Store
+from data_pipeline.store.storage import (
+    Storage,
+    TableSchema,
+    append_versions,
+    as_of,
+    fill_attributes,
+    latest,
+    table_frame,
+    to_moment,
+)
+
+from .helpers import NOW
+
+LATER = NOW + datetime.timedelta(days=30)
+KEY = ("concept", "end")
+SCHEMA = TableSchema(KEY, ("value",), ("form",), versioned=True)
+ORDER = ("concept", "date")
+
+
+def version(value, published, concept="Revenues", end="2023-09-30", form="10-K"):
+    return {
+        "concept": concept,
+        "end": end,
+        "date": datetime.date.fromisoformat(end),
+        "value": value,
+        "form": form,
+        "published_at": datetime.datetime.fromisoformat(published).replace(tzinfo=datetime.UTC),
+    }
+
+
+def frame(rows, moment=NOW):
+    return table_frame(rows, SCHEMA, moment)
+
+
+def merge(old, rows, moment=NOW):
+    return append_versions(old, frame(rows, moment), SCHEMA.key_columns, SCHEMA.value_columns)
+
+
+def test_the_schema_lists_the_columns_a_reader_gets():
+    assert SCHEMA.columns == ["concept", "end", "date", "value", "form"]
+    assert TableSchema(KEY, ("value",)).columns == ["concept", "end", "date", "value"]
+
+
+def test_a_versioned_frame_keeps_the_publication_of_each_row_and_types_the_attributes():
+    built = frame([version(1.0, "2023-11-03"), version(2.0, "2025-10-31")])
+    assert list(built.columns) == ["concept", "end", "date", "value", "form", "fetched_at", "published_at"]
+    assert list(built["published_at"]) == [pd.Timestamp("2023-11-03", tz="UTC"), pd.Timestamp("2025-10-31", tz="UTC")]
+    assert str(built["form"].dtype) == "object"
+    assert frame([]).empty
+
+
+def test_a_first_load_keeps_every_version_of_a_key():
+    rows = [version(1.0, "2023-11-03"), version(2.0, "2025-10-31"), version(9.0, "2023-11-03", "Assets")]
+    merged, added, revised = merge(pd.DataFrame(), rows)
+    assert (len(merged), added, revised) == (3, 2, 1)
+    assert list(merged["concept"]) == ["Assets", "Revenues", "Revenues"]  # by key, then publication
+
+
+def test_the_same_versions_again_add_nothing_and_return_the_stored_frame_itself():
+    rows = [version(1.0, "2023-11-03"), version(2.0, "2025-10-31")]
+    old, _added, _revised = merge(pd.DataFrame(), rows)
+    merged, added, revised = merge(old, rows, LATER)
+    assert merged is old
+    assert (added, revised) == (0, 0)
+
+
+def test_a_new_version_and_a_new_key_are_appended_and_counted_apart():
+    old, _added, _revised = merge(pd.DataFrame(), [version(1.0, "2023-11-03")])
+    rows = [version(1.0, "2023-11-03"), version(2.0, "2025-10-31"), version(5.0, "2024-11-01", end="2024-09-28")]
+    merged, added, revised = merge(old, rows, LATER)
+    assert (len(merged), added, revised) == (3, 1, 1)
+    assert list(merged["fetched_at"]) == [pd.Timestamp(NOW), pd.Timestamp(LATER), pd.Timestamp(LATER)]
+    pd.testing.assert_frame_equal(merged.iloc[[0]], old)  # the stored row is untouched
+
+
+def test_an_attribute_that_changes_is_not_a_version():
+    old, _added, _revised = merge(pd.DataFrame(), [version(1.0, "2023-11-03")])
+    merged, _added, _revised = merge(old, [version(1.0, "2023-11-03", form="10-K405")], LATER)
+    assert merged is old
+
+
+def fill(old, rows, moment=LATER):
+    return fill_attributes(old, frame(rows, moment), SCHEMA.key_columns, SCHEMA.value_columns, SCHEMA.attribute_columns)
+
+
+@pytest.mark.parametrize("empty", ["", None])
+def test_an_empty_attribute_of_a_stored_version_is_filled_from_the_same_version_received_again(empty):
+    old, _added, _revised = merge(pd.DataFrame(), [version(1.0, "2023-11-03", form=empty), version(2.0, "2025-10-31")])
+    filled, count = fill(old, [version(1.0, "2023-11-03", form="10-K"), version(2.0, "2025-10-31")])
+    assert count == 1
+    assert list(filled["form"]) == ["10-K", "10-K"]
+    # a description of the version, not a new one: the rest of every row is as stored
+    pd.testing.assert_frame_equal(filled.drop(columns="form"), old.drop(columns="form"))
+
+
+def test_a_stored_attribute_is_never_changed_and_another_version_fills_nothing():
+    old, _added, _revised = merge(pd.DataFrame(), [version(1.0, "2023-11-03"), version(2.0, "2025-10-31", form="")])
+    rows = [
+        version(1.0, "2023-11-03", form="10-K405"),  # the same version with another form: it keeps its own
+        version(2.0, "2025-11-01", form="10-K"),  # published another day: another version
+        version(3.0, "2025-10-31", form="10-K"),  # another value: another version
+    ]
+    filled, count = fill(old, rows)
+    assert (filled is old, count) == (True, 0)
+
+
+def test_an_attribute_a_stored_table_lacks_is_filled_too():
+    old, _added, _revised = merge(pd.DataFrame(), [version(1.0, "2023-11-03")])
+    filled, count = fill(old.drop(columns="form"), [version(1.0, "2023-11-03", form="10-K")])
+    assert (count, list(filled["form"])) == (1, ["10-K"])
+
+
+def test_two_values_published_the_same_day_are_both_kept_in_the_order_received():
+    rows = [version(1.0, "2024-02-01"), version(2.0, "2024-02-01", form="10-K/A")]
+    merged, added, revised = merge(pd.DataFrame(), rows)
+    assert (list(merged["value"]), added, revised) == ([1.0, 2.0], 1, 1)
+    assert list(latest(merged, KEY, ORDER, by_publication=True)["value"]) == [2.0]
+
+
+def test_latest_by_publication_ignores_when_a_version_was_fetched():
+    """An older version fetched later (a store filled in two runs) does not become the current one."""
+    old, _added, _revised = merge(pd.DataFrame(), [version(2.0, "2025-10-31")])
+    merged, _added, _revised = merge(old, [version(1.0, "2023-11-03")], LATER)
+    assert list(latest(merged, KEY, ORDER, by_publication=True)["value"]) == [2.0]
+    assert list(latest(merged, KEY, ORDER)["value"]) == [1.0]  # by fetch, the wrong answer for versions
+
+
+def test_as_of_reads_the_version_published_by_then():
+    merged, _added, _revised = merge(pd.DataFrame(), [version(1.0, "2023-11-03"), version(2.0, "2025-10-31")])
+    assert list(as_of(merged, pd.Timestamp("2025-10-30", tz="UTC"), KEY, ORDER)["value"]) == [1.0]
+    assert list(as_of(merged, pd.Timestamp("2025-10-31", tz="UTC"), KEY, ORDER)["value"]) == [2.0]
+    assert as_of(merged, pd.Timestamp("2023-11-02", tz="UTC"), KEY, ORDER).empty
+
+
+def test_the_schema_survives_a_round_trip_with_attributes_and_versions(tmp_path):
+    storage = Storage(tmp_path)
+    storage.prepare()
+    built = frame([version(1.0, "2023-11-03")])
+    storage.write_table("sec_xbrl", "AAPL", built, SCHEMA)
+    assert storage.table_schema("sec_xbrl") == SCHEMA
+    pd.testing.assert_frame_equal(storage.read_table("sec_xbrl", "AAPL"), built)
+
+
+def test_a_schema_written_before_versions_existed_reads_as_not_versioned(tmp_path):
+    folder = tmp_path / "tables" / "comtrade"
+    folder.mkdir(parents=True)
+    old = {"key_columns": ["reporter", "period"], "value_columns": ["value_usd"]}
+    (folder / "schema.json").write_text(json.dumps(old), encoding="utf-8")
+    assert Storage(tmp_path).table_schema("comtrade") == TableSchema(("reporter", "period"), ("value_usd",))
+
+
+def test_a_filter_never_revives_a_version_that_was_replaced(tmp_path):
+    merged, _, _ = merge(pd.DataFrame(), [version(100.0, "2024-02-01"), version(90.0, "2024-05-01", form="10-K/A")])
+    Storage(tmp_path).write_table("sec_xbrl", "ACME", merged, SCHEMA)
+    store = Store(tmp_path)
+    assert list(store.table("sec_xbrl", "ACME")["value"]) == [90.0]
+    assert store.table("sec_xbrl", "ACME", form="10-K").empty  # the 10-K's value is no longer current
+    assert store.table("sec_xbrl", "ACME", value=100.0).empty
+    assert list(store.table("sec_xbrl", "ACME", form="10-K/A")["value"]) == [90.0]
+    assert list(store.table("sec_xbrl", "ACME", form="10-K", as_of="2024-03-01")["value"]) == [100.0]
+
+
+def stored_versions(tmp_path):
+    """Three keys of one table, two of them revised by a 10-K/A."""
+    rows = [
+        version(100.0, "2024-02-01"),
+        version(90.0, "2024-05-01", form="10-K/A"),
+        version(7.0, "2024-02-01", concept="Assets"),
+        version(5.0, "2024-11-01", end="2024-09-28"),
+        version(6.0, "2025-01-15", end="2024-09-28", form="10-K/A"),
+    ]
+    merged, _, _ = merge(pd.DataFrame(), rows)
+    Storage(tmp_path).write_table("sec_xbrl", "ACME", merged, SCHEMA)
+    return merged
+
+
+@pytest.mark.parametrize(
+    "filters",
+    [
+        {},
+        {"concept": "Revenues"},
+        {"end": "2024-09-28"},
+        {"concept": "Revenues", "end": "2023-09-30"},
+        {"concept": "Revenues", "form": "10-K"},
+        {"concept": "Revenues", "form": "10-K/A"},
+        {"form": "10-K"},
+        {"value": 90.0},
+        {"concept": "Nope"},
+    ],
+)
+@pytest.mark.parametrize("moment", [None, "2024-03-01", "2024-12-01", "2025-06-01"])
+def test_filters_give_the_rows_of_filtering_after_the_version_is_chosen(tmp_path, filters, moment):
+    merged = stored_versions(tmp_path)
+    order = ["concept", "end", "date"]
+    if moment is None:
+        expected = latest(merged, KEY, order, by_publication=True)
+    else:
+        expected = as_of(merged, to_moment(moment), KEY, order)
+    for column, value in filters.items():
+        expected = expected[expected[column] == value]
+    found = Store(tmp_path).table("sec_xbrl", "ACME", as_of=moment, **filters)
+    pd.testing.assert_frame_equal(found, expected[SCHEMA.columns].reset_index(drop=True))
+
+
+@pytest.mark.parametrize(("chooser", "moment"), [("latest", None), ("as_of", "2025-06-01")])
+def test_filters_on_key_columns_leave_the_other_keys_out_before_a_version_is_chosen(
+    tmp_path, monkeypatch, chooser, moment
+):
+    stored_versions(tmp_path)
+    seen = []
+    real = getattr(storage_module, chooser)
+
+    def spy(frame, *args, **options):
+        seen.append(sorted(set(frame["concept"])))
+        return real(frame, *args, **options)
+
+    monkeypatch.setattr(storage_module, chooser, spy)
+    Store(tmp_path).table("sec_xbrl", "ACME", as_of=moment, concept="Assets", form="10-K")
+    assert seen == [["Assets"]]
+
+
+# -- what the Sharadar fundamentals and tickers ask of a versioned table ------------------------
+
+
+def test_the_same_values_published_later_are_another_version_and_keep_their_own_attributes():
+    old, _added, _revised = merge(pd.DataFrame(), [version(1.0, "2026-02-06", form="Q1")])
+    merged, added, revised = merge(old, [version(1.0, "2026-05-02", form="Q1R")], LATER)
+    assert (len(merged), added, revised) == (2, 0, 1)
+    assert list(latest(merged, KEY, ORDER, by_publication=True)["form"]) == ["Q1R"]
+    assert list(as_of(merged, pd.Timestamp("2026-05-01", tz="UTC"), KEY, ORDER)["form"]) == ["Q1"]
+
+
+def test_a_missing_value_stored_and_received_again_is_the_same_version(tmp_path):
+    storage = Storage(tmp_path)
+    storage.prepare()
+    first, _added, _revised = merge(pd.DataFrame(), [version(math.nan, "2026-02-06")])
+    storage.write_table("sharadar_fundamentals", "XTEST", first, SCHEMA)
+    read_back = storage.read_table("sharadar_fundamentals", "XTEST")
+    merged, added, revised = merge(read_back, [version(math.nan, "2026-02-06")], LATER)
+    assert (len(merged), added, revised) == (1, 0, 0)

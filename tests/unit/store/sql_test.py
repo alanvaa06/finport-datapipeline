@@ -1,0 +1,533 @@
+import datetime
+import math
+
+import duckdb
+import pandas as pd
+import pytest
+
+from data_pipeline.store import storage as st
+from data_pipeline.store.api import Store
+from data_pipeline.store.errors import StoreError
+
+# Every key, ticker and number here is invented.
+
+T1 = datetime.datetime(2026, 3, 2, 9, 0, tzinfo=datetime.UTC)  # the first sync
+T2 = datetime.datetime(2026, 4, 6, 9, 0, tzinfo=datetime.UTC)  # the second
+P0 = datetime.datetime(2026, 1, 30, 23, 59, 59, 999999, tzinfo=datetime.UTC)  # days a source published
+P1 = datetime.datetime(2026, 2, 13, 23, 59, 59, 999999, tzinfo=datetime.UTC)
+P2 = datetime.datetime(2026, 2, 27, 23, 59, 59, 999999, tzinfo=datetime.UTC)
+MOMENTS = [
+    None,
+    "2026-01-01",
+    "2026-02-13",
+    "2026-02-27",
+    "2026-03-02T08:59:59Z",
+    "2026-03-02T09:00:00Z",
+    "2026-04-06",
+    "2027-01-01",
+]
+PLAIN = st.TableSchema(("ticker", "period"), ("close",), ("note",))
+VERSIONED = st.TableSchema(("concept", "end"), ("value",), ("form",), versioned=True)
+
+
+def observation(key, period, day, value, fetched, published=None, projection=False):
+    return {
+        "key": key,
+        "period": period,
+        "date": day,
+        "value": value,
+        "projection": projection,
+        "fetched_at": fetched,
+        "published_at": published,
+    }
+
+
+SERIES = [
+    observation("fake:AAA", "2026-01", "2026-01-31", 1.0, T1),
+    observation("fake:AAA", "2026-01", "2026-01-31", 1.5, T2),  # revised
+    observation("fake:AAA", "2026-02", "2026-02-28", 2.0, T1),
+    observation("fake:AAA", "2026-02", "2026-02-28", math.nan, T2),  # revised to missing
+    observation("fake:AAA", "2026-03", "2026-03-31", 3.0, T1, projection=True),
+    observation("fake:AAA", "2026-03", "2026-03-31", 3.1, T2),
+    observation("fake:AAA", "2026-Q1", "2026-03-31", 9.0, T1),  # the date of 2026-03: fetched first, read first
+    observation("fake:AAA", "2026-04", "2026-04-30", 4.0, T2, P2),
+    observation("fake:AAA", "2026-04", "2026-04-30", 4.4, T2),  # no publication: the earlier of one fetch
+    observation("fake:BBB", "2026-01", "2026-01-31", 10.0, T1, P0),
+    observation("fake:BBB", "2026-01", "2026-01-31", 11.0, T1, P1),  # a later vintage in the same fetch
+    observation("fake:BBB", "2026-02", "2026-02-28", 20.0, T2, P2),
+    observation("fake:BBB", "2026-02", "2026-02-28", 21.0, T2, P2),  # a tie on every stamp: the later row wins
+    observation("fake:BBB", "2026-03", "2026-03-31", 30.0, T1, P2),
+    observation("fake:BBB", "2026-03", "2026-03-31", 29.0, T2, P1),  # an older vintage, fetched later
+]
+
+
+def price(ticker, day, close, fetched, note=None):
+    return st.table_frame(
+        [{"ticker": ticker, "period": day, "date": day, "close": close, "note": note}], PLAIN, fetched
+    )
+
+
+def fact(concept, value, published, fetched, form="10-K"):
+    row = {"concept": concept, "end": "2025-12-31", "date": "2025-12-31", "value": value, "form": form}
+    return st.table_frame([{**row, "published_at": published}], VERSIONED, fetched)
+
+
+def index_row(key, kind):
+    source, source_id = key.split(":")
+    return {"key": key, "source": source, "source_id": source_id, "name": f"Name of {source_id}", "kind": kind}
+
+
+@pytest.fixture
+def store(tmp_path):
+    """A store with a series source, a table source and a versioned table source."""
+    storage = st.Storage(tmp_path)
+    storage.prepare()
+    storage.write_observations("fake", st.typed(SERIES, st.OBS_DTYPES))
+    plain = {
+        "XAAA": pd.concat(
+            [
+                price("XAAA", "2026-03-03", 1.0, T1),
+                price("XAAA", "2026-03-03", 1.1, T2),  # revised
+                price("XAAA", "2026-03-02", 0.9, T2),  # an earlier day, stored later
+            ]
+        ).drop(columns="note"),  # written before `note` existed
+        "XBBB": pd.concat(
+            [
+                price(None, "2026-03-01", 1.5, T1),  # a key column read as missing: sorted last
+                price("XBBB", "2026-03-03", 2.0, T1),
+                price("XBBB", "2026-03-03", 2.5, T1),  # a tie on every stamp: the later row wins
+            ]
+        ),
+        "XC.C": price("XC.C", "2026-03-03", 3.0, T2, note="late"),  # an id with a dot, as BRK.B has
+    }
+    for name, frame in plain.items():
+        storage.write_table("plain", name, frame.reset_index(drop=True), PLAIN)
+    versioned = {
+        "ACME": [
+            fact("Revenues", 100.0, P1, T1),
+            fact("Revenues", 90.0, P2, T1, form="10-K/A"),  # restated
+            fact("Assets", 7.0, P1, T1),
+            fact("Assets", 8.0, P1, T2),  # the same day of publication, fetched later
+            fact("Debt", 5.0, None, T2, form=""),  # no day of publication: known from its fetch
+        ],
+        "BETA": [  # the same keys as ACME's: each id is a table of its own
+            fact("Revenues", 50.0, P1, T1),
+            fact("Revenues", 55.0, P1, T1, form="10-K/A"),  # a tie on every stamp
+            fact("Revenues", 40.0, P0, T2),  # an older version, fetched later
+        ],
+    }
+    for name, frames in versioned.items():
+        storage.write_table("versioned", name, pd.concat(frames, ignore_index=True), VERSIONED)
+    keys = [index_row("fake:AAA", "series"), index_row("fake:BBB", "series")]
+    keys += [index_row(f"plain:{name}", "table") for name in plain]
+    keys += [index_row(f"versioned:{name}", "table") for name in versioned]
+    storage.write_index(st.typed(keys, st.INDEX_DTYPES))
+    return Store(tmp_path)
+
+
+def plain_values(frame):
+    """The frame's values as Python objects, a missing one as None: DuckDB gives None for missing
+    text where pandas has NaN, and microseconds where the store has nanoseconds."""
+    values = frame.reset_index(drop=True).astype(object)
+    return values.where(values.notna(), None)
+
+
+def same(found, expected):
+    pd.testing.assert_frame_equal(plain_values(found), plain_values(expected))
+
+
+def joined(parts):
+    """The frames one after another; pandas warns when it joins empty ones."""
+    filled = [part for part in parts if not part.empty]
+    return pd.concat(filled, ignore_index=True) if filled else parts[0]
+
+
+# -- the rows of each source, as the store reads them ------------------------------------------
+
+
+@pytest.mark.parametrize("moment", MOMENTS)
+@pytest.mark.parametrize(
+    ("key", "query"),
+    [
+        ("fake:AAA", "SELECT date, period, value FROM fake WHERE key = 'fake:AAA'"),
+        ("fake:BBB", "SELECT date, period, value FROM fake WHERE key = 'fake:BBB'"),
+    ],
+)
+def test_a_series_reads_as_store_series_reads_it(store, moment, key, query):
+    same(store.sql(query, as_of=moment), store.series(key, as_of=moment))
+
+
+@pytest.mark.parametrize("moment", MOMENTS)
+def test_a_series_source_holds_every_key_in_the_order_of_store_series(store, moment):
+    expected = joined([store.series(key, as_of=moment).assign(key=key) for key in ("fake:AAA", "fake:BBB")])
+    same(store.sql("SELECT * FROM fake", as_of=moment), expected[["key", "date", "period", "value"]])
+
+
+@pytest.mark.parametrize("moment", MOMENTS)
+@pytest.mark.parametrize(("source", "names"), [("plain", ["XAAA", "XBBB", "XC.C"]), ("versioned", ["ACME", "BETA"])])
+def test_a_table_source_reads_as_store_table_reads_it(store, moment, source, names):
+    found = store.sql(f"SELECT * FROM {source}", as_of=moment)  # noqa: S608 - a name of the test
+    parts = [store.table(source, name, as_of=moment) for name in names]
+    expected = joined([part.assign(id=name) for name, part in zip(names, parts, strict=True)])
+    same(found, expected[["id", *expected.columns[:-1]]])
+    same(found.drop(columns="id"), store.table(source, as_of=moment))
+
+
+def test_the_latest_rows_are_the_ones_the_store_reads(store):
+    """The cases above, spelled out once: what each source reads today."""
+    assert store.sql("SELECT period, value FROM fake WHERE key = 'fake:AAA'").to_dict("list") == {
+        "period": ["2026-01", "2026-Q1", "2026-03", "2026-04"],
+        "value": [1.5, 9.0, 3.1, 4.0],
+    }
+    assert store.sql("SELECT value FROM fake WHERE key = 'fake:BBB'")["value"].tolist() == [11.0, 21.0, 29.0]
+    plain = store.sql("SELECT id, period, close, note FROM plain")
+    assert plain["close"].tolist() == [0.9, 1.1, 2.5, 1.5, 3.0]
+    assert plain["note"].tolist() == [None, None, None, None, "late"]
+    versioned = store.sql("SELECT id, concept, value FROM versioned")
+    assert list(zip(versioned["id"], versioned["concept"], versioned["value"], strict=True)) == [
+        ("ACME", "Assets", 8.0),
+        ("ACME", "Debt", 5.0),
+        ("ACME", "Revenues", 90.0),
+        ("BETA", "Revenues", 55.0),
+    ]
+
+
+# -- every stored row, and the index -----------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("key", "query"),
+    [
+        ("fake:AAA", "SELECT * EXCLUDE (key) FROM fake_versions WHERE key = 'fake:AAA'"),
+        ("fake:BBB", "SELECT * EXCLUDE (key) FROM fake_versions WHERE key = 'fake:BBB'"),
+    ],
+)
+def test_the_versions_of_a_series_are_its_revisions(store, key, query):
+    same(store.sql(query), store.revisions(key))
+
+
+@pytest.mark.parametrize(
+    ("source", "name", "schema"),
+    [("plain", "XAAA", PLAIN), ("plain", "XC.C", PLAIN), ("versioned", "BETA", VERSIONED)],
+)
+def test_the_versions_of_a_table_are_its_stored_rows(store, tmp_path, source, name, schema):
+    found = store.sql(f"SELECT * FROM {source}_versions WHERE id = '{name}'")  # noqa: S608 - names of the test
+    stored = st.Storage(tmp_path).read_table(source, name)
+    expected = stored.reindex(columns=[*schema.columns, "fetched_at", "published_at"])
+    same(found.drop(columns="id"), expected)
+    assert set(found["id"]) == {name}
+    assert str(found["fetched_at"].dt.tz) == "UTC"
+
+
+def test_every_stored_row_is_a_version(store):
+    counts = store.sql(
+        "SELECT (SELECT count(*) FROM fake_versions) AS fake, (SELECT count(*) FROM plain_versions) AS plain, "
+        "(SELECT count(*) FROM versioned_versions) AS versioned"
+    )
+    assert counts.to_dict("records") == [{"fake": 15, "plain": 7, "versioned": 8}]
+
+
+def test_store_index_is_the_index(store):
+    same(store.sql("SELECT * FROM store_index"), store.index())
+
+
+def test_an_empty_store_has_only_the_index(tmp_path):
+    (tmp_path / "tables" / "ghost").mkdir(parents=True)  # a source without files has no names
+    store = Store(tmp_path)
+    assert store.sql("SELECT count(*) AS rows FROM store_index")["rows"].tolist() == [0]
+    with pytest.raises(StoreError, match=r"the names a query can read: store_index$"):
+        store.sql("SELECT * FROM ghost")
+
+
+# -- what sql refuses, and how it fails ---------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("query", "found"),
+    [
+        ("CREATE TABLE copy AS SELECT * FROM fake", "not CREATE"),
+        ("INSERT INTO fake_versions SELECT * FROM fake_versions", "not INSERT"),
+        ("COPY (SELECT * FROM fake) TO 'out.csv'", "not COPY"),
+        ("ATTACH 'other.duckdb'", "not ATTACH"),
+        ("INSTALL httpfs", "not LOAD"),
+        ("SET threads = 1", "not SET"),
+        ("SELECT 1; SELECT 2", "not 2 statements"),
+        ("  ", "and the query is empty"),
+    ],
+)
+def test_anything_but_one_select_is_refused_before_it_runs(store, tmp_path, monkeypatch, query, found):
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(StoreError, match=f"^only one SELECT is accepted, {found}$"):
+        store.sql(query)
+    assert not (tmp_path / "out.csv").exists()
+    assert not (tmp_path / "other.duckdb").exists()
+
+
+def test_a_select_that_starts_with_with_is_accepted(store):
+    query = "WITH latest AS (SELECT * FROM fake) SELECT count(*) AS rows FROM latest; "
+    assert store.sql(query)["rows"].tolist() == [7]
+
+
+def test_a_name_that_does_not_exist_fails_with_duckdbs_message_and_the_names_defined(store):
+    with pytest.raises(StoreError) as caught:
+        store.sql("SELECT * FROM prices")
+    message = str(caught.value)
+    assert "Table with name prices does not exist" in message
+    assert message.splitlines()[-1] == (
+        "the names a query can read: fake, fake_versions, plain, plain_versions, store_index, "
+        "versioned, versioned_versions"
+    )
+
+
+def test_a_query_duckdb_cannot_parse_fails_with_its_message(store):
+    with pytest.raises(StoreError, match=r"(?s)Parser Error: syntax error.*the names a query can read: fake"):
+        store.sql("SELEC 1")
+
+
+def test_as_of_takes_what_store_table_takes(store):
+    with pytest.raises(StoreError, match="as_of '2026/06/15' is not a date"):
+        store.sql("SELECT 1", as_of="2026/06/15")
+    same(
+        store.sql("SELECT * EXCLUDE (id) FROM plain", as_of=datetime.date(2026, 3, 2)),
+        store.table("plain", as_of="2026-03-02"),
+    )
+
+
+def test_a_query_reads_in_utc_installs_nothing_and_cannot_change_its_settings(store, tmp_path):
+    settings = store.sql(
+        "SELECT current_setting('TimeZone') AS zone, current_setting('autoinstall_known_extensions') AS install, "
+        "current_setting('autoload_known_extensions') AS load, "
+        "current_setting('allow_community_extensions') AS community, current_setting('lock_configuration') AS locked"
+    )
+    assert settings.to_dict("records") == [
+        {"zone": "UTC", "install": False, "load": False, "community": False, "locked": True}
+    ]
+    log = tmp_path / "log"  # a function that would start a log file in a folder of the query's choosing
+    with pytest.raises(StoreError, match="locked"):
+        store.sql(f"SELECT * FROM enable_logging(storage := 'file', storage_path := '{log.as_posix()}')")  # noqa: S608
+    assert not log.exists()
+
+
+def test_a_query_changes_no_file_of_the_store(store, tmp_path):
+    def files():
+        return {path: path.read_bytes() for path in sorted(tmp_path.rglob("*")) if path.is_file()}
+
+    before = files()
+    store.sql("SELECT * FROM plain_versions")
+    with pytest.raises(StoreError):
+        store.sql("COPY plain TO 'plain.csv'")
+    assert files() == before
+
+
+def files_of(folder):
+    return {path: path.read_bytes() for path in sorted(folder.rglob("*")) if path.is_file()}
+
+
+# -- a statement the parser calls a SELECT that is not one --------------------------------------
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "WITH x AS (COPY (SELECT * FROM fake_versions WHERE false) TO '{target}' (FORMAT parquet)) SELECT 1 AS done",
+        "WITH x AS (COPY (SELECT 1 AS one) TO '{other}') SELECT 1 AS done",
+        "WITH x AS (INSERT INTO plain_versions SELECT * FROM plain_versions RETURNING *) SELECT * FROM x",
+        "WITH x AS (DELETE FROM plain_versions RETURNING *) SELECT * FROM x",
+        "WITH x AS (UPDATE plain_versions SET close = 0 RETURNING *) SELECT * FROM x",
+        "SELECT * FROM (WITH x AS (COPY (SELECT 1 AS one) TO '{other}') SELECT 1 AS done)",
+        "SELECT (WITH x AS (COPY (SELECT 1 AS one) TO '{other}') SELECT 1)",
+    ],
+)
+def test_a_data_modifying_statement_inside_with_is_refused_and_no_file_changes(store, tmp_path, query):
+    target = (tmp_path / "series" / "fake.parquet").as_posix()  # a file of the store
+    other = (tmp_path / "stolen.csv").as_posix()
+    before = files_of(tmp_path)
+    with pytest.raises(StoreError):
+        store.sql(query.format(target=target, other=other))
+    assert files_of(tmp_path) == before
+    assert len(store.series("fake:AAA")) == 4  # the store still reads
+
+
+TAILS = [";", " ; ", "; -- done", "; /* done */", " -- done", "\n-- done\n", ";\n-- one\n/* two */"]
+
+
+@pytest.mark.parametrize("tail", TAILS)
+def test_a_query_ends_in_a_semicolon_and_comments_as_it_likes(store, tail):
+    plain = "SELECT count(*) AS rows FROM fake"
+    with_clause = "WITH latest AS (SELECT * FROM fake) SELECT count(*) AS rows FROM latest"
+    assert store.sql(plain + tail)["rows"].tolist() == [7]
+    assert store.sql(with_clause + tail)["rows"].tolist() == [7]
+
+
+@pytest.mark.parametrize(
+    ("query", "rows"),
+    [
+        ("SELECT key, value FROM fake ORDER BY value DESC", 7),
+        ("DESCRIBE fake", 4),
+        ("SUMMARIZE fake", 4),
+        ("VALUES (1), (2)", 2),
+        ("FROM fake WHERE value > 3", 6),
+        ("SELECT 1 AS n UNION ALL SELECT 2", 2),
+        ("PIVOT fake ON period IN ('2026-01', '2026-03') USING sum(value) GROUP BY key", 2),
+    ],
+)
+def test_the_shapes_of_a_select_still_work(store, query, rows):
+    assert len(store.sql(query)) == rows
+
+
+def test_a_pivot_without_the_values_in_its_list_says_to_list_them(store):
+    found = r"not MULTI .*list its values with IN \(\.\.\.\)\)"
+    with pytest.raises(StoreError, match=f"^only one SELECT is accepted, {found}$"):
+        store.sql("PIVOT fake ON period USING sum(value) GROUP BY key")
+
+
+# -- how the views are built ---------------------------------------------------------------------
+
+
+def small_store(root, tables=("a",)):
+    """A store with one series source and a plain table source `a` (and `b`, ... when asked)."""
+    storage = st.Storage(root)
+    storage.prepare()
+    storage.write_observations("fake", st.typed(SERIES[:2], st.OBS_DTYPES))
+    for source in tables:
+        storage.write_table(source, "XAAA", price("XAAA", "2026-03-03", 1.0, T1), PLAIN)
+    storage.write_index(st.typed([index_row("fake:AAA", "series")], st.INDEX_DTYPES))
+    return Store(root)
+
+
+def test_a_source_that_cannot_be_read_is_named_apart_from_a_failed_query(tmp_path):
+    store = small_store(tmp_path, tables=("a", "b"))
+    (tmp_path / "tables" / "b" / "XAAA.parquet").write_bytes(b"not parquet")
+    with pytest.raises(StoreError, match=r"^could not read source b: ") as caught:
+        store.sql("SELECT * FROM a")
+    assert "the query failed" not in str(caught.value)
+    assert "the names a query can read" not in str(caught.value)
+
+
+def test_a_column_the_schema_lists_and_no_file_has_reads_as_missing(tmp_path):
+    storage = st.Storage(tmp_path)
+    storage.prepare()
+    bare = price("XAAA", "2026-03-03", 1.0, T1).drop(columns="note")  # written before `note` existed
+    storage.write_table("bare", "XAAA", bare, PLAIN)
+    storage.write_index(st.typed([], st.INDEX_DTYPES))
+    store = Store(tmp_path)
+    same(store.sql("SELECT * EXCLUDE (id) FROM bare"), store.table("bare"))
+    assert store.sql("SELECT note FROM bare_versions")["note"].tolist() == [None]
+
+
+def test_a_source_column_with_the_name_of_a_working_column_of_the_views_is_read(tmp_path):
+    schema = st.TableSchema(("ticker", "period"), ("position", "chosen"), ("known_at",))
+    row = {"ticker": "XAAA", "period": "2026-03-03", "date": "2026-03-03"}
+    rows = [{**row, "position": 7.0, "chosen": 8.0, "known_at": "k"}]
+    storage = st.Storage(tmp_path)
+    storage.prepare()
+    storage.write_table("odd", "XAAA", st.table_frame(rows, schema, T1), schema)
+    storage.write_index(st.typed([], st.INDEX_DTYPES))
+    store = Store(tmp_path)
+    same(store.sql("SELECT * EXCLUDE (id) FROM odd"), store.table("odd"))
+    assert store.sql("SELECT id, position, chosen, known_at FROM odd").to_dict("records") == [
+        {"id": "XAAA", "position": 7.0, "chosen": 8.0, "known_at": "k"}
+    ]
+
+
+def test_a_store_in_a_folder_with_a_quote_and_a_space_in_its_name_is_read(tmp_path):
+    store = small_store(tmp_path / "it's a store", tables=("a",))
+    assert store.sql("SELECT count(*) AS n FROM fake")["n"].tolist() == [1]
+    assert store.sql("SELECT count(*) AS n FROM a_versions")["n"].tolist() == [1]
+
+
+# -- functions that run SQL from text --------------------------------------------------------------
+
+
+def serialized(sql):
+    """The JSON that json_serialize_sql gives for `sql`, as json_execute_serialized_sql takes it."""
+    with duckdb.connect() as raw:
+        return raw.execute("SELECT json_serialize_sql(?)", [sql]).fetchone()[0]
+
+
+def literal(text):
+    return "'" + text.replace("'", "''") + "'"
+
+
+TEXT_SQL = [
+    "direct",
+    "overwrites a file of the store",
+    "quoted in another case",
+    "schema-qualified",
+    "inline json_serialize_sql",
+    "via query()",
+    "built from strings",
+    "comment before the parenthesis",
+    "line comment before the parenthesis",
+    "query() alone",
+    "schema-qualified query()",
+]
+
+
+def call(name, argument, start="SELECT * FROM"):
+    return f"{start} {name}({argument})"
+
+
+def text_sql_query(kind, folder):
+    """A query that would write a file if a function ran the SQL in a text; all the files are in `folder`."""
+    other = (folder / "stolen.csv").as_posix()
+    store_file = (folder / "series" / "fake.parquet").as_posix()
+    copy = f"WITH x AS (COPY (SELECT 1 AS one) TO '{other}') SELECT 1 AS done"
+    over = f"WITH x AS (COPY (SELECT 'pwned' AS key) TO '{store_file}' (FORMAT parquet)) SELECT 1 AS done"
+    wicked = literal(serialized(copy))
+    run = "json_execute_serialized_sql"
+    inner = call(run, wicked)
+    head = "'SELECT * FROM json_exec' || 'ute_serialized_sql(' || "
+    built = head + literal(wicked) + " || ')'"
+    return {
+        "direct": call(run, wicked),
+        "overwrites a file of the store": call(run, literal(serialized(over))),
+        "quoted in another case": call('"JSON_EXECUTE_SERIALIZED_SQL"', wicked),
+        "schema-qualified": call("main." + run, wicked),
+        "inline json_serialize_sql": call(run, call("json_serialize_sql", literal(copy), start="")),
+        "via query()": call("query", literal(inner), start="FROM"),
+        "built from strings": call("query", built, start="FROM"),
+        "comment before the parenthesis": call("query /* c */ ", literal(inner), start="FROM"),
+        "line comment before the parenthesis": call("query -- c\n", literal(inner), start="FROM"),
+        "query() alone": call("query", "'SELECT 1'"),
+        "schema-qualified query()": call('"main"."Query" ', "'SELECT 1'"),
+    }[kind]
+
+
+@pytest.mark.parametrize("kind", TEXT_SQL)
+def test_a_function_that_runs_sql_from_text_is_refused_and_no_file_changes(store, tmp_path, kind):
+    query = text_sql_query(kind, tmp_path)
+    before = files_of(tmp_path)
+    message = r"^query\(\) and json_execute_serialized_sql\(\) run SQL from text and are refused$"
+    with pytest.raises(StoreError, match=message):
+        store.sql(query)
+    assert files_of(tmp_path) == before
+    assert not (tmp_path / "stolen.csv").exists()
+    assert len(store.series("fake:AAA")) == 4
+
+
+def test_a_column_named_query_and_the_word_in_a_string_are_not_refused(tmp_path):
+    schema = st.TableSchema(("ticker", "period"), ("query",), ())
+    row = {"ticker": "XAAA", "period": "2026-03-03", "date": "2026-03-03", "query": 5.0}
+    storage = st.Storage(tmp_path)
+    storage.prepare()
+    storage.write_table("asked", "XAAA", st.table_frame([row], schema, T1), schema)
+    storage.write_index(st.typed([], st.INDEX_DTYPES))
+    store = Store(tmp_path)
+    assert store.sql("SELECT query FROM asked WHERE query > 1")["query"].tolist() == [5.0]
+    assert store.sql('SELECT "query", max(query) AS most FROM asked GROUP BY "query"')["most"].tolist() == [5.0]
+    assert store.sql("SELECT 'query(' AS word")["word"].tolist() == ["query("]
+
+
+# -- how a query is reported ------------------------------------------------------------------------
+
+
+def test_duckdb_reports_the_line_of_a_one_line_query_as_line_1(store):
+    with pytest.raises(StoreError) as caught:
+        store.sql("SELECT * FROM prices")
+    assert "LINE 1:" in str(caught.value)
+    assert "LINE 2" not in str(caught.value)
+
+
+def test_duplicate_output_names_are_numbered(store):
+    assert store.sql("SELECT 1 AS a, 2 AS a").columns.tolist() == ["a", "a_1"]

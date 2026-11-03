@@ -1,0 +1,8 @@
+{
+  "count": 3,
+  "data": [
+    {"ticker": "XTEST", "date": "2026-03-04", "lastupdated": "2026-03-04", "ev": 1250.5, "evebit": 20.1, "evebitda": 15.2, "marketcap": 1200.0, "pb": 4.1, "pe": 25.3, "ps": 6.2},
+    {"ticker": "XTEST", "date": "2026-03-03", "lastupdated": "2026-03-04", "ev": 1240.0, "evebit": 19.9, "evebitda": 15.0, "marketcap": 1190.5, "pb": 4.0, "pe": 25.1, "ps": 6.1},
+    {"ticker": "XTEST", "date": "2026-03-02", "lastupdated": "2026-03-04", "ev": 1230.0, "evebit": null, "evebitda": 14.9, "marketcap": 1180.0, "pb": 4.0, "pe": 24.9, "ps": 6.0}
+  ]
+}

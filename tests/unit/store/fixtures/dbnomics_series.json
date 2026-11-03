@@ -1,0 +1,1 @@
+{"series": {"docs": [{"@frequency": "monthly", "dataset_code": "prc_hicp_midx", "provider_code": "Eurostat", "series_code": "M.I15.CP00.EA", "series_name": "Monthly - Index, 2015=100 - All-items HICP - Euro area", "period": ["2026-03", "2026-04", "2026-05"], "value": [128.1, "NA", 128.9]}], "num_found": 1}}

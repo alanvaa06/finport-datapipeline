@@ -1,0 +1,1 @@
+{"error_code":400,"error_message":"Bad Request.  There are 5125 vintage dates in the specified real-time period: 1776-07-04 to 9999-12-31.  This exceeds the maximum number of vintage dates allowed (2000)."}

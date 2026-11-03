@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --python 3.12
+      - run: uv run ruff check .
+      - run: uv run ruff format --check src tests scripts
+      - run: uv run mypy
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.12", "3.13", "3.14"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --python ${{ matrix.python }}
+      - run: uv run pytest
+
+  package:
+    # the wheel a user installs, in a clean environment: the files it must carry, and the command
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv build
+      - name: The wheel carries its type hints and its bundled data
+        run: |
+          wheel=$(ls dist/*.whl)
+          for file in data_pipeline/py.typed data_pipeline/store/catalogs/macro.yaml \
+                      data_pipeline/store/sources/comtrade_reporters.json; do
+            unzip -l "$wheel" | grep -q "$file" || { echo "missing from the wheel: $file"; exit 1; }
+          done
+      - name: The wheel installs and runs on its own
+        run: |
+          uv venv --python 3.12 /tmp/clean
+          uv pip install --python /tmp/clean/bin/python dist/*.whl
+          /tmp/clean/bin/data-pipeline --version
+          /tmp/clean/bin/python -c "import data_pipeline; print(data_pipeline.__version__)"
