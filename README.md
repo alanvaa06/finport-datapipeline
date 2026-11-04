@@ -507,4 +507,4 @@ Alan Vazquez ([@alanvaa06](https://github.com/alanvaa06)) and Eduardo Ramos, CFA
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT, see [LICENSE](https://github.com/alanvaa06/finport-datapipeline/blob/main/LICENSE).
