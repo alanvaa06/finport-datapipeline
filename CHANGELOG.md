@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1 (2026-11-04)
+
+The package is unchanged; this release fixes two links on its PyPI page.
+
+- The README's link to the license works on PyPI. It was relative, and PyPI does not resolve
+  relative links, so it led to a missing page.
+- The README's note on unit scale links to the issue that tracks it,
+  [#1](https://github.com/alanvaa06/finport-datapipeline/issues/1).
+
 ## 0.1.0 (2026-11-02)
 
 First version.
