@@ -315,7 +315,7 @@ Values are returned as stored, in the unit the name gives: nothing rescales them
 arithmetic across such series is off by the difference of scale: `e_au_exports_goods` is in USD
 and `e_au_imports_goods` in millions of USD, so their difference is wrong by a factor of 10^6,
 and a `frame` of goods trade across countries mixes both. Check `attrs.units_differ` before you
-combine series; [#13](https://github.com/alanvaa06/finport-datapipeline/issues/13) tracks a
+combine series; [#1](https://github.com/alanvaa06/finport-datapipeline/issues/1) tracks a
 scale per series applied on read.
 
 Some indicators are only as uniform as their publishers allow:
