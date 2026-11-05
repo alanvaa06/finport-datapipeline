@@ -2,8 +2,12 @@
 
 ## 0.1.1 (2026-11-04)
 
-The package is unchanged; this release fixes two links on its PyPI page.
+The package's code is unchanged; this release refreshes its PyPI page.
 
+- The README is a short overview: license, Python versions and dependencies first, then what
+  the store holds, a quick start, the commands and the keys. The full reference moved, as it
+  was, to [docs/guide.md](https://github.com/alanvaa06/finport-datapipeline/blob/main/docs/guide.md),
+  which the package metadata now names as its documentation.
 - The README's link to the license works on PyPI. It was relative, and PyPI does not resolve
   relative links, so it led to a missing page.
 - The README's note on unit scale links to the issue that tracks it,

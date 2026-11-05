@@ -54,7 +54,7 @@ def test_sharadar_still_answers_in_the_expected_shape(tmp_path):
         days=366 * (DEFAULT_WINDOW_YEARS + 1)
     )
     assert not_a_recent_window_only, "the actions start within the last six years"
-    has_the_words = {"dividend", "split"} <= set(actions["action"])  # the words the README recipe reads
+    has_the_words = {"dividend", "split"} <= set(actions["action"])  # the words the guide recipe reads
     assert has_the_words, "the actions of AAPL hold no dividend or no split"
     amounts = actions[actions["action"].isin(["dividend", "split"])]["value"].dropna()
     all_positive = bool((amounts > 0).all())

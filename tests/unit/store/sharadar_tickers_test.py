@@ -286,7 +286,7 @@ def test_an_attribute_that_was_empty_is_filled_in_place_with_the_same_lastupdate
     assert (report.sources[0].new, report.sources[0].revised) == (0, 0)  # no version is added
     assert len(pd.read_parquet(tmp_path / "store" / "tables" / "sharadar_tickers" / "XTEST.parquet")) == 2
     assert store.table("sharadar_tickers", "XTEST", table="stocks")["relatedtickers"].iloc[0] == "XOTHER"
-    # The look-ahead the spec accepts, documented in the README: the version is filled in place, so
+    # The look-ahead the spec accepts, documented in the guide: the version is filled in place, so
     # an as_of between the first sync and the second already reads the value that came with the second.
     between = store.table("sharadar_tickers", "XTEST", table="stocks", as_of="2026-03-01")
     assert between["relatedtickers"].iloc[0] == "XOTHER"
