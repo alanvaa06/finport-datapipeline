@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-11-08)
 
 - SEC filings are stored under readable names in the company's folder:
   `AAPL/AAPL_10-K_2025-09-27.htm`, an 8-K's exhibits by number (`AAPL_8-K_2025-10-30_ex99-1.htm`),

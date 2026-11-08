@@ -17,7 +17,7 @@ look-ahead bias.
 | **License** | MIT |
 | **Python** | 3.12, 3.13, 3.14 |
 | **Dependencies** | pandas 2 (2.2.3 or later; pandas 3 is not supported yet), pyarrow, DuckDB 2, httpx, click, PyYAML, python-dotenv |
-| **Status** | Alpha (0.1): the API may still change |
+| **Status** | Alpha (0.2): the API may still change |
 | **Docs** | [Guide](https://github.com/alanvaa06/finport-datapipeline/blob/main/docs/guide.md) · [Changelog](https://github.com/alanvaa06/finport-datapipeline/blob/main/CHANGELOG.md) · [Issues](https://github.com/alanvaa06/finport-datapipeline/issues) |
 
 ```text
