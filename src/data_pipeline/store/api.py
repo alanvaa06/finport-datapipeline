@@ -24,6 +24,8 @@ import pandas as pd
 
 from data_pipeline.credentials import NAMES as CREDENTIAL_NAMES
 from data_pipeline.credentials import resolve
+from data_pipeline.store import export as store_export
+from data_pipeline.store import migrate as store_migrate
 from data_pipeline.store import sources as source_registry
 from data_pipeline.store import sql as store_sql
 from data_pipeline.store import storage as st
@@ -342,9 +344,10 @@ class Store:
         for name in names if id is None else [id]:
             listed = self._storage.read_documents(source, name)
             listed.insert(0, "id", name)
+            stored_as = listed["stored_as"] if "stored_as" in listed else pd.Series([""] * len(listed))
             listed["path"] = [
-                str(self._storage.document_path(source, name, str(group), str(file)))
-                for group, file in zip(listed["group"], listed["file"], strict=True)
+                str(self._storage.document_path(source, name, str(group), str(file), _text(target)))
+                for group, file, target in zip(listed["group"], listed["file"], stored_as, strict=True)
             ]
             parts.append(listed)
         filled = [part for part in parts if not part.empty] or parts[:1]
@@ -360,6 +363,45 @@ class Store:
             known_at = found["date"] + pd.offsets.Day(1) - pd.offsets.Micro(1)
             found = found[known_at <= st.to_moment(as_of).tz_localize(None)]
         return found.sort_values(["date", "id", "group", "role", "file"], kind="stable").reset_index(drop=True)
+
+    def export_xbrl(
+        self,
+        destination: str | pathlib.Path,
+        ids: Sequence[str] | None = None,
+    ) -> list[store_export.CompanyExport]:
+        """Write each stored SEC filing's XBRL facts to `destination` as a CSV named like the
+        filing, one folder per company: `AAPL/AAPL_10-K_2025-09-27_xbrl.csv`. A company needs both
+        its sec_filings and its sec_xbrl stored. `ids` are tickers; None exports every company
+        that has both. The store is not changed. See data_pipeline.store.export."""
+        try:
+            store_export.check_destination(self._storage.root, pathlib.Path(destination))
+        except ValueError as exc:
+            raise StoreError(str(exc)) from None
+        filings = set(self._storage.document_names(store_export.FILINGS_SOURCE))
+        facts = set(self._storage.table_names(store_export.XBRL_SOURCE))
+        both = sorted(filings & facts)
+        names = list(ids) if ids is not None else both
+        unknown = sorted(set(names) - set(both))
+        if unknown:
+            msg = f"no stored filings and XBRL facts for: {', '.join(unknown)}"
+            raise UnknownSeriesError(msg)
+        columns = self._storage.table_schema(store_export.XBRL_SOURCE).columns if both else []
+        results = []
+        for name in names:
+            documents = self.documents(store_export.FILINGS_SOURCE, name)
+            table = self._storage.read_table(store_export.XBRL_SOURCE, name).reindex(columns=columns)
+            try:
+                result = store_export.export_company(name, documents, table, pathlib.Path(destination) / name)
+            except store_export.UnlabelledError as exc:
+                msg = f"{name}: {exc}"
+                raise StoreError(msg) from None
+            results.append(result)
+        return results
+
+    def migrate(self) -> list[store_migrate.Migrated]:
+        """Move the SEC filings of a schema-1 store to their readable names, in place, and mark
+        the store schema 2. See data_pipeline.store.migrate."""
+        return store_migrate.migrate(self._storage)
 
     def sql(self, query: str, *, as_of: Moment | None = None) -> pd.DataFrame:
         """Answer one SELECT over the store, read in place with DuckDB, as a data frame.

@@ -75,7 +75,8 @@ def test_the_rows_of_a_document_describe_each_file():
     files = [("aapl.htm", "primary", "https://sec/aapl.htm", b"12345"), ("ex99.htm", "exhibit", "https://sec/e", b"")]
     attributes = {"form": "8-K", "period": ""}
     rows = document_rows("0000320193-23-000106", datetime.date(2023, 11, 3), files, attributes, NOW)
-    assert list(rows.columns) == [*DOCUMENT_COLUMNS[:7], "form", "period", "fetched_at"]
+    assert list(rows.columns) == [*DOCUMENT_COLUMNS[:9], "form", "period", "fetched_at"]
+    assert list(rows["stored_as"]) == ["", ""]  # stored as published
     first = rows.iloc[0]
     assert (first["group"], first["file"], first["role"], first["size"]) == (
         "0000320193-23-000106",

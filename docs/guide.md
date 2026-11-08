@@ -103,6 +103,49 @@ counts: `status` ends with a line saying how many stored entries it left out, an
 does not depend on them. `status` without `--catalog` still lists everything the store holds.
 `Store.undeclared()` names those entries in Python. Nothing is deleted.
 
+### SEC filings: readable names
+
+`sec_filings` stores each filing in the company's folder under a readable name: ticker, form and
+period.
+
+```text
+documents/sec_filings/AAPL/AAPL_10-K_2025-09-27.htm         the 10-K for the year ended 2025-09-27
+documents/sec_filings/AAPL/AAPL_8-K_2025-10-30.htm          an 8-K, by the day of its event
+documents/sec_filings/AAPL/AAPL_8-K_2025-10-30_ex99-1.htm   its exhibit 99.1 (the earnings release)
+documents/sec_filings/AAPL/AAPL_10-K-A_2025-12-01.htm       an amendment (10-K/A); the filing day when it gives no period
+```
+
+- The period is the one the SEC gives the filing: the end of the period for a 10-K or a 10-Q, the
+  day of the event for an 8-K; a filing without one takes its filing day.
+- Two filings that would share a name are numbered in the order they were filed (`_2`, `_3`). A
+  name is given once, when the filing is stored, and never changes.
+- An exhibit's number is read from its file name, which each company writes its own way; one that
+  cannot be read keeps its published name as its tag. `store.documents` gives every file's
+  published name (`file`), its filing (`group`, the accession number), its URL, and its stored name
+  (`stored_as`).
+
+A store made by 0.1 kept each filing as published, in a folder named by its accession number. This
+version reads it as it is, and marks it schema 2 on its first sync (0.1 then refuses it rather than
+look for files in the wrong place). `migrate` renames its files in place, without downloading
+anything, and removes the emptied folders; it can be stopped and run again:
+
+```bash
+data-pipeline migrate --root D:/data
+```
+
+`export-xbrl` writes each stored filing's XBRL facts (from `sec_xbrl`) as a CSV named like the
+filing, in a folder outside the store:
+
+```bash
+data-pipeline export-xbrl --root D:/data --to D:/data-xbrl            # every company with both
+data-pipeline export-xbrl --root D:/data --to D:/data-xbrl --id AAPL  # one (repeatable)
+```
+
+`AAPL/AAPL_10-K_2025-09-27_xbrl.csv` holds the facts the `sec_xbrl` table dates to that filing:
+what it reported first and what it restated. A value it only repeated as a comparative stays with
+the earlier filing. A second run rewrites only the files whose content changed. In Python:
+`store.export_xbrl("D:/data-xbrl", ["AAPL"])` and `store.migrate()`.
+
 ## Python
 
 ```python

@@ -453,23 +453,30 @@ def test_first_sync_writes_the_files_and_the_list(store, tmp_path):
     report = store.report.sources[0]
     assert (report.ok, report.new, report.revised, report.calls) == (1, 4, 0, 7)
     folder = tmp_path / "store" / "documents" / "sec_filings" / "AAPL"
-    assert (folder / ANNUAL / "aapl-20250927.htm").read_bytes() == b"<html>annual report</html>"
-    assert (folder / EVENT / "a8-kex991q1.htm").read_bytes() == b"<html>earnings release</html>"
-    assert sorted(path.name for path in folder.iterdir()) == [ANNUAL, EVENT, AMENDED]
+    assert (folder / "AAPL_10-K_2025-09-27.htm").read_bytes() == b"<html>annual report</html>"
+    assert (folder / "AAPL_8-K_2026-01-29_ex99-1.htm").read_bytes() == b"<html>earnings release</html>"
+    assert sorted(path.name for path in folder.iterdir()) == [
+        "AAPL_10-K-A_2025-09-27.htm",
+        "AAPL_10-K_2025-09-27.htm",
+        "AAPL_8-K_2026-01-29.htm",
+        "AAPL_8-K_2026-01-29_ex99-1.htm",
+    ]
     assert (folder.parent / "AAPL.parquet").exists()
 
 
 def test_documents_lists_every_file_with_its_path(store, tmp_path):
     listed = store.documents("sec_filings", "AAPL")
     assert list(listed.columns) == [
-        "id", "group", "date", "file", "role", "url", "size", "sha256", "form", "period", "fetched_at", "path",
+        "id", "group", "date", "file", "role", "url", "size", "sha256", "label", "stored_as", "form", "period",
+        "fetched_at", "path",
     ]  # fmt: skip
-    assert list(zip(listed["form"], listed["role"], listed["file"], strict=True)) == [
-        ("10-K", "primary", "aapl-20250927.htm"),
-        ("8-K", "exhibit", "a8-kex991q1.htm"),
-        ("8-K", "primary", "aapl-8k.htm"),
-        ("10-K/A", "primary", "aapl-10ka.htm"),
+    assert list(zip(listed["form"], listed["role"], listed["file"], listed["stored_as"], strict=True)) == [
+        ("10-K", "primary", "aapl-20250927.htm", "AAPL_10-K_2025-09-27.htm"),
+        ("8-K", "exhibit", "a8-kex991q1.htm", "AAPL_8-K_2026-01-29_ex99-1.htm"),
+        ("8-K", "primary", "aapl-8k.htm", "AAPL_8-K_2026-01-29.htm"),
+        ("10-K/A", "primary", "aapl-10ka.htm", "AAPL_10-K-A_2025-09-27.htm"),
     ]
+    assert list(listed["label"].unique()) == ["AAPL_10-K_2025-09-27", "AAPL_8-K_2026-01-29", "AAPL_10-K-A_2025-09-27"]
     first = listed.iloc[0]
     assert (first["id"], first["group"], first["period"]) == ("AAPL", ANNUAL, "2025-09-27")
     assert first["sha256"] == hashlib.sha256(b"<html>annual report</html>").hexdigest()
@@ -530,7 +537,8 @@ def test_a_new_filing_is_added_and_the_old_files_stay(store, sec, clock, tmp_pat
     listed = store.documents("sec_filings", "AAPL")
     assert listed.iloc[-1]["group"] == newer
     folder = tmp_path / "store" / "documents" / "sec_filings" / "AAPL"
-    assert (folder / ANNUAL / "aapl-20250927.htm").read_bytes() == b"<html>annual report</html>"
+    assert (folder / "AAPL_10-K_2025-09-27.htm").read_bytes() == b"<html>annual report</html>"
+    assert listed.iloc[-1]["stored_as"] == "AAPL_10-Q_2026-03-28.htm"
     assert store.info("sec_filings:AAPL").last_period == "2026-05-01"
 
 
@@ -614,9 +622,9 @@ def test_show_prints_the_citation_and_the_newest_files(store, tmp_path, monkeypa
     assert result.output.splitlines() == [
         "[SEC EDGAR: AAPL, 2026-02-10, fetched 2026-06-06]",
         "Apple Inc. | 4 files",
-        "group  date  file  role  form  period",
-        f"{ANNUAL}  2025-10-31  aapl-20250927.htm  primary  10-K  2025-09-27",
-        f"{EVENT}  2026-01-29  a8-kex991q1.htm  exhibit  8-K  2026-01-29",
-        f"{EVENT}  2026-01-29  aapl-8k.htm  primary  8-K  2026-01-29",
-        f"{AMENDED}  2026-02-10  aapl-10ka.htm  primary  10-K/A  2025-09-27",
+        "date  role  stored_as  form  period",
+        "2025-10-31  primary  AAPL_10-K_2025-09-27.htm  10-K  2025-09-27",
+        "2026-01-29  exhibit  AAPL_8-K_2026-01-29_ex99-1.htm  8-K  2026-01-29",
+        "2026-01-29  primary  AAPL_8-K_2026-01-29.htm  8-K  2026-01-29",
+        "2026-02-10  primary  AAPL_10-K-A_2025-09-27.htm  10-K/A  2025-09-27",
     ]

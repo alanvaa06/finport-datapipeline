@@ -38,7 +38,7 @@ look-ahead bias.
 | **Publishers** | FRED, BLS, Banxico SIE, INEGI, the World Bank, the BIS, the ECB, Eurostat, the OECD and the IMF, read directly; DBnomics for 96 series whose publisher retired them |
 | **Tables** | UN Comtrade goods trade, and the XBRL facts companies report to the SEC, each version dated with its filing day |
 | **Equities** | Sharadar prices, corporate actions, fundamentals, ticker records and daily metrics of US stocks and ETFs, with your own subscription |
-| **Documents** | SEC filings (10-K, 10-Q, 8-K with exhibits, 20-F, 40-F), stored as the files the SEC publishes |
+| **Documents** | SEC filings (10-K, 10-Q, 8-K with exhibits, 20-F, 40-F), stored as the files the SEC publishes, named by ticker, form and period (`AAPL_10-K_2025-09-27.htm`) |
 
 ## Quick start
 
@@ -75,6 +75,8 @@ The latest commit on `main` installs with
 | `sync` | Downloads what changed since the last run, for a whole catalog or `--source` / `--key` |
 | `status` | Gives each series a state: `ok`, `stale`, `missing` or `failed` |
 | `show` | Prints a series, optionally `--as-of` a date |
+| `export-xbrl` | Writes each stored SEC filing's XBRL facts as a CSV named like it (`AAPL_10-K_2025-09-27_xbrl.csv`) |
+| `migrate` | Renames the SEC filings of a store made by 0.1 to their readable names, in place |
 | `fetch` | Downloads without a store, to the screen or a Parquet, CSV or DuckDB file |
 | `sql` | Runs one `SELECT` over the store through DuckDB |
 

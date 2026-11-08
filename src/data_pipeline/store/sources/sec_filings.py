@@ -14,6 +14,16 @@ downloaded: the store takes plain file names only (model.check_name). After
 MAX_NETWORK_FAILURES network failures the SEC is taken to be unreachable and the rest of the
 company waits for the next run. Only the reading of an answer turns an error into "unexpected
 answer": any other error is a bug, named on the company it hit, and it stops the source.
+
+Files are stored under readable names, in one folder per company (see `label`):
+
+    AAPL_10-K_2025-09-27.htm          the primary document: ticker, form, period
+    AAPL_8-K_2025-10-30_ex99-1.htm    an exhibit, by the exhibit number its file name carries
+    AAPL_10-K-A_2025-12-01.htm        an amendment (10-K/A); the filing day when there is no period
+
+The period is the one the SEC gives the filing: the end of the period for a 10-K or a 10-Q, the
+day of the event for an 8-K. Two filings that would share a name are numbered by the store, in
+the order they were filed (`_2`). The list of documents keeps each file's published name and URL.
 """
 
 import contextlib
@@ -63,6 +73,16 @@ PRIMARY = "primary"
 EXHIBIT = "exhibit"
 STALE_AFTER_DAYS = 140  # a quarter and slack
 MAX_NETWORK_FAILURES = 3  # in one company's run
+DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
+UNSAFE_IN_FORM = re.compile(r"[/ ]")  # a slash would be a folder; a space is not taken in a name
+# An exhibit number written with a separator: ex99-1, ex99_1, ex10d5, exhibit-3-1.
+EXHIBIT_SPLIT = re.compile(r"ex(?:hibit)?[-_]?(\d{1,3})[-_d](\d{1,2})(?!\d)", re.IGNORECASE)
+# An exhibit number written as one run of digits: ex991, ex9901, ex101, ex51.
+EXHIBIT_RUN = re.compile(r"ex(?:hibit)?[-_]?(\d+)", re.IGNORECASE)
+# The exhibit numbers of two digits in Regulation S-K Item 601: 10 to 36, and 95 to 99.
+TWO_DIGIT_EXHIBITS = frozenset({*range(10, 37), *range(95, 100)})
+LONE_EXHIBITS = frozenset(range(95, 100))  # "ex99" is exhibit 99, not 9.9
+TWO, FOUR = 2, 4  # lengths of a run of digits
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -165,6 +185,55 @@ def _plain(name: str, what: str, listed: str | None = None) -> str:
     return name
 
 
+def label(ticker: str, form: str, period: str, filed: datetime.date) -> str:
+    """A filing's readable name: `AAPL_10-K_2025-09-27`. The period when it is a day, else the
+    filing day; the form with a hyphen for a slash or a space (10-K/A is 10-K-A)."""
+    day = period if DAY.fullmatch(period) else filed.isoformat()
+    return f"{ticker}_{UNSAFE_IN_FORM.sub('-', form.upper())}_{day}"
+
+
+def _exhibit_number(digits: str) -> str:
+    """`99-1` for 991, `10-1` for 1001, `5-1` for 51: an exhibit number written without a separator.
+
+    Two digits are a number and its part (51 is 5.1), unless they are 95 to 99 or end in 0 (exhibit
+    10). Three digits split after two when those make a two-digit exhibit (991 is 99.1, 311 is 31.1),
+    else after one (511 is 5.11). Four are two and two (9901 is 99.01). A longer run is a number
+    with a date stuck to it (ex9919302020): its first three digits are read.
+    """
+    if len(digits) == 1:
+        return digits
+    if len(digits) == TWO:
+        if int(digits) in LONE_EXHIBITS or digits.endswith("0"):
+            return digits
+        return f"{digits[0]}-{digits[1]}"
+    if len(digits) == FOUR:
+        return f"{int(digits[:2])}-{int(digits[2:])}"
+    first = digits[:3]
+    if int(first[:2]) in TWO_DIGIT_EXHIBITS:
+        return f"{int(first[:2])}-{int(first[2])}"
+    return f"{int(first[0])}-{int(first[1:])}"
+
+
+def exhibit_tag(file: str) -> str:
+    """The exhibit number an exhibit's file name carries, as `ex99-1`; the stem of the name when
+    none can be read. Companies name exhibits as they like (`d851110dex991.htm`,
+    `tm2619964d1_ex99-1.htm`, `a8-kex991q4202509272025.htm`): this is a reading, and the list of
+    documents keeps the published name beside it."""
+    stem = pathlib.PurePosixPath(file).stem
+    split = EXHIBIT_SPLIT.search(stem)
+    if split is not None:
+        return f"ex{int(split.group(1))}-{int(split.group(2))}"
+    run = EXHIBIT_RUN.search(stem)
+    if run is not None:
+        return f"ex{_exhibit_number(run.group(1))}"
+    return stem
+
+
+def tag(file: str, role: str) -> str:
+    """What a file adds to its filing's label: nothing for the primary document."""
+    return "" if role == PRIMARY else exhibit_tag(file)
+
+
 def exhibits(items: Sequence[Mapping[str, Any]], primary: str) -> list[str]:
     """The exhibit documents of a filing's folder: every .htm that is not the primary document,
     an index page or a page of the XBRL viewer."""
@@ -254,7 +323,7 @@ class SecFilings:
         network_failures = 0
         for filing in missing(filings, chosen, request.groups):
             try:
-                document = self._document(edgar, cik, filing)
+                document = self._document(edgar, cik, filing, entry.source_id)
             except NetworkError as exc:
                 network_failures += 1
                 yield FetchBatch(failures=(Failure(entry, Outcome.NETWORK_ERROR, f"{filing.accession}: {exc}"),))
@@ -290,10 +359,11 @@ class SecFilings:
                 filings.extend(read_filings(older))
         return name, filings
 
-    def _document(self, edgar: Edgar, cik: str, filing: Filing) -> Document:
+    def _document(self, edgar: Edgar, cik: str, filing: Filing, ticker: str) -> Document:
         """One filing's files. Every name is checked before anything is downloaded: one the store
         would refuse fails this filing alone."""
         _plain(filing.accession, "a filing numbered")
+        readable = _plain(label(ticker, filing.form, filing.period, filing.filed), "a filing of form", filing.form)
         folder = filing.accession.replace("-", "")
         primary = filing.primary or f"{filing.accession}.txt"  # no primary document: the complete filing
         names = [(primary, PRIMARY)]
@@ -304,17 +374,22 @@ class SecFilings:
                 listed = exhibits(items, pathlib.PurePosixPath(primary).name)
             names.extend((name, EXHIBIT) for name in listed)
         stored = [_plain(pathlib.PurePosixPath(name).name, "a file named", name) for name, _ in names]
+        tags = [tag(file, role) for file, (_, role) in zip(stored, names, strict=True)]
+        for file, file_tag in zip(stored, tags, strict=True):
+            if file_tag:
+                _plain(file_tag, "a file named", file)
         files = []
-        for (name, role), file in zip(names, stored, strict=True):
+        for (name, role), file, file_tag in zip(names, stored, tags, strict=True):
             url = ARCHIVE_URL.format(cik=int(cik), folder=folder, file=name)
             response = edgar.get(url)
             if response is None:
                 msg = f"the SEC lists {name} but does not have it"
                 raise AnswerError(msg)
-            files.append(DocumentFile(file, response.content, url, role))
+            files.append(DocumentFile(file, response.content, url, role, file_tag))
         return Document(
             group=filing.accession,
             date=filing.filed,
             files=tuple(files),
             attributes={"form": filing.form, "period": filing.period},
+            label=readable,
         )

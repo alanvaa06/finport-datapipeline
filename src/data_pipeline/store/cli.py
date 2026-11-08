@@ -1,4 +1,4 @@
-"""Console commands of the store: sync, status, show, catalog. Output is ASCII only.
+"""Console commands of the store: sync, status, show, catalog, export-xbrl, migrate. Output is ASCII only.
 
 Exit codes: 0 everything is up to date, 1 there were failures, 2 configuration error,
 3 incomplete because of a quota (run again tomorrow).
@@ -11,6 +11,8 @@ import click
 from data_pipeline.store.api import STATE_OK, Store
 from data_pipeline.store.catalog import load_catalog
 from data_pipeline.store.errors import StoreError
+from data_pipeline.store.export import lines as export_lines
+from data_pipeline.store.migrate import lines as migrate_lines
 from data_pipeline.store.model import CatalogEntry
 from data_pipeline.store.storage import KIND_DOCUMENT, KIND_TABLE
 from data_pipeline.store.sync import EXIT_CONFIGURATION, EXIT_FAILURES, EXIT_OK
@@ -130,7 +132,11 @@ def show_command(*, root: pathlib.Path, key: str, as_of: str | None) -> None:
     echo(info.label)
     if info.kind == KIND_DOCUMENT:
         echo(f"{info.name} | {len(files)} files")
-        shown = files.drop(columns=["id", "url", "size", "sha256", "fetched_at", "path"]).tail(SHOWN_ROWS)
+        hidden = ["id", "url", "size", "sha256", "fetched_at", "path", "label"]
+        readable = "stored_as" in files and files["stored_as"].fillna("").astype(str).ne("").all()
+        # a file with a readable name is shown by it; one stored as published, by its group and file
+        hidden += ["group", "file"] if readable else ["stored_as"]
+        shown = files.drop(columns=[column for column in hidden if column in files]).tail(SHOWN_ROWS)
         shown = shown.assign(date=shown["date"].dt.date)
         echo("  ".join(shown.columns))
         for values in shown.itertuples(index=False):
@@ -146,6 +152,34 @@ def show_command(*, root: pathlib.Path, key: str, as_of: str | None) -> None:
     echo(f"{info.name} | {info.units} | {info.frequency} | {info.seasonal_adjustment}")
     for row in rows.tail(SHOWN_ROWS).to_dict(orient="records"):
         echo(f"{row['period']}  {row['value']}")
+
+
+@cli.command("export-xbrl")
+@root_option
+@click.option("--to", "destination", type=PATH, required=True, help="Folder for the CSVs, outside the store.")
+@click.option("--id", "ids", multiple=True, help="Only this company, such as AAPL. Repeatable.")
+def export_xbrl_command(*, root: pathlib.Path, destination: pathlib.Path, ids: tuple[str, ...]) -> None:
+    """Write each stored SEC filing's XBRL facts as a CSV named like it: AAPL_10-K_2025-09-27_xbrl.csv."""
+    try:
+        results = open_store(root, None, None).export_xbrl(destination, ids or None)
+    except StoreError as exc:
+        raise fail(exc) from exc
+    for line in export_lines(results):
+        echo(line)
+    raise SystemExit(EXIT_OK)
+
+
+@cli.command("migrate")
+@root_option
+def migrate_command(*, root: pathlib.Path) -> None:
+    """Move the SEC filings of a store made by 0.1 to their readable names, in place."""
+    try:
+        results = open_store(root, None, None).migrate()
+    except StoreError as exc:
+        raise fail(exc) from exc
+    for line in migrate_lines(results):
+        echo(line)
+    raise SystemExit(EXIT_FAILURES if any(result.missing for result in results) else EXIT_OK)
 
 
 def _matches(entry: CatalogEntry, query: str, source: str | None, region: str | None) -> bool:
