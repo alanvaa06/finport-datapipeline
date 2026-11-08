@@ -169,7 +169,14 @@ def test_prepare_writes_the_schema_marker_once(tmp_path):
     storage = Storage(tmp_path / "store")
     storage.prepare()
     storage.prepare()
-    assert json.loads((tmp_path / "store" / "store.json").read_text(encoding="utf-8")) == {"schema_version": 1}
+    assert json.loads((tmp_path / "store" / "store.json").read_text(encoding="utf-8")) == {"schema_version": 2}
+
+
+def test_prepare_marks_a_schema_1_store_schema_2(tmp_path):
+    # a 0.1 store reads as it is; once marked, 0.1 refuses it instead of missing readable names
+    (tmp_path / "store.json").write_text('{"schema_version": 1}', encoding="utf-8")
+    Storage(tmp_path).prepare()
+    assert json.loads((tmp_path / "store.json").read_text(encoding="utf-8")) == {"schema_version": 2}
 
 
 def test_prepare_removes_what_writes_that_died_left_in_the_store_and_nothing_else(tmp_path):

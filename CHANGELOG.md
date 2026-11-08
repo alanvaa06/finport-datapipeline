@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.0 (2026-11-08)
+
+- SEC filings are stored under readable names in the company's folder:
+  `AAPL/AAPL_10-K_2025-09-27.htm`, an 8-K's exhibits by number (`AAPL_8-K_2025-10-30_ex99-1.htm`),
+  an amendment as `10-K-A`. Filings that would share a name are numbered in the order they were
+  filed (`_2`). The list of documents gains `label` and `stored_as`; `file`, `group` and `url` still
+  give the published name, the accession number and the source.
+- The store's schema is 2. A 0.1 store reads as it is, and is marked schema 2 on its first sync, so
+  0.1 refuses it instead of looking for files in the wrong place.
+- `data-pipeline migrate` (`Store.migrate`) renames the filings of a 0.1 store in place, without
+  downloading anything.
+- `data-pipeline export-xbrl` (`Store.export_xbrl`) writes each stored filing's XBRL facts as a CSV
+  named like the filing: `AAPL_10-K_2025-09-27_xbrl.csv`.
+- `show` lists a company's filings by their stored names.
+
 ## 0.1.1 (2026-11-04)
 
 The package's code is unchanged; this release refreshes its PyPI page.

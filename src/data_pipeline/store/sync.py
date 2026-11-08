@@ -61,8 +61,10 @@ from data_pipeline.store.storage import (
     drop_repeated_versions,
     fill_attributes,
     latest,
+    readable_names,
     records,
     table_frame,
+    used_values,
     typed,
 )
 
@@ -582,10 +584,26 @@ def _sync_documents(
                     identifier = data.entry.source_id
                     listed = storage.read_documents(name, identifier)
                     for document in data.documents:
-                        for file in document.files:
-                            storage.write_document(name, identifier, document.group, file.name, file.content)
+                        label, stored_as = "", [""] * len(document.files)
+                        if document.label:
+                            label, stored_as = readable_names(
+                                document.label,
+                                [(file.name, file.tag) for file in document.files],
+                                used_values(listed, "label"),
+                                used_values(listed, "stored_as"),
+                            )
+                        for file, target in zip(document.files, stored_as, strict=True):
+                            storage.write_document(name, identifier, document.group, file.name, file.content, target)
                         files = [(file.name, file.role, file.url, file.content) for file in document.files]
-                        rows = document_rows(document.group, document.date, files, document.attributes, received_at)
+                        rows = document_rows(
+                            document.group,
+                            document.date,
+                            files,
+                            document.attributes,
+                            received_at,
+                            label=label,
+                            stored_as=stored_as,
+                        )
                         listed = rows if listed.empty else pd.concat([listed, rows], ignore_index=True)
                         added += len(rows)
                     if data.documents:

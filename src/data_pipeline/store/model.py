@@ -204,22 +204,32 @@ class DocumentFile:
     content: bytes
     url: str
     role: str  # its part in the document, for example "primary" or "exhibit"
+    tag: str = ""  # added to the document's label in the file's stored name (ex99-1); empty for the main file
 
     def __post_init__(self) -> None:
         check_name(self.name)
+        if self.tag:
+            check_name(self.tag)
 
 
 @dataclass(frozen=True, slots=True)
 class Document:
-    """Files that come out together and stay as they are, a filing for instance."""
+    """Files that come out together and stay as they are, a filing for instance.
+
+    With a `label`, the files are stored under readable names in the entry's folder: the label for
+    the main file, `<label>_<tag>` for the others, each with its own extension (see
+    storage.readable_names). Without one, they are stored as published, in a folder per group."""
 
     group: str  # names the document inside its catalog entry
     date: datetime.date  # its publication day
     files: tuple[DocumentFile, ...]
     attributes: Mapping[str, str] = field(default_factory=dict)  # its columns in the list of documents
+    label: str = ""  # the readable base name of its files, such as AAPL_10-K_2025-09-27
 
     def __post_init__(self) -> None:
         check_name(self.group)
+        if self.label:
+            check_name(self.label)
 
 
 @dataclass(frozen=True, slots=True)

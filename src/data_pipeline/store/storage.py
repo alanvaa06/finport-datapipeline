@@ -1,9 +1,18 @@
 """The store on disk: parquet in long format plus two small JSON files.
 
-  store.json               {"schema_version": 1}
+  store.json               {"schema_version": 2}
   index.parquet            one row per series: provenance and last result
   series/<source>.parquet  observations (key, period, date, value, projection, fetched_at, published_at)
+  tables/<source>/<id>.parquet       every version of every row of a table
+  documents/<source>/<id>.parquet    the list of an id's documents, one row per file
+  documents/<source>/<id>/<stored_as>          a file stored under a readable name (schema 2)
+  documents/<source>/<id>/<group>/<file>       a file stored as published (schema 1, or no label)
   runs.json                per source: last run and its counts
+
+Schema 2 added readable names for documents (the `label` and `stored_as` columns). It reads a
+schema-1 store as it is, since a file without `stored_as` is where schema 1 put it, and marks it
+schema 2 on its first sync so an older library refuses it instead of looking in the wrong place.
+`migrate` moves the files of a schema-1 store to their readable names.
 
 Observations are append-only: a changed value adds a row, nothing is rewritten or deleted.
 Every write goes to a temporary file, is flushed to the disk, and then replaces the target, so a
@@ -18,7 +27,7 @@ import datetime
 import hashlib
 import json
 import pathlib
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from typing import Any
 
 import numpy as np
@@ -28,7 +37,8 @@ from data_pipeline._files import ReplaceRefusedError, sweep_temporary, write_ato
 from data_pipeline.store.errors import StoreError
 from data_pipeline.store.model import check_name
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+READABLE_SCHEMAS = frozenset({1, 2})  # schema 1 differs only in where documents lived
 STORE_FILE = "store.json"
 INDEX_FILE = "index.parquet"
 RUNS_FILE = "runs.json"
@@ -39,7 +49,7 @@ KIND_SERIES = "series"
 KIND_TABLE = "table"
 KIND_DOCUMENT = "document"
 DOCUMENTS_DIR = "documents"
-DOCUMENT_COLUMNS = ["group", "date", "file", "role", "url", "size", "sha256", "fetched_at"]
+DOCUMENT_COLUMNS = ["group", "date", "file", "role", "url", "size", "sha256", "label", "stored_as", "fetched_at"]
 KEY = ["key", "period"]
 SERIES_ORDER = ["key", "date"]
 STAMP_COLUMNS = ["fetched_at", "published_at"]
@@ -393,8 +403,16 @@ def document_rows(
     files: Sequence[tuple[str, str, str, bytes]],
     attributes: Mapping[str, str],
     fetched_at: datetime.datetime,
+    *,
+    label: str = "",
+    stored_as: Sequence[str] | None = None,
 ) -> pd.DataFrame:
-    """The rows of one document for the list of its id. `files` are (name, role, url, content)."""
+    """The rows of one document for the list of its id. `files` are (name, role, url, content);
+    `stored_as` the name each is stored under, empty for a file stored as published."""
+    targets = list(stored_as) if stored_as is not None else [""] * len(files)
+    if len(targets) != len(files):
+        msg = f"{len(files)} files but {len(targets)} stored names"
+        raise ValueError(msg)
     frame = pd.DataFrame(
         [
             {
@@ -405,15 +423,62 @@ def document_rows(
                 "url": url,
                 "size": len(content),
                 "sha256": hashlib.sha256(content).hexdigest(),
+                "label": label,
+                "stored_as": target,
                 **{str(column): str(value) for column, value in attributes.items()},
             }
-            for name, role, url, content in files
+            for (name, role, url, content), target in zip(files, targets, strict=True)
         ]
     )
     frame["date"] = pd.to_datetime(frame["date"]).dt.as_unit("ns")
     frame["size"] = frame["size"].astype("int64")
     frame["fetched_at"] = pd.Series([fetched_at] * len(frame), dtype=UTC)
     return frame
+
+
+def _stored_names(label: str, files: Sequence[tuple[str, str]]) -> list[str]:
+    """The stored name of each file of a document labelled `label`: the label, or `<label>_<tag>`,
+    with the file's extension in lower case; a name already given is numbered (`_2`)."""
+    names: list[str] = []
+    for file, tag in files:
+        stem = f"{label}_{tag}" if tag else label
+        suffix = pathlib.PurePosixPath(file).suffix.lower()
+        candidate, number = stem + suffix, 1
+        while candidate in names:
+            number += 1
+            candidate = f"{stem}_{number}{suffix}"
+        check_name(candidate)
+        names.append(candidate)
+    return names
+
+
+def readable_names(
+    label: str,
+    files: Sequence[tuple[str, str]],
+    taken_labels: Collection[str],
+    taken_names: Collection[str],
+) -> tuple[str, list[str]]:
+    """(the label a document is stored under, the stored name of each of its files).
+
+    `files` are (name as published, tag). The label is the one asked for, or that label numbered
+    `_2`, `_3`... the first that no stored document has and that gives no file a name already
+    stored. A document stored later never renames one stored before it, so numbers follow the
+    order documents were stored: the order they were published, as a source sends them."""
+    number = 1
+    while True:
+        used = label if number == 1 else f"{label}_{number}"
+        if used not in taken_labels:
+            names = _stored_names(used, files)
+            if not set(names) & set(taken_names):
+                return used, names
+        number += 1
+
+
+def used_values(listed: pd.DataFrame, column: str) -> set[str]:
+    """The non-empty values of `column` in an id's list of documents (none in a schema-1 list)."""
+    if column not in listed.columns:
+        return set()
+    return {str(value) for value in listed[column] if not pd.isna(value) and str(value)}
 
 
 def _unreadable(path: pathlib.Path, error: Exception) -> StoreError:
@@ -489,9 +554,11 @@ class Storage:
             _write_json({"schema_version": SCHEMA_VERSION}, path)
             return
         found = _read_json(path).get("schema_version")
-        if found != SCHEMA_VERSION:
+        if found not in READABLE_SCHEMAS:
             msg = f"{path}: schema_version {found!r}, this library reads version {SCHEMA_VERSION}"
             raise StoreError(msg)
+        if found != SCHEMA_VERSION:  # schema 1: this sync may store readable names, which 0.1 cannot find
+            _write_json({"schema_version": SCHEMA_VERSION}, path)
         sweep_temporary(self.root, recursive=False)
         for folder in (SERIES_DIR, TABLES_DIR, DOCUMENTS_DIR):
             sweep_temporary(self.root / folder)
@@ -563,13 +630,17 @@ class Storage:
             versioned=bool(described.get("versioned", False)),
         )
 
-    def document_path(self, source: str, name: str, group: str, file: str) -> pathlib.Path:
-        """Where one file of a document lives. `group` and `file` come from a source's answer, so
-        each must be a plain name (model.check_name): no separator of either kind, no `..`, no
+    def document_path(self, source: str, name: str, group: str, file: str, stored_as: str = "") -> pathlib.Path:
+        """Where one file of a document lives: `<name>/<stored_as>` when it has a stored name,
+        else `<name>/<group>/<file>`. `group`, `file` and `stored_as` come from a source's answer,
+        so each must be a plain name (model.check_name): no separator of either kind, no `..`, no
         drive, no device name; ValueError otherwise. `source` and `name` are the store's own
         source name and a catalog id its source has checked."""
         for part in (group, file):
             check_name(part)
+        if stored_as:
+            check_name(stored_as)
+            return self.root / DOCUMENTS_DIR / source / name / stored_as
         return self.root / DOCUMENTS_DIR / source / name / group / file
 
     def document_names(self, source: str) -> list[str]:
@@ -577,9 +648,11 @@ class Storage:
         folder = self.root / DOCUMENTS_DIR / source
         return sorted(path.stem for path in folder.glob("*.parquet")) if folder.exists() else []
 
-    def write_document(self, source: str, name: str, group: str, file: str, content: bytes) -> None:
+    def write_document(
+        self, source: str, name: str, group: str, file: str, content: bytes, stored_as: str = ""
+    ) -> None:
         """Write one file of a document, once: a file that exists is never written again."""
-        path = self.document_path(source, name, group, file)
+        path = self.document_path(source, name, group, file, stored_as)
         if path.exists():
             return
         _write_bytes(content, path)
