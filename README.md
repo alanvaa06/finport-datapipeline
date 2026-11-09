@@ -17,7 +17,7 @@ look-ahead bias.
 | **License** | MIT |
 | **Python** | 3.12, 3.13, 3.14 |
 | **Dependencies** | pandas 2 (2.2.3 or later; pandas 3 is not supported yet), pyarrow, DuckDB 2, httpx, click, PyYAML, python-dotenv |
-| **Status** | Alpha (0.2): the API may still change |
+| **Status** | Alpha (0.3): the API may still change |
 | **Docs** | [Guide](https://github.com/alanvaa06/finport-datapipeline/blob/main/docs/guide.md) · [Changelog](https://github.com/alanvaa06/finport-datapipeline/blob/main/CHANGELOG.md) · [Issues](https://github.com/alanvaa06/finport-datapipeline/issues) |
 
 ```text
@@ -76,6 +76,7 @@ The latest commit on `main` installs with
 | `status` | Gives each series a state: `ok`, `stale`, `missing` or `failed` |
 | `show` | Prints a series, optionally `--as-of` a date |
 | `export-xbrl` | Writes each stored SEC filing's XBRL facts as a CSV named like it (`AAPL_10-K_2025-09-27_xbrl.csv`) |
+| `export-text` | Writes each stored SEC filing and exhibit as Markdown, for tools that do not take HTML (`AAPL_10-K_2025-09-27.md`) |
 | `migrate` | Renames the SEC filings of a store made by 0.1 to their readable names, in place |
 | `fetch` | Downloads without a store, to the screen or a Parquet, CSV or DuckDB file |
 | `sql` | Runs one `SELECT` over the store through DuckDB |

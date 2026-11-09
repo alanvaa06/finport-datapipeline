@@ -216,4 +216,55 @@ def test_the_commands_report_what_they_did(legacy, tmp_path):
     out = tmp_path / "xbrl"
     exported = runner.invoke(cli, ["export-xbrl", "--root", str(legacy), "--to", str(out)])
     assert exported.exit_code == 0, exported.output
-    assert "[ok]  AAPL  1 filings, 1 new or changed" in exported.output
+    assert "[ok]  AAPL  1 files, 1 new or changed" in exported.output
+
+
+def _html(legacy):
+    """Give the stored 10-K some HTML to convert."""
+    folder = legacy / "documents" / "sec_filings" / "AAPL"
+    (folder / "AAPL_10-K_2025-09-27.htm").write_bytes(
+        b"<html><head><title>t</title></head><body><p>Annual report</p>"
+        b"<table><tr><td></td><td>2025</td></tr>"
+        b"<tr><td>Net sales</td><td>$</td><td>416,161</td></tr></table></body></html>"
+    )
+
+
+def test_each_html_file_is_written_as_markdown_under_its_stored_name(legacy, tmp_path):
+    Store(legacy).migrate()
+    _html(legacy)
+    out = tmp_path / "text"
+    [result] = Store(legacy).export_text(out)
+    assert (result.ticker, result.files, result.written) == ("AAPL", 4, 4)  # the 10-K/A is a .txt: left out
+    assert sorted(path.name for path in (out / "AAPL").iterdir()) == [
+        "AAPL_10-K_2025-09-27.md",
+        "AAPL_8-K_2025-10-30.md",
+        "AAPL_8-K_2025-10-30_2.md",
+        "AAPL_8-K_2025-10-30_ex99-1.md",
+    ]
+    assert (out / "AAPL" / "AAPL_10-K_2025-09-27.md").read_text(encoding="utf-8") == (
+        "Annual report\n\n|  | 2025 |\n|---|---|\n| Net sales | $416,161 |\n"
+    )
+    [again] = Store(legacy).export_text(out)
+    assert again.written == 0
+
+
+def test_the_text_export_asks_for_a_migration_first(legacy, tmp_path):
+    with pytest.raises(StoreError, match="run `data-pipeline migrate` first"):
+        Store(legacy).export_text(tmp_path / "text")
+
+
+def test_the_text_export_refuses_a_folder_inside_the_store_and_an_unknown_company(legacy, tmp_path):
+    Store(legacy).migrate()
+    with pytest.raises(StoreError, match="outside the store"):
+        Store(legacy).export_text(legacy / "text")
+    with pytest.raises(UnknownSeriesError, match="MSFT"):
+        Store(legacy).export_text(tmp_path / "text", ["MSFT"])
+
+
+def test_the_text_command_reports_what_it_wrote(legacy, tmp_path):
+    Store(legacy).migrate()
+    out = tmp_path / "text"
+    arguments = ["export-text", "--root", str(legacy), "--to", str(out), "--id", "AAPL"]
+    exported = click.testing.CliRunner().invoke(cli, arguments)
+    assert exported.exit_code == 0, exported.output
+    assert "[ok]  AAPL  4 files, 4 new or changed" in exported.output
