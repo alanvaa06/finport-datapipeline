@@ -143,8 +143,25 @@ data-pipeline export-xbrl --root D:/data --to D:/data-xbrl --id AAPL  # one (rep
 
 `AAPL/AAPL_10-K_2025-09-27_xbrl.csv` holds the facts the `sec_xbrl` table dates to that filing:
 what it reported first and what it restated. A value it only repeated as a comparative stays with
-the earlier filing. A second run rewrites only the files whose content changed. In Python:
-`store.export_xbrl("D:/data-xbrl", ["AAPL"])` and `store.migrate()`.
+the earlier filing. A second run rewrites only the files whose content changed.
+
+`export-text` writes each stored HTML file, the filing and its exhibits, as Markdown under its
+stored name (`AAPL/AAPL_10-K_2025-09-27.md`, `AAPL/AAPL_8-K_2025-10-30_ex99-1.md`), for tools
+that do not take HTML, such as file-sharing services and chat uploads:
+
+```bash
+data-pipeline export-text --root D:/data --to D:/data-text            # every company
+data-pipeline export-text --root D:/data --to D:/data-text --id AAPL  # one (repeatable)
+```
+
+The Markdown keeps what a reader sees: the text in reading order, a heading's level, and each
+table as a Markdown table without the HTML's spacer columns, a `$` or a closing `)` joined to its
+figure. Inline XBRL's hidden header and EDGAR's own header are dropped. It is about a seventh of
+the HTML's size. A table the HTML misaligns stays misaligned, with its figures in their rows and
+in order. Files that are not HTML are left out; a second run rewrites only what changed.
+
+In Python: `store.export_xbrl("D:/data-xbrl", ["AAPL"])`, `store.export_text("D:/data-text")` and
+`store.migrate()`.
 
 ## Python
 

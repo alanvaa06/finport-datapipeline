@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 (2026-11-08)
+
+- `data-pipeline export-text` (`Store.export_text`) writes each stored SEC filing and exhibit as
+  Markdown under its stored name (`AAPL_10-K_2025-09-27.md`), for tools that do not take HTML.
+  Tables become Markdown tables without the HTML's spacer columns, with `$` and `)` joined to
+  their figures; inline XBRL's hidden header is dropped. The standard library's HTML parser does
+  the conversion: no new dependency.
+- The export commands report files rather than filings: `1 files, 1 new or changed`.
+
 ## 0.2.0 (2026-11-08)
 
 - SEC filings are stored under readable names in the company's folder:

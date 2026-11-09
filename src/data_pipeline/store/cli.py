@@ -1,4 +1,4 @@
-"""Console commands of the store: sync, status, show, catalog, export-xbrl, migrate. Output is ASCII only.
+"""Console commands of the store: sync, status, show, catalog, export-xbrl, export-text, migrate. Output is ASCII only.
 
 Exit codes: 0 everything is up to date, 1 there were failures, 2 configuration error,
 3 incomplete because of a quota (run again tomorrow).
@@ -162,6 +162,21 @@ def export_xbrl_command(*, root: pathlib.Path, destination: pathlib.Path, ids: t
     """Write each stored SEC filing's XBRL facts as a CSV named like it: AAPL_10-K_2025-09-27_xbrl.csv."""
     try:
         results = open_store(root, None, None).export_xbrl(destination, ids or None)
+    except StoreError as exc:
+        raise fail(exc) from exc
+    for line in export_lines(results):
+        echo(line)
+    raise SystemExit(EXIT_OK)
+
+
+@cli.command("export-text")
+@root_option
+@click.option("--to", "destination", type=PATH, required=True, help="Folder for the Markdown files, outside the store.")
+@click.option("--id", "ids", multiple=True, help="Only this company, such as AAPL. Repeatable.")
+def export_text_command(*, root: pathlib.Path, destination: pathlib.Path, ids: tuple[str, ...]) -> None:
+    """Write each stored SEC filing and exhibit in HTML as Markdown, under its stored name: AAPL_10-K_2025-09-27.md."""
+    try:
+        results = open_store(root, None, None).export_text(destination, ids or None)
     except StoreError as exc:
         raise fail(exc) from exc
     for line in export_lines(results):

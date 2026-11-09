@@ -1,4 +1,6 @@
-"""Each SEC filing's XBRL facts, as a CSV named like the filing: `AAPL_10-K_2025-09-27_xbrl.csv`.
+"""Copies of the stored SEC filings beside the store: each filing's XBRL facts as a CSV named like
+the filing (`AAPL_10-K_2025-09-27_xbrl.csv`), and each filing's HTML as Markdown under its stored
+name (`AAPL_10-K_2025-09-27.md`).
 
 The store keeps a company's XBRL facts as one table (sec_xbrl), every version dated with the
 filing that reported it. `export_company` writes, for each filing of the company that the store
@@ -6,7 +8,11 @@ also holds (sec_filings), the versions dated to it, under the filing's label. Th
 facts the filing reported first and the ones whose value it changed; a value it only repeated as
 a comparative stays with the filing that reported it first.
 
-The CSVs go to a folder outside the store, one folder per company. A second export rewrites only
+`export_text_company` writes each of a company's stored HTML files (the filing and its exhibits)
+as Markdown, converted by data_pipeline.store.markdown: a format that file-sharing tools and
+language models read, about a seventh of the HTML's size. Files that are not HTML are left out.
+
+The copies go to a folder outside the store, one folder per company. A second export rewrites only
 the files whose content changed. The store is never changed.
 """
 
@@ -18,11 +24,14 @@ from collections.abc import Sequence
 import pandas as pd
 
 from data_pipeline._files import write_atomic
+from data_pipeline.store.markdown import to_markdown
 from data_pipeline.store.model import check_name
 
 FILINGS_SOURCE = "sec_filings"
 XBRL_SOURCE = "sec_xbrl"
 XBRL_SUFFIX = "_xbrl.csv"
+TEXT_SUFFIX = ".md"
+HTML_SUFFIXES = frozenset({".htm", ".html"})
 
 
 class UnlabelledError(ValueError):
@@ -34,7 +43,7 @@ class CompanyExport:
     """What one company's export did."""
 
     ticker: str
-    files: int  # CSVs in the folder for the company's stored filings
+    files: int  # files in the folder for the company's stored filings
     written: int  # of those, new or rewritten
 
 
@@ -74,13 +83,37 @@ def export_company(ticker: str, documents: pd.DataFrame, facts: pd.DataFrame, fo
             continue
         name = label + XBRL_SUFFIX
         check_name(name)
-        target = folder / name
-        content = _csv(reported.reset_index(drop=True))
         files += 1
-        if target.exists() and target.read_bytes() == content:
+        written += _write_if_changed(folder / name, _csv(reported.reset_index(drop=True)))
+    return CompanyExport(ticker, files, written)
+
+
+def _write_if_changed(target: pathlib.Path, content: bytes) -> bool:
+    if target.exists() and target.read_bytes() == content:
+        return False
+    write_atomic(target, content)
+    return True
+
+
+def export_text_company(ticker: str, documents: pd.DataFrame, folder: pathlib.Path) -> CompanyExport:
+    """Write each of one company's stored HTML files as Markdown, named as it is stored with `.md`
+    for its extension. `documents` is what Store.documents returns, with `stored_as` and `path`."""
+    files = written = 0
+    column = documents["stored_as"] if "stored_as" in documents.columns else pd.Series([""] * len(documents))
+    rows = zip(documents["group"].astype(str), column.map(_text), documents["path"], strict=True)
+    for accession, stored_as, path in rows:
+        if not stored_as:
+            msg = f"filing {accession} is stored without a readable name: run `data-pipeline migrate` first"
+            raise UnlabelledError(msg)
+        stored = pathlib.PurePath(stored_as)
+        if stored.suffix.lower() not in HTML_SUFFIXES:
             continue
-        write_atomic(target, content)
-        written += 1
+        name = stored.stem + TEXT_SUFFIX
+        check_name(name)
+        content = to_markdown(pathlib.Path(path).read_bytes()).encode("utf-8")
+        folder.mkdir(parents=True, exist_ok=True)
+        files += 1
+        written += _write_if_changed(folder / name, content)
     return CompanyExport(ticker, files, written)
 
 
@@ -96,6 +129,6 @@ def check_destination(root: pathlib.Path, destination: pathlib.Path) -> None:
 
 def lines(results: Sequence[CompanyExport]) -> list[str]:
     """The console report of an export, ASCII only."""
-    out = [f"[ok]  {result.ticker}  {result.files} filings, {result.written} new or changed" for result in results]
+    out = [f"[ok]  {result.ticker}  {result.files} files, {result.written} new or changed" for result in results]
     out.append(f"[ok]  {len(results)} companies, {sum(result.files for result in results)} files")
     return out

@@ -3,5 +3,5 @@
 from data_pipeline.fetching import FetchError, fetch
 from data_pipeline.store.api import Store
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __all__ = ["FetchError", "Store", "__version__", "fetch"]

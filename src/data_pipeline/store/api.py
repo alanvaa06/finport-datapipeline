@@ -398,6 +398,36 @@ class Store:
             results.append(result)
         return results
 
+    def export_text(
+        self,
+        destination: str | pathlib.Path,
+        ids: Sequence[str] | None = None,
+    ) -> list[store_export.CompanyExport]:
+        """Write each stored SEC filing and exhibit in HTML to `destination` as Markdown, under its
+        stored name, one folder per company: `AAPL/AAPL_10-K_2025-09-27.md`. `ids` are tickers; None
+        exports every company with stored filings. The store is not changed. See
+        data_pipeline.store.export and data_pipeline.store.markdown."""
+        try:
+            store_export.check_destination(self._storage.root, pathlib.Path(destination))
+        except ValueError as exc:
+            raise StoreError(str(exc)) from None
+        stored = self._storage.document_names(store_export.FILINGS_SOURCE)
+        names = list(ids) if ids is not None else list(stored)
+        unknown = sorted(set(names) - set(stored))
+        if unknown:
+            msg = f"no stored filings for: {', '.join(unknown)}"
+            raise UnknownSeriesError(msg)
+        results = []
+        for name in names:
+            documents = self.documents(store_export.FILINGS_SOURCE, name)
+            try:
+                result = store_export.export_text_company(name, documents, pathlib.Path(destination) / name)
+            except store_export.UnlabelledError as exc:
+                msg = f"{name}: {exc}"
+                raise StoreError(msg) from None
+            results.append(result)
+        return results
+
     def migrate(self) -> list[store_migrate.Migrated]:
         """Move the SEC filings of a schema-1 store to their readable names, in place, and mark
         the store schema 2. See data_pipeline.store.migrate."""
